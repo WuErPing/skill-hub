@@ -97,16 +97,16 @@ class SyncEngine:
         """
         result = SyncResult(operation="push")
 
-        # Read all skills from hub
-        skills_dir = self.hub_path / "skills"
-        if not skills_dir.exists():
-            logger.warning(f"Skills directory not found: {skills_dir}")
+        # Read all skills from hub (stored directly in hub_path)
+        if not self.hub_path.exists():
+            logger.warning(f"Hub directory not found: {self.hub_path}")
             return result
 
         # Push to each enabled adapter
         for adapter in self.adapter_registry.get_enabled_adapters():
-            for skill_dir in skills_dir.iterdir():
-                if not skill_dir.is_dir():
+            for skill_dir in self.hub_path.iterdir():
+                # Skip metadata directory and non-directories
+                if not skill_dir.is_dir() or skill_dir.name == ".skill-hub":
                     continue
 
                 skill_file = skill_dir / "SKILL.md"
@@ -203,13 +203,15 @@ class SyncEngine:
         Returns:
             List of skill names
         """
-        skills_dir = self.hub_path / "skills"
-        if not skills_dir.exists():
+        if not self.hub_path.exists():
             return []
 
         skills = []
-        for skill_dir in skills_dir.iterdir():
-            if skill_dir.is_dir() and (skill_dir / "SKILL.md").exists():
+        for skill_dir in self.hub_path.iterdir():
+            # Skip metadata directory and non-directories
+            if not skill_dir.is_dir() or skill_dir.name == ".skill-hub":
+                continue
+            if (skill_dir / "SKILL.md").exists():
                 skills.append(skill_dir.name)
 
         return sorted(skills)
