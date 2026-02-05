@@ -1,5 +1,6 @@
 """Utility modules for skill-hub."""
 
+from .config_manager import ConfigManager
 from .path_utils import (
     compute_checksum,
     ensure_directory,
@@ -12,6 +13,7 @@ from .path_utils import (
 from .yaml_parser import SkillParseError, parse_skill_file, parse_skill_file_from_path
 
 __all__ = [
+    "ConfigManager",
     "expand_home",
     "validate_skill_name",
     "validate_description",

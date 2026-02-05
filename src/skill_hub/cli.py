@@ -13,8 +13,10 @@ from rich.table import Table
 from skill_hub import __version__
 from skill_hub.adapters import AdapterRegistry
 from skill_hub.discovery import DiscoveryEngine
-from skill_hub.models import Config
+from skill_hub.models import Config, RepositoryConfig
+from skill_hub.remote import RepositoryManager, RepositorySkillScanner
 from skill_hub.sync import SyncEngine
+from skill_hub.utils import ConfigManager
 
 console = Console()
 
@@ -42,7 +44,11 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     setup_logging(verbose)
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
-    ctx.obj["config"] = Config()
+    
+    # Load configuration from file
+    config_manager = ConfigManager()
+    ctx.obj["config_manager"] = config_manager
+    ctx.obj["config"] = config_manager.load()
 
 
 @cli.command()
@@ -183,6 +189,187 @@ def agents(ctx: click.Context, check: bool) -> None:
             if adapter:
                 status = "enabled" if adapter.is_enabled() else "disabled"
                 console.print(f"  • {adapter_name} ({status})")
+
+
+@cli.group(name="repo")
+@click.pass_context
+def repo(ctx: click.Context) -> None:
+    """Manage remote skill repositories."""
+    pass
+
+
+@repo.command(name="add")
+@click.argument("url")
+@click.option("--branch", default="main", help="Git branch (default: main)")
+@click.option("--path", default="", help="Subdirectory path in repository")
+@click.pass_context
+def repo_add(ctx: click.Context, url: str, branch: str, path: str) -> None:
+    """Add a remote repository."""
+    config = ctx.obj["config"]
+    config_manager = ctx.obj["config_manager"]
+    repo_manager = RepositoryManager()
+
+    # Validate URL
+    if not repo_manager.validate_url(url):
+        console.print(f"[red]Invalid repository URL:[/red] {url}")
+        return
+
+    # Check if already exists
+    for repo in config.repositories:
+        if repo.url == url:
+            console.print(f"[yellow]Repository already configured:[/yellow] {url}")
+            return
+
+    # Add to config
+    repo_config = RepositoryConfig(url=url, branch=branch, path=path)
+    config.repositories.append(repo_config)
+    
+    # Save configuration
+    if not config_manager.save(config):
+        console.print("[red]Failed to save configuration[/red]")
+        return
+
+    console.print(f"[green]✓[/green] Added repository: {url}")
+    console.print(f"  Branch: {branch}")
+    if path:
+        console.print(f"  Path: {path}")
+    console.print("\n[bold]Run 'skill-hub pull' to fetch skills[/bold]")
+
+
+@repo.command(name="list")
+@click.pass_context
+def repo_list(ctx: click.Context) -> None:
+    """List configured repositories."""
+    config = ctx.obj["config"]
+    repo_manager = RepositoryManager()
+
+    if not config.repositories:
+        console.print("[yellow]No repositories configured[/yellow]")
+        console.print("\nAdd a repository with: skill-hub repo add <url>")
+        return
+
+    console.print(f"[bold]Configured repositories ({len(config.repositories)}):[/bold]\n")
+
+    table = Table(show_header=True)
+    table.add_column("URL")
+    table.add_column("Branch")
+    table.add_column("Enabled")
+    table.add_column("Status")
+
+    for repo in config.repositories:
+        enabled = "✓" if repo.enabled else "✗"
+        metadata = repo_manager.load_metadata(repo.url)
+
+        if metadata and metadata.last_sync_at:
+            status = f"Synced {metadata.sync_count} times"
+        else:
+            status = "Not synced yet"
+
+        table.add_row(repo.url, repo.branch, enabled, status)
+
+    console.print(table)
+
+
+@repo.command(name="remove")
+@click.argument("url")
+@click.pass_context
+def repo_remove(ctx: click.Context, url: str) -> None:
+    """Remove a repository."""
+    config = ctx.obj["config"]
+    config_manager = ctx.obj["config_manager"]
+
+    # Find and remove
+    for i, repo in enumerate(config.repositories):
+        if repo.url == url:
+            config.repositories.pop(i)
+            
+            # Save configuration
+            if not config_manager.save(config):
+                console.print("[red]Failed to save configuration[/red]")
+                return
+                
+            console.print(f"[green]✓[/green] Removed repository: {url}")
+            return
+
+    console.print(f"[yellow]Repository not found:[/yellow] {url}")
+
+
+@cli.command()
+@click.argument("url", required=False)
+@click.pass_context
+def pull(ctx: click.Context, url: Optional[str]) -> None:
+    """Pull skills from remote repositories."""
+    config = ctx.obj["config"]
+    repo_manager = RepositoryManager()
+    scanner = RepositorySkillScanner()
+    sync_engine = SyncEngine(config)
+
+    # Determine which repositories to pull
+    if url:
+        repos = [r for r in config.repositories if r.url == url]
+        if not repos:
+            console.print(f"[red]Repository not configured:[/red] {url}")
+            return
+    else:
+        repos = [r for r in config.repositories if r.enabled]
+
+    if not repos:
+        console.print("[yellow]No enabled repositories to pull from[/yellow]")
+        console.print("\nAdd a repository with: skill-hub repo add <url>")
+        return
+
+    console.print("[bold]Pulling skills from remote repositories...[/bold]\n")
+
+    total_skills = 0
+    for repo_config in repos:
+        console.print(f"📦 {repo_config.url}")
+
+        # Clone or update repository
+        if not repo_manager.clone_or_update(repo_config):
+            console.print(f"  [red]✗ Failed to sync repository[/red]")
+            continue
+
+        # Get current commit hash
+        commit_hash = repo_manager.get_commit_hash(repo_config.url)
+
+        # Scan for skills
+        repo_dir = repo_manager.get_repository_path(repo_config.url)
+        scanned_skills = scanner.scan_repository(repo_dir, repo_config)
+
+        if not scanned_skills:
+            console.print(f"  [yellow]No skills found[/yellow]")
+            continue
+
+        # Convert to Skill objects
+        skills = scanner.create_skill_objects(scanned_skills, repo_config.url)
+
+        # Import skills to hub
+        for skill in skills:
+            try:
+                sync_engine._sync_skill_to_hub(skill)
+                total_skills += 1
+            except Exception as e:
+                console.print(f"  [red]✗ Failed to import '{skill.name}': {e}[/red]")
+
+        # Save metadata
+        from datetime import datetime
+        from skill_hub.models import RepositoryMetadata
+
+        metadata = RepositoryMetadata(
+            url=repo_config.url,
+            branch=repo_config.branch,
+            commit_hash=commit_hash,
+            last_sync_at=datetime.now().isoformat(),
+            skills_imported=[s.name for s in skills],
+            sync_count=(repo_manager.load_metadata(repo_config.url).sync_count + 1
+                        if repo_manager.load_metadata(repo_config.url)
+                        else 1),
+        )
+        repo_manager.save_metadata(metadata)
+
+        console.print(f"  [green]✓ Imported {len(skills)} skills[/green]")
+
+    console.print(f"\n[bold green]✓[/bold green] Pull completed: {total_skills} skills imported")
 
 
 def main() -> None:

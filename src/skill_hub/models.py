@@ -72,16 +72,42 @@ class AgentConfig:
 
 
 @dataclass
+class RepositoryConfig:
+    """Configuration for a remote skill repository."""
+
+    url: str
+    enabled: bool = True
+    branch: str = "main"
+    path: str = ""
+    sync_schedule: Optional[str] = None
+
+
+@dataclass
+class RepositoryMetadata:
+    """Metadata for a remote repository."""
+
+    url: str
+    branch: str
+    commit_hash: Optional[str] = None
+    last_sync_at: Optional[str] = None
+    skills_imported: List[str] = field(default_factory=list)
+    sync_count: int = 0
+    last_error: Optional[str] = None
+
+
+@dataclass
 class Config:
     """skill-hub configuration."""
 
     version: str = "1.0.0"
-    conflict_resolution: str = "newest"  # newest, manual, hub-priority
+    conflict_resolution: str = "newest"  # newest, manual, hub-priority, remote-priority, local-priority
     agents: Dict[str, AgentConfig] = field(default_factory=dict)
+    repositories: List[RepositoryConfig] = field(default_factory=list)
     sync: Dict[str, bool] = field(
         default_factory=lambda: {
             "incremental": True,
             "check_permissions": True,
             "create_directories": True,
+            "remote_priority": False,
         }
     )
