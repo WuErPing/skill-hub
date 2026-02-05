@@ -2,6 +2,8 @@
 
 Unified skill management system for AI coding agents (Cursor, Claude, Qoder, OpenCode).
 
+English | [简体中文](README.zh-CN.md)
+
 ## Overview
 
 skill-hub discovers, synchronizes, and distributes AI coding agent skills across multiple platforms. It provides a centralized repository at `~/.skills/` and ensures all agents have access to the same skill definitions.
@@ -92,6 +94,115 @@ skill-hub list
 skill-hub agents --check
 ```
 
+### 5. Add Remote Repositories
+
+Pull skills from community repositories like https://github.com/anthropics/skills:
+
+```bash
+# Add a remote repository
+skill-hub repo add https://github.com/anthropics/skills
+
+# Pull skills from all configured repositories
+skill-hub pull
+
+# List configured repositories
+skill-hub repo list
+```
+
+## Setup for New Users
+
+When someone clones this project repository, they need to set up their **local user configuration**:
+
+### Initial Setup
+
+1. **Install the project:**
+   ```bash
+   git clone https://github.com/yourusername/skill-hub.git
+   cd skill-hub
+   pip install -e .
+   ```
+
+2. **Initialize configuration:**
+   
+   **Option A: Quick setup with Anthropic skills (recommended)**
+   ```bash
+   skill-hub init --with-anthropic
+   ```
+   
+   **Option B: Interactive setup**
+   ```bash
+   skill-hub init
+   # Follow the prompts to add repositories
+   ```
+   
+   **Option C: Custom repositories**
+   ```bash
+   skill-hub init --repo https://github.com/yourorg/team-skills
+   ```
+
+3. **Pull skills:**
+   ```bash
+   skill-hub pull
+   ```
+
+4. **Distribute to your agents:**
+   ```bash
+   skill-hub sync
+   ```
+
+### Configuration Storage
+
+**Important:** Configuration is stored **per-user** at `~/.skills/.skill-hub/config.json`, NOT in the project repository. This means:
+
+- ✅ Each user configures their own repositories
+- ✅ Each user manages their own hub at `~/.skills/`
+- ✅ Configuration is **not** checked into Git
+- ✅ Team members can share skill repository URLs via documentation
+
+### Sharing Repository Configuration
+
+To help team members, you can document recommended repositories in your project:
+
+**Option 1: Simple one-liner in your project README**
+```markdown
+## Setup Skills
+
+After installation, run:
+```bash
+skill-hub init --with-anthropic --repo https://github.com/yourorg/team-skills
+skill-hub pull
+```
+```
+
+**Option 2: Shell script** (`setup-skills.sh`):
+```bash
+#!/bin/bash
+set -e
+
+echo "Setting up skill-hub..."
+skill-hub init --with-anthropic --repo https://github.com/yourorg/team-skills
+
+echo "Fetching skills..."
+skill-hub pull
+
+echo "Distributing to agents..."
+skill-hub sync
+
+echo "✓ Skills setup complete!"
+```
+```
+
+### Private Repositories
+
+For private GitHub repositories, set an environment variable:
+
+```bash
+export SKILL_HUB_GITHUB_TOKEN="ghp_your_token_here"
+skill-hub pull
+```
+
+Add to your shell profile (`~/.zshrc`, `~/.bashrc`) to persist across sessions.
+
 ## Supported Agents
 
 | Agent | Project-Local | Global |
@@ -132,6 +243,40 @@ Use this when you are preparing a tagged release.
 
 ## CLI Commands
 
+### `skill-hub init`
+
+Initialize skill-hub configuration with repository setup.
+
+```bash
+skill-hub init                      # Interactive mode with prompts
+skill-hub init --with-anthropic     # Add Anthropic skills automatically
+skill-hub init --repo <url>         # Add custom repository
+skill-hub init --with-anthropic --repo https://github.com/org/repo  # Combine options
+```
+
+**Interactive Mode Example:**
+```
+$ skill-hub init
+Initializing skill-hub configuration...
+
+Quick Setup:
+
+Add Anthropic's community skills repository? [Y/n]: y
+  ✓ Added: https://github.com/anthropics/skills
+
+Add custom repository? [y/N]: y
+  Repository URL: https://github.com/myorg/skills
+    ✓ Added
+  Add another? [y/N]: n
+
+✓ Configuration saved to ~/.skills/.skill-hub/config.json
+  2 repository(ies) configured
+
+Next steps:
+  1. Run: skill-hub pull to fetch skills
+  2. Run: skill-hub sync to distribute to agents
+```
+
 ### `skill-hub sync`
 
 Synchronize skills between hub and agents.
@@ -168,6 +313,45 @@ Manage agent adapters.
 skill-hub agents            # List all adapters
 skill-hub agents --check    # Run health checks
 ```
+
+### `skill-hub repo`
+
+Manage remote skill repositories.
+
+```bash
+skill-hub repo add <url>           # Add a repository
+skill-hub repo add <url> --branch dev --path /skills  # With options
+skill-hub repo list                # List configured repositories
+skill-hub repo remove <url>        # Remove a repository
+```
+
+**Examples:**
+```bash
+# Add Anthropic's community skills
+skill-hub repo add https://github.com/anthropics/skills
+
+# Add with specific branch
+skill-hub repo add https://github.com/yourorg/skills --branch develop
+
+# Add with subdirectory path
+skill-hub repo add https://github.com/example/repo --path /contrib/skills
+```
+
+### `skill-hub pull`
+
+Pull skills from remote repositories.
+
+```bash
+skill-hub pull                      # Pull from all enabled repositories
+skill-hub pull <url>                # Pull from specific repository
+```
+
+**What it does:**
+1. Clones or updates repositories (shallow clone with `--depth 1`)
+2. Scans for `SKILL.md` files
+3. Imports skills to `~/.skills/`
+4. Tracks commit hashes for incremental updates
+5. Saves metadata (sync count, last sync time, imported skills)
 
 ## Architecture
 

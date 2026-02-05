@@ -48,7 +48,104 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     # Load configuration from file
     config_manager = ConfigManager()
     ctx.obj["config_manager"] = config_manager
-    ctx.obj["config"] = config_manager.load()
+    # Use silent=True for most commands to avoid noise, commands will check config_manager.exists() if needed
+    ctx.obj["config"] = config_manager.load(silent=True)
+
+
+@cli.command()
+@click.option("--with-anthropic", is_flag=True, help="Add Anthropic skills repository")
+@click.option("--repo", "-r", multiple=True, help="Add custom repository URL")
+@click.pass_context
+def init(ctx: click.Context, with_anthropic: bool, repo: tuple) -> None:
+    """Initialize skill-hub configuration."""
+    config = ctx.obj["config"]
+    config_manager = ctx.obj["config_manager"]
+    repo_manager = RepositoryManager()
+
+    console.print("[bold]Initializing skill-hub configuration...[/bold]\n")
+
+    # Check if already configured
+    if config.repositories:
+        console.print(f"[yellow]Configuration already exists with {len(config.repositories)} repositories[/yellow]")
+        if not click.confirm("Do you want to add more repositories?", default=True):
+            console.print("\nRun 'skill-hub repo list' to view configured repositories")
+            return
+        console.print()
+
+    added_count = 0
+
+    # Add Anthropic skills if requested
+    if with_anthropic:
+        anthropic_url = "https://github.com/anthropics/skills"
+        if not any(r.url == anthropic_url for r in config.repositories):
+            config.repositories.append(RepositoryConfig(url=anthropic_url))
+            console.print(f"[green]✓[/green] Added: {anthropic_url}")
+            added_count += 1
+        else:
+            console.print(f"[dim]Already configured: {anthropic_url}[/dim]")
+
+    # Add custom repositories
+    for repo_url in repo:
+        if not repo_manager.validate_url(repo_url):
+            console.print(f"[red]✗ Invalid URL:[/red] {repo_url}")
+            continue
+
+        if any(r.url == repo_url for r in config.repositories):
+            console.print(f"[dim]Already configured: {repo_url}[/dim]")
+            continue
+
+        config.repositories.append(RepositoryConfig(url=repo_url))
+        console.print(f"[green]✓[/green] Added: {repo_url}")
+        added_count += 1
+
+    # Interactive mode if no flags provided
+    if not with_anthropic and not repo:
+        console.print("[bold]Quick Setup:[/bold]\n")
+        
+        # Ask about Anthropic skills
+        if click.confirm("Add Anthropic's community skills repository?", default=True):
+            anthropic_url = "https://github.com/anthropics/skills"
+            if not any(r.url == anthropic_url for r in config.repositories):
+                config.repositories.append(RepositoryConfig(url=anthropic_url))
+                console.print(f"  [green]✓[/green] Added: {anthropic_url}")
+                added_count += 1
+
+        console.print()
+        
+        # Ask about custom repositories
+        if click.confirm("Add custom repository?", default=False):
+            while True:
+                repo_url = click.prompt("  Repository URL", type=str)
+                
+                if not repo_manager.validate_url(repo_url):
+                    console.print(f"    [red]✗ Invalid URL format[/red]")
+                    continue
+
+                if any(r.url == repo_url for r in config.repositories):
+                    console.print(f"    [yellow]Already configured[/yellow]")
+                else:
+                    config.repositories.append(RepositoryConfig(url=repo_url))
+                    console.print(f"    [green]✓[/green] Added")
+                    added_count += 1
+
+                if not click.confirm("  Add another?", default=False):
+                    break
+            console.print()
+
+    # Save configuration
+    if added_count > 0:
+        if config_manager.save(config):
+            console.print(f"\n[bold green]✓[/bold green] Configuration saved to {config_manager.config_path}")
+            console.print(f"  {added_count} repository(ies) configured\n")
+            
+            console.print("[bold]Next steps:[/bold]")
+            console.print("  1. Run: [cyan]skill-hub pull[/cyan] to fetch skills")
+            console.print("  2. Run: [cyan]skill-hub sync[/cyan] to distribute to agents")
+        else:
+            console.print("\n[red]Failed to save configuration[/red]")
+    else:
+        console.print("\n[yellow]No repositories added[/yellow]")
+        console.print("\nAdd repositories with: skill-hub repo add <url>")
 
 
 @cli.command()
@@ -241,11 +338,17 @@ def repo_add(ctx: click.Context, url: str, branch: str, path: str) -> None:
 def repo_list(ctx: click.Context) -> None:
     """List configured repositories."""
     config = ctx.obj["config"]
+    config_manager = ctx.obj["config_manager"]
     repo_manager = RepositoryManager()
 
     if not config.repositories:
-        console.print("[yellow]No repositories configured[/yellow]")
-        console.print("\nAdd a repository with: skill-hub repo add <url>")
+        if not config_manager.exists():
+            console.print("[yellow]No configuration found[/yellow]\n")
+            console.print("Get started with: [cyan]skill-hub init[/cyan]")
+        else:
+            console.print("[yellow]No repositories configured[/yellow]\n")
+            console.print("Add a repository with: [cyan]skill-hub repo add <url>[/cyan]")
+            console.print("Or run: [cyan]skill-hub init[/cyan] for interactive setup")
         return
 
     console.print(f"[bold]Configured repositories ({len(config.repositories)}):[/bold]\n")
@@ -300,9 +403,18 @@ def repo_remove(ctx: click.Context, url: str) -> None:
 def pull(ctx: click.Context, url: Optional[str]) -> None:
     """Pull skills from remote repositories."""
     config = ctx.obj["config"]
+    config_manager = ctx.obj["config_manager"]
     repo_manager = RepositoryManager()
     scanner = RepositorySkillScanner()
     sync_engine = SyncEngine(config)
+
+    # Check if configuration exists
+    if not config_manager.exists() and not config.repositories:
+        console.print("[yellow]No configuration found[/yellow]\n")
+        console.print("Initialize skill-hub with: [cyan]skill-hub init[/cyan]")
+        console.print("\nExample:")
+        console.print("  skill-hub init --with-anthropic")
+        return
 
     # Determine which repositories to pull
     if url:

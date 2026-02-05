@@ -25,15 +25,20 @@ class ConfigManager:
             config_path = expand_home("~/.skills/.skill-hub/config.json")
         self.config_path = config_path
 
-    def load(self) -> Config:
+    def load(self, silent: bool = False) -> Config:
         """
         Load configuration from file.
+
+        Args:
+            silent: If True, don't log warnings about missing config
 
         Returns:
             Config object
         """
         if not self.config_path.exists():
-            logger.debug(f"Config file not found: {self.config_path}, using defaults")
+            if not silent:
+                logger.info(f"No configuration found at {self.config_path}")
+                logger.info("Run 'skill-hub init' to set up repositories")
             return Config()
 
         try:
@@ -64,7 +69,17 @@ class ConfigManager:
 
         except (OSError, json.JSONDecodeError, TypeError) as e:
             logger.error(f"Failed to load config: {e}, using defaults")
+            logger.info("Run 'skill-hub init' to reset configuration")
             return Config()
+
+    def exists(self) -> bool:
+        """
+        Check if configuration file exists.
+
+        Returns:
+            True if config file exists
+        """
+        return self.config_path.exists()
 
     def save(self, config: Config) -> bool:
         """
