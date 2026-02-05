@@ -111,14 +111,18 @@ skill-hub repo list
 
 ### 6. Web Interface
 
-Launch a browser-based UI to manage skills:
+Launch a browser-based UI to manage skills (opens automatically in your default browser):
 
 ```bash
-# Start Streamlit web UI (default)
+# Start FastAPI Web UI (default) - auto-opens browser
 skill-hub web
 
-# Or use Flask backend (legacy)
+# Choose a different backend
+skill-hub web --backend streamlit
 skill-hub web --backend flask
+
+# Start without opening browser
+skill-hub web --no-browser
 ```
 
 The web interface provides:
@@ -265,27 +269,30 @@ Use this when you are preparing a tagged release.
 
 ### `skill-hub web`
 
-Start the web interface for managing skills through a browser.
+Start the web interface for managing skills through a browser. The browser will open automatically.
 
 ```bash
-skill-hub web                           # Start Streamlit UI (default, port 8501)
-skill-hub web --backend streamlit       # Explicit Streamlit backend
-skill-hub web --backend flask           # Use Flask backend (port 8000)
+skill-hub web                           # Start FastAPI UI (default, port 8501, auto-open browser)
+skill-hub web --backend fastapi         # Explicit FastAPI backend with HTMX + Tailwind
+skill-hub web --backend streamlit       # Use Streamlit backend
+skill-hub web --backend flask           # Use Flask backend (Vue.js + Element Plus)
 skill-hub web --host 0.0.0.0 --port 8080  # Custom host/port
+skill-hub web --no-browser              # Start without opening browser
 ```
 
 **Features:**
 - **Dashboard**: Quick init, pull, and metrics
 - **Sync**: Bi-directional, pull-only, or push-only sync
-- **Hub Skills**: View all skills in central hub
+- **Hub Skills**: View all skills in central hub with descriptions
 - **Repositories**: Add/list/remove remote repos, pull skills
 - **Agents**: List adapters and run health checks
 - **Config**: View current configuration JSON
 - **Discovery**: Discover skills from all agents
 
 **Backends:**
-- **Streamlit** (default): Modern, interactive UI with automatic reload
-- **Flask**: Lightweight REST API with Vue.js frontend
+- **FastAPI** (default): Modern, fast async backend with HTMX + Tailwind CSS, SPA-like experience
+- **Streamlit**: Interactive Python-native UI with automatic reload
+- **Flask**: Lightweight REST API with Vue.js + Element Plus frontend
 
 ### `skill-hub init`
 
@@ -506,7 +513,8 @@ skill-hub uses a configuration file at `~/.skills/.skill-hub/config.json`:
 - ✅ Remote repository support (pull from GitHub, etc.)
 - ✅ Configuration management system
 - ✅ Repository metadata tracking
-- ✅ Web interface (Streamlit + Flask)
+- ✅ Web interface (FastAPI + HTMX + Tailwind CSS, Streamlit, Flask)
+- ✅ Auto-open browser on web command
 
 ### Phase 3 (Future)
 - 🔲 File watching for automatic sync

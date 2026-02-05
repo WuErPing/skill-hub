@@ -64,21 +64,40 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     show_default=True,
     help="Web backend to use",
 )
+@click.option(
+    "--no-browser",
+    is_flag=True,
+    help="Do not open browser automatically",
+)
 @click.pass_context
-def web(ctx: click.Context, host: str, port: int, backend: str) -> None:
+def web(ctx: click.Context, host: str, port: int, backend: str, no_browser: bool) -> None:
     """Start the skill-hub web interface (FastAPI/Streamlit/Flask)."""
+    import webbrowser
+    import time
+    from threading import Timer
+
+    url = f"http://{host}:{port}"
+
+    def open_browser():
+        """Open browser after a short delay."""
+        if not no_browser:
+            webbrowser.open(url)
+
     if backend == "flask":
         app = create_app()
         console.print(
-            f"[bold]Starting Flask web UI at[/bold] http://{host}:{port}\n" "Press CTRL+C to stop."
+            f"[bold]Starting Flask web UI at[/bold] {url}\n" "Press CTRL+C to stop."
         )
+        Timer(1.5, open_browser).start()
         app.run(host=host, port=port, debug=ctx.obj["verbose"])
         return
 
     if backend == "streamlit":
         console.print(
-            f"[bold]Starting Streamlit web UI at[/bold] http://{host}:{port}\n" "Press CTRL+C to stop."
+            f"[bold]Starting Streamlit web UI at[/bold] {url}\n" "Press CTRL+C to stop."
         )
+        if not no_browser:
+            Timer(2.0, open_browser).start()
         app_path = Path(__file__).with_name("web") / "streamlit_app.py"
         cmd = [
             sys.executable,
@@ -96,12 +115,16 @@ def web(ctx: click.Context, host: str, port: int, backend: str) -> None:
 
     # Default: FastAPI-based UI
     console.print(
-        f"[bold]Starting FastAPI web UI at[/bold] http://{host}:{port}\n" "Press CTRL+C to stop."
+        f"[bold]Starting FastAPI web UI at[/bold] {url}\n" "Press CTRL+C to stop."
     )
     from skill_hub.web.fastapi_app import create_app as create_fastapi_app
     import uvicorn
 
     app = create_fastapi_app()
+    
+    if not no_browser:
+        Timer(1.0, open_browser).start()
+    
     uvicorn.run(app, host=host, port=port, log_level="info" if ctx.obj["verbose"] else "warning")
 
 
