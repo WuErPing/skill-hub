@@ -109,6 +109,26 @@ skill-hub pull
 skill-hub repo list
 ```
 
+### 6. Web Interface
+
+Launch a browser-based UI to manage skills:
+
+```bash
+# Start Streamlit web UI (default)
+skill-hub web
+
+# Or use Flask backend (legacy)
+skill-hub web --backend flask
+```
+
+The web interface provides:
+- 📊 Dashboard with quick actions and metrics
+- 🔄 Sync controls (pull/push/both)
+- 📦 Repository management (add/list/pull)
+- 🤖 Agent health checks
+- ⚙️ Configuration viewer
+- 🔍 Skill discovery
+
 ## Setup for New Users
 
 When someone clones this project repository, they need to set up their **local user configuration**:
@@ -243,6 +263,30 @@ Use this when you are preparing a tagged release.
 
 ## CLI Commands
 
+### `skill-hub web`
+
+Start the web interface for managing skills through a browser.
+
+```bash
+skill-hub web                           # Start Streamlit UI (default, port 8501)
+skill-hub web --backend streamlit       # Explicit Streamlit backend
+skill-hub web --backend flask           # Use Flask backend (port 8000)
+skill-hub web --host 0.0.0.0 --port 8080  # Custom host/port
+```
+
+**Features:**
+- **Dashboard**: Quick init, pull, and metrics
+- **Sync**: Bi-directional, pull-only, or push-only sync
+- **Hub Skills**: View all skills in central hub
+- **Repositories**: Add/list/remove remote repos, pull skills
+- **Agents**: List adapters and run health checks
+- **Config**: View current configuration JSON
+- **Discovery**: Discover skills from all agents
+
+**Backends:**
+- **Streamlit** (default): Modern, interactive UI with automatic reload
+- **Flask**: Lightweight REST API with Vue.js frontend
+
 ### `skill-hub init`
 
 Initialize skill-hub configuration with repository setup.
@@ -365,7 +409,11 @@ skill-hub/
 │   │   └── opencode.py
 │   ├── discovery/         # Skill discovery engine
 │   ├── sync/              # Synchronization engine
+│   ├── remote/            # Remote repository management
 │   ├── utils/             # Utilities (YAML parser, validators)
+│   ├── web/               # Web interfaces
+│   │   ├── app.py         # Flask app (REST API + Vue UI)
+│   │   └── streamlit_app.py  # Streamlit app
 │   ├── models.py          # Data models
 │   └── cli.py             # Command-line interface
 ├── tests/                 # Unit and integration tests
@@ -454,7 +502,13 @@ skill-hub uses a configuration file at `~/.skills/.skill-hub/config.json`:
 - ✅ Support for Cursor, Claude, Qoder, OpenCode
 - ✅ Basic conflict detection
 
-### Phase 2 (Future)
+### Phase 2 (Completed)
+- ✅ Remote repository support (pull from GitHub, etc.)
+- ✅ Configuration management system
+- ✅ Repository metadata tracking
+- ✅ Web interface (Streamlit + Flask)
+
+### Phase 3 (Future)
 - 🔲 File watching for automatic sync
 - 🔲 Cloud sync between machines
 - 🔲 Skill validation and testing

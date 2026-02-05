@@ -106,6 +106,26 @@ skill-hub list
 skill-hub agents --check
 ```
 
+### 6. Web 界面
+
+启动基于浏览器的 UI 来管理技能：
+
+```bash
+# 启动 Streamlit Web UI（默认）
+skill-hub web
+
+# 或使用 Flask 后端（旧版）
+skill-hub web --backend flask
+```
+
+Web 界面提供：
+- 📊 仪表板：快速操作和指标
+- 🔄 同步控制（拉取/推送/双向）
+- 📦 仓库管理（添加/列表/拉取）
+- 🤖 助手健康检查
+- ⚙️ 配置查看器
+- 🔍 技能发现
+
 ## 新用户设置指南
 
 当团队成员克隆本项目仓库后，需要设置他们的**本地用户配置**：
@@ -239,6 +259,30 @@ compatibility: cursor, claude, qoder, opencode
 
 ## CLI 命令
 
+### `skill-hub web`
+
+启动 Web 界面，通过浏览器管理技能。
+
+```bash
+skill-hub web                           # 启动 Streamlit UI（默认，端口 8501）
+skill-hub web --backend streamlit       # 显式指定 Streamlit 后端
+skill-hub web --backend flask           # 使用 Flask 后端（端口 8000）
+skill-hub web --host 0.0.0.0 --port 8080  # 自定义主机/端口
+```
+
+**功能特性：**
+- **仪表板**：快速初始化、拉取和指标
+- **同步**：双向、仅拉取或仅推送同步
+- **中央仓库技能**：查看中央仓库中的所有技能
+- **仓库**：添加/列表/移除远程仓库，拉取技能
+- **助手**：列出适配器并运行健康检查
+- **配置**：查看当前配置 JSON
+- **发现**：从所有助手发现技能
+
+**后端选项：**
+- **Streamlit**（默认）：现代化、交互式 UI，支持自动重载
+- **Flask**：轻量级 REST API + Vue.js 前端
+
 ### `skill-hub init`
 
 初始化 skill-hub 配置并设置仓库。
@@ -363,6 +407,9 @@ skill-hub/
 │   ├── sync/              # 同步引擎
 │   ├── remote/            # 远程仓库管理
 │   ├── utils/             # 工具（YAML 解析器、验证器）
+│   ├── web/               # Web 界面
+│   │   ├── app.py         # Flask 应用（REST API + Vue UI）
+│   │   └── streamlit_app.py  # Streamlit 应用
 │   ├── models.py          # 数据模型
 │   └── cli.py             # 命令行界面
 ├── tests/                 # 单元和集成测试
@@ -447,15 +494,19 @@ skill-hub 使用位于 `~/.skills/.skill-hub/config.json` 的配置文件：
 
 ## 路线图
 
-### 第一阶段（当前）
+### 第一阶段（已完成）
 - ✅ 多助手技能发现
 - ✅ 双向同步
 - ✅ 支持 Cursor、Claude、Qoder、OpenCode
 - ✅ 基础冲突检测
-- ✅ 远程仓库支持
-- ✅ 手动拉取命令
 
-### 第二阶段（未来）
+### 第二阶段（已完成）
+- ✅ 远程仓库支持（从 GitHub 等拉取）
+- ✅ 配置管理系统
+- ✅ 仓库元数据跟踪
+- ✅ Web 界面（Streamlit + Flask）
+
+### 第三阶段（未来）
 - 🔲 Cron 定时同步
 - 🔲 后台守护进程
 - 🔲 系统服务集成（systemd/launchd）

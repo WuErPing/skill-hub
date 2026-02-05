@@ -2,6 +2,7 @@
 
 import json
 import logging
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -17,6 +18,7 @@ from skill_hub.models import Config, RepositoryConfig
 from skill_hub.remote import RepositoryManager, RepositorySkillScanner
 from skill_hub.sync import SyncEngine
 from skill_hub.utils import ConfigManager
+from skill_hub.web import create_app  # Flask app (legacy web UI)
 
 console = Console()
 
@@ -50,6 +52,46 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     ctx.obj["config_manager"] = config_manager
     # Use silent=True for most commands to avoid noise, commands will check config_manager.exists() if needed
     ctx.obj["config"] = config_manager.load(silent=True)
+
+
+@cli.command()
+@click.option("--host", default="127.0.0.1", show_default=True, help="Host for web UI")
+@click.option("--port", default=8501, show_default=True, type=int, help="Port for web UI")
+@click.option(
+    "--backend",
+    type=click.Choice(["streamlit", "flask"]),
+    default="streamlit",
+    show_default=True,
+    help="Web backend to use",
+)
+@click.pass_context
+def web(ctx: click.Context, host: str, port: int, backend: str) -> None:
+    """Start the skill-hub web interface (Streamlit or Flask)."""
+    if backend == "flask":
+        app = create_app()
+        console.print(
+            f"[bold]Starting Flask web UI at[/bold] http://{host}:{port}\n" "Press CTRL+C to stop."
+        )
+        app.run(host=host, port=port, debug=ctx.obj["verbose"])
+        return
+
+    # Default: Streamlit-based UI
+    console.print(
+        f"[bold]Starting Streamlit web UI at[/bold] http://{host}:{port}\n" "Press CTRL+C to stop."
+    )
+    app_path = Path(__file__).with_name("web") / "streamlit_app.py"
+    cmd = [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        str(app_path),
+        "--server.address",
+        host,
+        "--server.port",
+        str(port),
+    ]
+    subprocess.run(cmd)
 
 
 @cli.command()
