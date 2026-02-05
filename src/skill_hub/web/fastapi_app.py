@@ -52,6 +52,11 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.get("/sync", response_class=HTMLResponse)
+    async def sync_page(request: Request) -> HTMLResponse:
+        """Sync page fragment."""
+        return templates.TemplateResponse("sync.html", {"request": request})
+
     @app.get("/skills", response_class=HTMLResponse)
     async def skills(request: Request) -> HTMLResponse:
         """Hub skills page fragment."""
@@ -129,9 +134,9 @@ def create_app() -> FastAPI:
 
         return {
             "success": True,
-            "pulled": result.pulled,
-            "pushed": result.pushed,
-            "conflicts": len(result.conflicts),
+            "pulled": result.skills_synced if mode in ["pull", "both"] else 0,
+            "pushed": result.skills_synced if mode in ["push", "both"] else 0,
+            "conflicts": result.conflicts_detected,
         }
 
     @app.post("/pull")

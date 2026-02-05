@@ -1,0 +1,81 @@
+<div>
+    <h2 class="text-3xl font-bold text-gray-900 mb-6">Sync</h2>
+    
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <p class="text-gray-700 mb-6">Synchronize skills between hub and agents.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Sync (pull + push) -->
+            <button hx-post="/sync" hx-vals='{"mode": "both"}' hx-target="#sync-result" hx-swap="innerHTML"
+                    class="px-6 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition shadow-md hover:shadow-lg">
+                <div class="text-lg font-semibold mb-1">Sync (pull + push)</div>
+                <div class="text-sm text-purple-100">Bi-directional sync</div>
+            </button>
+            
+            <!-- Pull only -->
+            <button hx-post="/sync" hx-vals='{"mode": "pull"}' hx-target="#sync-result" hx-swap="innerHTML"
+                    class="px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md hover:shadow-lg">
+                <div class="text-lg font-semibold mb-1">Pull only</div>
+                <div class="text-sm text-blue-100">From agents to hub</div>
+            </button>
+            
+            <!-- Push only -->
+            <button hx-post="/sync" hx-vals='{"mode": "push"}' hx-target="#sync-result" hx-swap="innerHTML"
+                    class="px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow-md hover:shadow-lg">
+                <div class="text-lg font-semibold mb-1">Push only</div>
+                <div class="text-sm text-green-100">From hub to agents</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sync Result -->
+    <div id="sync-result" class="bg-white rounded-lg shadow p-6 min-h-[200px]">
+        <p class="text-gray-500 text-center py-8">Click a sync button above to see results</p>
+    </div>
+</div>
+
+<!-- HTMX response handler -->
+<script>
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.pathInfo.requestPath === '/sync') {
+            const response = JSON.parse(evt.detail.xhr.response);
+            const resultDiv = document.getElementById('sync-result');
+            
+            if (response.success) {
+                resultDiv.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex items-center text-green-600 mb-4">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-lg font-semibold">Sync completed successfully</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="p-4 bg-blue-50 rounded-lg">
+                                <p class="text-sm text-gray-600">Pulled</p>
+                                <p class="text-2xl font-bold text-blue-600">${response.pulled}</p>
+                            </div>
+                            <div class="p-4 bg-green-50 rounded-lg">
+                                <p class="text-sm text-gray-600">Pushed</p>
+                                <p class="text-2xl font-bold text-green-600">${response.pushed}</p>
+                            </div>
+                            <div class="p-4 bg-orange-50 rounded-lg">
+                                <p class="text-sm text-gray-600">Conflicts</p>
+                                <p class="text-2xl font-bold text-orange-600">${response.conflicts}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="flex items-center text-red-600">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        <span class="text-lg font-semibold">Sync failed</span>
+                    </div>
+                `;
+            }
+        }
+    });
+</script>
