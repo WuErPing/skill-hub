@@ -1,0 +1,58 @@
+<div>
+    <h2 class="text-3xl font-bold text-gray-900 mb-6">Dashboard</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Hub Skills Card -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Hub Skills</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ skill_count }}</p>
+                </div>
+                <div class="text-4xl">🎯</div>
+            </div>
+        </div>
+
+        <!-- Repositories Card -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Repositories</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ repo_count }}</p>
+                </div>
+                <div class="text-4xl">📦</div>
+            </div>
+        </div>
+
+        <!-- Status Card -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Status</p>
+                    <p class="text-lg font-semibold text-green-600">Active</p>
+                </div>
+                <div class="text-4xl">✅</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-semibold mb-4">Quick Actions</h3>
+        <div class="flex flex-wrap gap-4">
+            <button hx-post="/init" hx-vals='{"with_anthropic": "true"}' 
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                Init with Anthropic
+            </button>
+            <button hx-post="/pull" hx-target="#result" 
+                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
+                Pull from Repos
+            </button>
+            <button hx-post="/sync" hx-vals='{"mode": "both"}' hx-target="#result"
+                    class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition">
+                Sync All
+            </button>
+        </div>
+        <div id="result" class="mt-4 text-sm text-gray-600"></div>
+    </div>
+</div>

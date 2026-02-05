@@ -85,15 +85,55 @@ def _page_skills(config_manager: ConfigManager) -> None:
     sync_engine = SyncEngine(config)
 
     if st.button("Refresh skills"):
-        pass
+        st.rerun()
 
-    skills = sync_engine.list_hub_skills()
+    skill_names = sync_engine.list_hub_skills()
 
-    if not skills:
+    if not skill_names:
         st.info("No skills found in hub (~/.skills)")
         return
 
-    st.table({"Skill": skills})
+    # Build skill data with descriptions
+    from skill_hub.utils import parse_skill_file_from_path
+    import pandas as pd
+    
+    st.write(f"**Total Skills:** {len(skill_names)}")
+    st.write("")
+    
+    skills_data = []
+    for skill_name in skill_names:
+        skill_dir = sync_engine.hub_path / skill_name
+        skill_file = skill_dir / "SKILL.md"
+        
+        description = "N/A"
+        if skill_file.exists():
+            result = parse_skill_file_from_path(skill_file)
+            if result:
+                metadata, _ = result
+                description = metadata.description
+        
+        skills_data.append({"Name": skill_name, "Description": description})
+
+    # Use dataframe with optimized column configuration
+    df = pd.DataFrame(skills_data)
+    st.dataframe(
+        df,
+        column_config={
+            "Name": st.column_config.TextColumn(
+                "Skill Name",
+                width="small",
+                help="Skill identifier"
+            ),
+            "Description": st.column_config.TextColumn(
+                "Description",
+                width="large",
+                help="What this skill does"
+            ),
+        },
+        use_container_width=True,
+        hide_index=True,
+        height=600,
+    )
 
 
 def _page_repos(config_manager: ConfigManager) -> None:

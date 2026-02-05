@@ -59,14 +59,14 @@ def cli(ctx: click.Context, verbose: bool) -> None:
 @click.option("--port", default=8501, show_default=True, type=int, help="Port for web UI")
 @click.option(
     "--backend",
-    type=click.Choice(["streamlit", "flask"]),
-    default="streamlit",
+    type=click.Choice(["fastapi", "streamlit", "flask"]),
+    default="fastapi",
     show_default=True,
     help="Web backend to use",
 )
 @click.pass_context
 def web(ctx: click.Context, host: str, port: int, backend: str) -> None:
-    """Start the skill-hub web interface (Streamlit or Flask)."""
+    """Start the skill-hub web interface (FastAPI/Streamlit/Flask)."""
     if backend == "flask":
         app = create_app()
         console.print(
@@ -75,23 +75,34 @@ def web(ctx: click.Context, host: str, port: int, backend: str) -> None:
         app.run(host=host, port=port, debug=ctx.obj["verbose"])
         return
 
-    # Default: Streamlit-based UI
+    if backend == "streamlit":
+        console.print(
+            f"[bold]Starting Streamlit web UI at[/bold] http://{host}:{port}\n" "Press CTRL+C to stop."
+        )
+        app_path = Path(__file__).with_name("web") / "streamlit_app.py"
+        cmd = [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            str(app_path),
+            "--server.address",
+            host,
+            "--server.port",
+            str(port),
+        ]
+        subprocess.run(cmd)
+        return
+
+    # Default: FastAPI-based UI
     console.print(
-        f"[bold]Starting Streamlit web UI at[/bold] http://{host}:{port}\n" "Press CTRL+C to stop."
+        f"[bold]Starting FastAPI web UI at[/bold] http://{host}:{port}\n" "Press CTRL+C to stop."
     )
-    app_path = Path(__file__).with_name("web") / "streamlit_app.py"
-    cmd = [
-        sys.executable,
-        "-m",
-        "streamlit",
-        "run",
-        str(app_path),
-        "--server.address",
-        host,
-        "--server.port",
-        str(port),
-    ]
-    subprocess.run(cmd)
+    from skill_hub.web.fastapi_app import create_app as create_fastapi_app
+    import uvicorn
+
+    app = create_fastapi_app()
+    uvicorn.run(app, host=host, port=port, log_level="info" if ctx.obj["verbose"] else "warning")
 
 
 @cli.command()
