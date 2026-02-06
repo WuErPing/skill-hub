@@ -62,6 +62,7 @@ skill-hub discover
 ```
 
 This will scan:
+- `.agents/skills/` (shared, agent-agnostic - if exists)
 - `~/.cursor/skills/`, `.cursor/skills/`
 - `~/.claude/skills/`, `.claude/skills/`
 - `~/.qoder/skills/`, `.qoder/skills/`
@@ -235,6 +236,158 @@ Add to your shell profile (`~/.zshrc`, `~/.bashrc`) to persist across sessions.
 | **Claude** | `.claude/skills/` | `~/.claude/skills/` |
 | **Qoder** | `.qoder/skills/` | `~/.qoder/skills/` |
 | **OpenCode** | `.opencode/skills/` | `~/.config/opencode/skills/` |
+
+## Shared Skills Directory (`.agents/skills/`)
+
+### Overview
+
+As of version 0.2.0, skill-hub supports the **`.agents/skills/` standard** - a unified, agent-agnostic directory for sharing skills across all AI coding agents in a project.
+
+### Why Use `.agents/skills/`?
+
+**Benefits:**
+- ✅ **Single source of truth**: One directory for all agents in a project
+- ✅ **Simplified onboarding**: New team members only need to know about one location
+- ✅ **Agent-agnostic**: Skills work across all AI coding agents without duplication
+- ✅ **Better IDE integration**: Standard location for tooling to discover skills
+- ✅ **Team collaboration**: Easy to version control and share via Git
+
+**When to use:**
+- Project-specific skills that should be available to all team members
+- Skills that are specific to your codebase or workflow
+- Skills you want to track in version control (add `.agents/` to your repo)
+
+**When to use agent-specific directories:**
+- Personal preferences and workflow customizations
+- Skills specific to one AI agent's capabilities
+- Global skills installed system-wide
+
+### Directory Structure
+
+```
+my-project/
+├── .agents/               # Shared agent configuration (NEW)
+│   └── skills/           # Shared skills for all agents
+│       ├── code-review/
+│       │   └── SKILL.md
+│       └── deploy-prod/
+│           └── SKILL.md
+├── .cursor/              # Cursor-specific (optional)
+│   └── skills/
+├── .claude/              # Claude-specific (optional)
+│   └── skills/
+├── .git/
+└── src/
+```
+
+### Discovery Priority
+
+When the same skill exists in multiple locations, skill-hub uses this priority order:
+
+1. **`.agents/skills/`** (highest priority - shared)
+2. **`.cursor/skills/`, `.claude/skills/`, etc.** (agent-specific project-local)
+3. **`~/.cursor/skills/`, `~/.claude/skills/`, etc.** (global)
+
+**Example:** If `git-release` skill exists in both `.agents/skills/` and `.cursor/skills/`, skill-hub will:
+- Discover both versions
+- Tag them with source ("shared" vs "cursor")
+- Report a conflict if content differs
+- Use existing conflict resolution strategy (newest, manual, etc.)
+
+### Usage
+
+#### 1. Create Shared Skills Directory
+
+```bash
+# In your project root (where .git/ is)
+mkdir -p .agents/skills
+```
+
+#### 2. Add Skills
+
+```bash
+# Create a skill in the shared directory
+mkdir .agents/skills/my-skill
+cat > .agents/skills/my-skill/SKILL.md << 'EOF'
+---
+name: my-skill
+description: Project-specific skill for the team
+---
+
+## What I do
+Help with project-specific tasks.
+
+## When to use me
+When working on this codebase.
+EOF
+```
+
+#### 3. Discover and Sync
+
+```bash
+# Discover skills (includes .agents/skills/)
+skill-hub discover
+
+# Sync to hub and distribute to all agents
+skill-hub sync
+```
+
+#### 4. Check Health Status
+
+```bash
+skill-hub agents --check
+```
+
+Output will show shared skills status:
+```
+┌─────────┬─────────┬─────────────────────────────┬────────┐
+│ Agent   │ Enabled │ Global Path                 │ Status │
+├─────────┼─────────┼─────────────────────────────┼────────┤
+│ cursor  │ ✓       │ ~/.cursor/skills            │ OK     │
+│ shared  │ ✓       │ /project/.agents/skills     │ OK     │
+└─────────┴─────────┴─────────────────────────────┴────────┘
+```
+
+### Version Control
+
+You can commit `.agents/skills/` to your repository to share with your team:
+
+```bash
+# Add to Git
+git add .agents/
+git commit -m "Add shared project skills"
+git push
+```
+
+**Team members will automatically discover these skills** when they run `skill-hub discover` or `skill-hub sync` in the project directory.
+
+### Migration from Agent-Specific Directories
+
+To migrate existing skills to the shared directory:
+
+```bash
+# Option 1: Manual copy
+mkdir -p .agents/skills
+cp -r .cursor/skills/my-skill .agents/skills/
+
+# Option 2: Use skill-hub sync
+# 1. Pull skills to hub
+skill-hub sync --pull
+
+# 2. Copy from hub to .agents/skills/
+cp -r ~/.skills/my-skill .agents/skills/
+
+# 3. Sync back to all agents
+skill-hub sync --push
+```
+
+### Backward Compatibility
+
+The `.agents/skills/` standard is **fully backward compatible**:
+- Existing projects without `.agents/skills/` work exactly as before
+- Agent-specific directories (`.cursor/skills/`, etc.) continue to work
+- No configuration changes required
+- Skills from all locations are discovered and synchronized
 
 ## Skill Format
 

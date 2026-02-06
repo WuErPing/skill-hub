@@ -183,6 +183,77 @@ def create_app() -> FastAPI:
             "agents.html", {"request": request, "adapters": adapters}
         )
 
+    @app.get("/agents/health", response_class=HTMLResponse)
+    async def agents_health(request: Request) -> HTMLResponse:
+        """Agents health check results fragment."""
+        config = _load_config()
+        adapter_registry = AdapterRegistry(config)
+        health_results = adapter_registry.health_check_all()
+
+        # Build HTML response
+        html_parts = []
+        html_parts.append('<h3 class="text-xl font-semibold mb-4">Health Check Results</h3>')
+        
+        if not health_results:
+            html_parts.append('<p class="text-gray-500">No health check results available</p>')
+        else:
+            html_parts.append('<div class="overflow-x-auto">')
+            html_parts.append('<table class="min-w-full divide-y divide-gray-200">')
+            html_parts.append('<thead class="bg-gray-50">')
+            html_parts.append('<tr>')
+            html_parts.append('<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Agent</th>')
+            html_parts.append('<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>')
+            html_parts.append('<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Global Path</th>')
+            html_parts.append('<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shared Skills</th>')
+            html_parts.append('</tr>')
+            html_parts.append('</thead>')
+            html_parts.append('<tbody class="bg-white divide-y divide-gray-200">')
+            
+            for agent_name, health in health_results.items():
+                enabled = health.get("enabled", False)
+                global_path = health.get("global_path", "N/A")
+                global_exists = health.get("global_path_exists", False)
+                shared_path = health.get("shared_skills_path")
+                shared_exists = health.get("shared_skills_exists", False)
+                
+                status_icon = "✅" if enabled and global_exists else "⚠️"
+                status_text = "Active" if enabled and global_exists else "Configured" if enabled else "Disabled"
+                status_color = "text-green-600" if enabled and global_exists else "text-yellow-600" if enabled else "text-gray-400"
+                
+                # Shared skills status
+                shared_display = "N/A"
+                shared_tooltip = "No shared skills directory found"
+                if shared_path:
+                    shared_display = f"✓ {shared_path}"
+                    shared_tooltip = f"Shared skills directory exists at {shared_path}"
+                else:
+                    shared_display = "Not found"
+                    shared_tooltip = "Create .agents/skills/ in your project root to enable shared skills"
+                
+                html_parts.append('<tr class="hover:bg-gray-50">')
+                html_parts.append(f'<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" title="{agent_name} adapter">{agent_name}</td>')
+                html_parts.append(f'<td class="px-6 py-4 whitespace-nowrap text-sm {status_color}" title="{status_text}">{status_icon} {status_text}</td>')
+                html_parts.append(f'<td class="px-6 py-4 text-sm text-gray-700 font-mono" title="{global_path}">{global_path}</td>')
+                html_parts.append(f'<td class="px-6 py-4 text-sm text-gray-700" title="{shared_tooltip}">{shared_display}</td>')
+                html_parts.append('</tr>')
+            
+            html_parts.append('</tbody>')
+            html_parts.append('</table>')
+            html_parts.append('</div>')
+            
+            # Add info box about shared skills
+            has_shared = any(h.get("shared_skills_exists") for h in health_results.values())
+            if has_shared:
+                html_parts.append('<div class="mt-4 p-4 bg-green-50 border-l-4 border-green-500 rounded">')
+                html_parts.append('<p class="text-sm text-green-800"><strong>✓ Shared skills detected:</strong> Your project has a <code class="px-1 bg-green-100 rounded">.agents/skills/</code> directory. Skills in this directory are available to all agents.</p>')
+                html_parts.append('</div>')
+            else:
+                html_parts.append('<div class="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">')
+                html_parts.append('<p class="text-sm text-yellow-800"><strong>ℹ️ No shared skills found:</strong> Create <code class="px-1 bg-yellow-100 rounded">.agents/skills/</code> in your project root to enable shared, agent-agnostic skills.</p>')
+                html_parts.append('</div>')
+        
+        return HTMLResponse(content="".join(html_parts))
+
     @app.get("/config", response_class=HTMLResponse)
     async def config_page(request: Request) -> HTMLResponse:
         """Config page fragment."""

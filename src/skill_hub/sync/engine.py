@@ -64,7 +64,14 @@ class SyncEngine:
 
         for adapter in self.adapter_registry.get_enabled_adapters():
             for path in adapter.get_all_search_paths():
-                search_paths.append((path, adapter.name))
+                # Check if this is a shared skills path
+                shared_path = adapter.get_shared_skills_path()
+                if shared_path and path == shared_path:
+                    # Tag shared skills with "shared" agent name
+                    search_paths.append((path, "shared"))
+                else:
+                    # Use adapter name for agent-specific paths
+                    search_paths.append((path, adapter.name))
 
         registry = discovery.discover_skills(search_paths)
 

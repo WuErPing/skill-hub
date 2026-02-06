@@ -83,14 +83,44 @@ class AgentAdapter(ABC):
 
         return paths
 
-    def get_all_search_paths(self) -> List[Path]:
+    def get_shared_skills_path(self, start_dir: Optional[Path] = None) -> Optional[Path]:
         """
-        Get all search paths (project-local + global).
+        Get shared `.agents` directory path if it exists in project.
+
+        This discovers the agent-agnostic shared skills directory that can be
+        used by all AI coding agents in a project. Skills are expected to be
+        in `.agents/skills/` subdirectory.
+
+        Args:
+            start_dir: Starting directory (defaults to cwd)
 
         Returns:
-            List of all paths to search for skills
+            Path to `.agents` if `.agents/skills` exists, None otherwise
+        """
+        git_root = find_git_root(start_dir)
+        if git_root:
+            agents_dir = git_root / ".agents"
+            skills_dir = agents_dir / "skills"
+            if skills_dir.exists():
+                return agents_dir
+        return None
+
+    def get_all_search_paths(self) -> List[Path]:
+        """
+        Get all search paths (shared + project-local + global).
+
+        Returns:
+            List of all paths to search for skills, in priority order:
+            1. Shared `.agents/skills/` (if exists)
+            2. Project-local paths (e.g., `.cursor/skills/`)
+            3. Global path (e.g., `~/.cursor/skills/`)
         """
         paths = []
+
+        # Add shared skills path (highest priority)
+        shared_path = self.get_shared_skills_path()
+        if shared_path:
+            paths.append(shared_path)
 
         # Add project-local paths
         paths.extend(self.get_project_paths())
@@ -142,7 +172,15 @@ class AgentAdapter(ABC):
             "global_path_exists": self.get_global_path().exists(),
             "global_path_writable": False,
             "project_paths": [],
+            "shared_skills_path": None,
+            "shared_skills_exists": False,
         }
+
+        # Check shared skills path
+        shared_path = self.get_shared_skills_path()
+        if shared_path:
+            results["shared_skills_path"] = str(shared_path)
+            results["shared_skills_exists"] = True
 
         # Check if global path is writable
         try:

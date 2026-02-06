@@ -1,13 +1,38 @@
 <div>
     <h2 class="text-3xl font-bold text-gray-900 mb-6">Agents</h2>
     
-    <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-xl font-semibold mb-4">Available Adapters</h3>
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold">Agent Adapters</h3>
+            <button hx-get="/agents/health" hx-target="#health-results" hx-swap="innerHTML"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-2"
+                    title="Check health status of all agent adapters">
+                <span>🏥</span>
+                <span>Health Check</span>
+            </button>
+        </div>
+
+        <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <p class="text-sm text-blue-800">
+                <strong>💡 Tip:</strong> skill-hub now supports the <code class="px-1 bg-blue-100 rounded">.agents/skills/</code> standard for shared, agent-agnostic skills in your project.
+            </p>
+        </div>
+        
         {% if adapters %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for adapter in adapters %}
-            <div class="p-4 border border-gray-200 rounded-lg hover:border-blue-500 transition">
-                <h4 class="text-lg font-semibold text-gray-900 mb-2">{{ adapter }}</h4>
+            <div class="p-4 border border-gray-200 rounded-lg hover:border-blue-500 transition group" 
+                 title="{{ adapter }} agent adapter - discovers skills from agent-specific directories">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-lg font-semibold text-gray-900">{{ adapter }}</h4>
+                    <span class="text-2xl group-hover:scale-110 transition-transform">
+                        {% if adapter == 'cursor' %}💻
+                        {% elif adapter == 'claude' %}🤖
+                        {% elif adapter == 'qoder' %}⚡
+                        {% elif adapter == 'opencode' %}🔓
+                        {% else %}🔧{% endif %}
+                    </span>
+                </div>
                 <p class="text-sm text-gray-600">Agent adapter</p>
             </div>
             {% endfor %}
@@ -17,5 +42,10 @@
             <p class="text-lg">No adapters found</p>
         </div>
         {% endif %}
+    </div>
+
+    <!-- Health Check Results -->
+    <div id="health-results" class="bg-white rounded-lg shadow p-6 min-h-[200px]">
+        <p class="text-gray-500 text-center py-8">Click "Health Check" above to verify agent adapter status</p>
     </div>
 </div>

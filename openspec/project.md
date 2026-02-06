@@ -54,9 +54,14 @@ Skills are reusable instruction sets for AI coding agents, defined in SKILL.md f
 4. **OpenCode**: Uses `.opencode/skills/` and `~/.config/opencode/skills/`
 
 ### Skill Discovery Sources
-- Project-local agent config directories (`.cursor/`, `.claude/`, etc.)
-- Global agent config directories (`~/.cursor/`, `~/.claude/`, etc.)
-- Central hub: `~/.skills/`
+
+Priority order (highest to lowest):
+1. **Shared directory**: `.agents/skills/` (project-local, agent-agnostic)
+2. **Agent-specific project-local**: `.cursor/skills/`, `.claude/skills/`, `.qoder/skills/`, `.opencode/skills/`
+3. **Agent-specific global**: `~/.cursor/skills/`, `~/.claude/skills/`, `~/.qoder/skills/`, `~/.config/opencode/skills/`
+4. **Central hub**: `~/.skills/` (synchronization target)
+
+The `.agents/skills/` standard (introduced in v0.2.0) provides a unified, agent-agnostic location for project-specific skills that can be shared across all AI coding agents and version controlled with the project.
 
 ## Important Constraints
 - Must not modify skill content during synchronization
