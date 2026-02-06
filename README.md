@@ -4,6 +4,12 @@ Unified skill management system for AI coding agents (Cursor, Claude, Qoder, Ope
 
 English | [简体中文](README.zh-CN.md)
 
+> 🎉 **NEW in v0.2.0**: Support for `.agents/skills/` standard directory - a unified, agent-agnostic location for project-specific skills. [Learn more](#shared-skills-directory-agentsskills)
+
+![skill-hub Web Interface](docs/images/dashboard.png)
+
+*Modern web interface showing the dashboard with `.agents/skills/` standard support, quick actions, and getting started guide.*
+
 ## Overview
 
 skill-hub discovers, synchronizes, and distributes AI coding agent skills across multiple platforms. It provides a centralized repository at `~/.skills/` and ensures all agents have access to the same skill definitions.
@@ -27,10 +33,13 @@ skill-hub solves these problems by:
 
 - 🔍 **Multi-Agent Discovery**: Automatically find skills from Cursor, Claude, Qoder, and OpenCode
 - 🔄 **Bi-Directional Sync**: Pull skills from agents to hub, push from hub to agents
+- 🎯 **Shared Skills Standard**: Support for `.agents/skills/` directory for agent-agnostic project skills
 - ⚡ **Incremental Updates**: Only sync changed skills for better performance
 - 🔧 **Extensible**: Plugin architecture for easy addition of new agents
-- 🏥 **Health Checks**: Verify adapter configurations and permissions
+- 🏥 **Health Checks**: Verify adapter configurations, permissions, and shared skills detection
 - 📊 **Rich CLI**: Beautiful terminal output with tables and progress indicators
+- 🌐 **Web Interface**: Modern FastAPI + HTMX + Tailwind CSS web UI with real-time updates
+- 📦 **Remote Repositories**: Pull skills from GitHub and other sources
 
 ## Installation
 
@@ -62,7 +71,7 @@ skill-hub discover
 ```
 
 This will scan:
-- `.agents/skills/` (shared, agent-agnostic - if exists)
+- `.agents/skills/` (shared, agent-agnostic - **NEW in v0.2.0**)
 - `~/.cursor/skills/`, `.cursor/skills/`
 - `~/.claude/skills/`, `.claude/skills/`
 - `~/.qoder/skills/`, `.qoder/skills/`
@@ -126,11 +135,37 @@ skill-hub web --backend flask
 skill-hub web --no-browser
 ```
 
+#### Web Interface Screenshots
+
+**Dashboard - Quick Actions & Getting Started**
+
+![Dashboard](docs/images/dashboard.png)
+
+*Dashboard showing skill count, repositories, quick actions, and getting started guide with the new `.agents/skills/` standard.*
+
+**Agents - Health Check & Shared Skills Detection**
+
+![Agents Health Check](docs/images/agents-health.png)
+
+*Health check results showing agent status, global paths, and shared skills detection.*
+
+**Skills Hub - Central Repository View**
+
+![Skills Hub](docs/images/skills-hub.png)
+
+*View all skills in your central hub with descriptions and discovery information.*
+
+**Sync - Bi-directional Synchronization**
+
+![Sync Operations](docs/images/sync.png)
+
+*Sync page with three modes: pull+push, pull only, or push only.*
+
 The web interface provides:
 - 📊 Dashboard with quick actions and metrics
 - 🔄 Sync controls (pull/push/both)
 - 📦 Repository management (add/list/pull)
-- 🤖 Agent health checks
+- 🤖 Agent health checks with shared skills detection
 - ⚙️ Configuration viewer
 - 🔍 Skill discovery
 
@@ -434,13 +469,13 @@ skill-hub web --no-browser              # Start without opening browser
 ```
 
 **Features:**
-- **Dashboard**: Quick init, pull, and metrics
-- **Sync**: Bi-directional, pull-only, or push-only sync
-- **Hub Skills**: View all skills in central hub with descriptions
-- **Repositories**: Add/list/remove remote repos, pull skills
-- **Agents**: List adapters and run health checks
+- **Dashboard**: Quick init, pull, health check, and metrics with `.agents/skills/` standard info
+- **Sync**: Bi-directional, pull-only, or push-only sync with real-time results
+- **Hub Skills**: View all skills in central hub with descriptions and discovery sources
+- **Repositories**: Add/list/remove remote repos, pull skills from GitHub
+- **Agents**: List adapters and run health checks with shared skills detection
 - **Config**: View current configuration JSON
-- **Discovery**: Discover skills from all agents
+- **Discovery**: Discover skills from all agents including shared directory
 
 **Backends:**
 - **FastAPI** (default): Modern, fast async backend with HTMX + Tailwind CSS, SPA-like experience
