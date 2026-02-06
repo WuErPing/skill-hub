@@ -100,6 +100,7 @@ class Config:
     """skill-hub configuration."""
 
     version: str = "1.0.0"
+    language: str = "en"
     conflict_resolution: str = "newest"  # newest, manual, hub-priority, remote-priority, local-priority
     agents: Dict[str, AgentConfig] = field(default_factory=dict)
     repositories: List[RepositoryConfig] = field(default_factory=list)

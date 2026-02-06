@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -16,6 +16,7 @@ from skill_hub.models import Config, RepositoryConfig
 from skill_hub.remote import RepositoryManager, RepositorySkillScanner
 from skill_hub.sync import SyncEngine
 from skill_hub.utils import ConfigManager, parse_skill_file_from_path
+from skill_hub.i18n import _, init_translation, get_current_language
 
 
 def create_app() -> FastAPI:
@@ -25,16 +26,44 @@ def create_app() -> FastAPI:
     # Templates directory
     templates_dir = Path(__file__).parent / "templates"
     templates = Jinja2Templates(directory=str(templates_dir))
+    templates.env.globals["_"] = _
 
     config_manager = ConfigManager()
 
     def _load_config() -> Config:
         return config_manager.load(silent=True)
 
+    @app.middleware("http")
+    async def language_middleware(request: Request, call_next):
+        """Set language for each request based on cookie, config, or headers."""
+        config = _load_config()
+
+        # Priority: cookie > config.language > Accept-Language header > default
+        lang = "en"
+        cookie_lang = request.cookies.get("language")
+        if cookie_lang in {"en", "zh_CN"}:
+            lang = cookie_lang
+        elif getattr(config, "language", None) in {"en", "zh_CN"}:
+            lang = config.language
+        else:
+            accept_language = request.headers.get("accept-language", "").lower()
+            if "zh" in accept_language:
+                lang = "zh_CN"
+
+        init_translation(lang)
+        request.state.language = lang
+
+        response = await call_next(request)
+        return response
+
+    def _get_language(request: Request) -> str:
+        return getattr(request.state, "language", getattr(_load_config(), "language", "en"))
+
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request) -> HTMLResponse:
         """Render main page."""
-        return templates.TemplateResponse("index.html", {"request": request})
+        language = _get_language(request)
+        return templates.TemplateResponse("index.html", {"request": request, "language": language})
 
     @app.get("/dashboard", response_class=HTMLResponse)
     async def dashboard(request: Request) -> HTMLResponse:
@@ -43,12 +72,15 @@ def create_app() -> FastAPI:
         sync_engine = SyncEngine(config)
         skills = sync_engine.list_hub_skills()
 
+        language = _get_language(request)
+
         return templates.TemplateResponse(
             "dashboard.html",
             {
                 "request": request,
                 "skill_count": len(skills),
                 "repo_count": len(config.repositories),
+                "language": language,
             },
         )
 
@@ -78,16 +110,19 @@ def create_app() -> FastAPI:
 
             skills_data.append({"name": skill_name, "description": description})
 
+        language = _get_language(request)
+
         return templates.TemplateResponse(
-            "skills.html", {"request": request, "skills": skills_data}
+            "skills.html", {"request": request, "skills": skills_data, "language": language}
         )
 
     @app.get("/repositories", response_class=HTMLResponse)
     async def repositories(request: Request) -> HTMLResponse:
         """Repositories page fragment."""
         config = _load_config()
+        language = _get_language(request)
         return templates.TemplateResponse(
-            "repositories.html", {"request": request, "repositories": config.repositories}
+            "repositories.html", {"request": request, "repositories": config.repositories, "language": language}
         )
 
     @app.post("/repositories/add")
@@ -179,8 +214,10 @@ def create_app() -> FastAPI:
         adapter_registry = AdapterRegistry(config)
         adapters = adapter_registry.list_adapters()
 
+        language = _get_language(request)
+
         return templates.TemplateResponse(
-            "agents.html", {"request": request, "adapters": adapters}
+            "agents.html", {"request": request, "adapters": adapters, "language": language}
         )
 
     @app.get("/agents/health", response_class=HTMLResponse)
@@ -258,7 +295,36 @@ def create_app() -> FastAPI:
     async def config_page(request: Request) -> HTMLResponse:
         """Config page fragment."""
         config = _load_config()
-        return templates.TemplateResponse("config.html", {"request": request, "config": config})
+        language = _get_language(request)
+
+        return templates.TemplateResponse(
+            "config.html",
+            {
+                "request": request,
+                "config": config,
+                "language": language,
+            },
+        )
+
+    @app.post("/set-language")
+    async def set_language(request: Request) -> JSONResponse:
+        """Update language preference and set cookie."""
+        form = await request.form()
+        language = form.get("language", "en")
+
+        if language not in {"en", "zh_CN"}:
+            language = "en"
+
+        config = _load_config()
+        config.language = language
+        config_manager.save(config)
+
+        init_translation(language)
+
+        response = JSONResponse({"success": True, "language": language})
+        # 1 year
+        response.set_cookie("language", language, max_age=31536000)
+        return response
 
     @app.post("/init")
     async def init_config(request: Request) -> Dict[str, Any]:

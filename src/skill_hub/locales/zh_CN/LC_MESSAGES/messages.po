@@ -1,0 +1,60 @@
+# Simplified Chinese translations for skill-hub
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_CN\n"
+
+# Dashboard
+msgid "Dashboard"
+msgstr "仪表板"
+
+msgid "Hub Skills"
+msgstr "中心技能"
+
+msgid "Repositories"
+msgstr "仓库"
+
+msgid "System Status"
+msgstr "系统状态"
+
+msgid "Add Anthropic Repo"
+msgstr "添加 Anthropic 仓库"
+
+msgid "Pull from Repos"
+msgstr "从仓库拉取"
+
+msgid "Health Check"
+msgstr "健康检查"
+
+msgid "No skills found in hub"
+msgstr "中心中没有找到技能"
+
+msgid "Starting FastAPI web UI at"
+msgstr "启动 FastAPI Web 界面于"
+
+msgid "Sync"
+msgstr "同步"
+
+msgid "Agents"
+msgstr "助手"
+
+msgid "Config"
+msgstr "配置"
+
+msgid "Quick Actions"
+msgstr "快速操作"
+
+msgid "Getting Started"
+msgstr "入门指南"
+
+msgid "Add Repository"
+msgstr "添加仓库"
+
+msgid "Pull Skills"
+msgstr "拉取技能"
+
+msgid "Sync to Agents"
+msgstr "同步到助手"
+
+msgid "Language"
+msgstr "语言"

@@ -19,6 +19,7 @@ from skill_hub.remote import RepositoryManager, RepositorySkillScanner
 from skill_hub.sync import SyncEngine
 from skill_hub.utils import ConfigManager
 from skill_hub.web import create_app  # Flask app (legacy web UI)
+from skill_hub.i18n import _, init_translation
 
 console = Console()
 
@@ -46,12 +47,20 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     setup_logging(verbose)
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
-    
+
     # Load configuration from file
     config_manager = ConfigManager()
     ctx.obj["config_manager"] = config_manager
-    # Use silent=True for most commands to avoid noise, commands will check config_manager.exists() if needed
-    ctx.obj["config"] = config_manager.load(silent=True)
+    config = config_manager.load(silent=True)
+
+    # Initialize translations based on configured language
+    try:
+        language = getattr(config, "language", "en")
+        init_translation(language)
+    except Exception:
+        init_translation("en")
+
+    ctx.obj["config"] = config
 
 
 @cli.command()
@@ -222,6 +231,33 @@ def init(ctx: click.Context, with_anthropic: bool, repo: tuple) -> None:
     else:
         console.print("\n[yellow]No repositories added[/yellow]")
         console.print("\nAdd repositories with: skill-hub repo add <url>")
+
+
+@cli.command()
+@click.argument("language_code", required=False)
+@click.pass_context
+def language(ctx: click.Context, language_code: Optional[str]) -> None:
+    """Show or set interface language (en or zh_CN)."""
+    config: Config = ctx.obj["config"]
+    config_manager: ConfigManager = ctx.obj["config_manager"]
+
+    if language_code is None:
+        console.print(_("Current language: {lang}").format(lang=config.language))
+        console.print(_("Supported languages: en (English), zh_CN (Simplified Chinese)"))
+        console.print(_("Use: skill-hub language <code> to change."))
+        return
+
+    if language_code not in {"en", "zh_CN"}:
+        console.print(_("[red]Unsupported language code:[/red] {code}").format(code=language_code))
+        console.print(_("Use 'en' for English or 'zh_CN' for Simplified Chinese."))
+        return
+
+    config.language = language_code
+    if config_manager.save(config):
+        init_translation(language_code)
+        console.print(_("[green]✓[/green] Language updated to {lang}").format(lang=language_code))
+    else:
+        console.print(_("[red]Failed to save configuration[/red]"))
 
 
 @cli.command()

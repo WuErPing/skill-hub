@@ -1,5 +1,5 @@
 <div>
-    <h2 class="text-3xl font-bold text-gray-900 mb-6">Dashboard</h2>
+    <h2 class="text-3xl font-bold text-gray-900 mb-6">{{ _("Dashboard") }}</h2>
     
     <!-- Info Banner about .agents/skills -->
     <div class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
@@ -18,7 +18,7 @@
              title="Total skills in central hub (~/.skills/)">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Hub Skills</p>
+                    <p class="text-sm text-gray-600">{{ _("Hub Skills") }}</p>
                     <p class="text-3xl font-bold text-gray-900">{{ skill_count }}</p>
                     <p class="text-xs text-gray-500 mt-1">in ~/.skills/</p>
                 </div>
@@ -31,7 +31,7 @@
              title="Configured remote skill repositories">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Repositories</p>
+                    <p class="text-sm text-gray-600">{{ _("Repositories") }}</p>
                     <p class="text-3xl font-bold text-gray-900">{{ repo_count }}</p>
                     <p class="text-xs text-gray-500 mt-1">configured</p>
                 </div>
@@ -44,7 +44,7 @@
              title="System operational status">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">System Status</p>
+                    <p class="text-sm text-gray-600">{{ _("System Status") }}</p>
                     <p class="text-lg font-semibold text-green-600">Active</p>
                     <p class="text-xs text-gray-500 mt-1">All systems go</p>
                 </div>
@@ -55,25 +55,25 @@
 
     <!-- Quick Actions -->
     <div class="bg-white rounded-lg shadow p-6 mb-6">
-        <h3 class="text-xl font-semibold mb-4">Quick Actions</h3>
+        <h3 class="text-xl font-semibold mb-4">{{ _("Quick Actions") }}</h3>
         <div class="flex flex-wrap gap-4">
             <button hx-post="/init" hx-vals='{"with_anthropic": "true"}' hx-target="#result" hx-swap="innerHTML"
                     class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-2"
                     title="Add Anthropic's official skills repository to your configuration">
                 <span>🚀</span>
-                <span>Add Anthropic Repo</span>
+                <span>{{ _("Add Anthropic Repo") }}</span>
             </button>
             <button hx-post="/pull" hx-target="#result" hx-swap="innerHTML"
                     class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition flex items-center gap-2"
                     title="Pull skills from all configured remote repositories">
                 <span>🔽</span>
-                <span>Pull from Repos</span>
+                <span>{{ _("Pull from Repos") }}</span>
             </button>
             <button hx-get="/agents/health" hx-target="#result" hx-swap="innerHTML"
                     class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition flex items-center gap-2"
                     title="Check health status of all agent adapters">
                 <span>🏥</span>
-                <span>Health Check</span>
+                <span>{{ _("Health Check") }}</span>
             </button>
         </div>
         <div id="result" class="mt-4 text-sm text-gray-600"></div>
@@ -81,26 +81,26 @@
 
     <!-- Getting Started Guide -->
     <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-xl font-semibold mb-4">📖 Getting Started</h3>
+        <h3 class="text-xl font-semibold mb-4">📖 {{ _("Getting Started") }}</h3>
         <div class="space-y-3">
             <div class="flex items-start gap-3 p-3 bg-gray-50 rounded hover:bg-gray-100 transition">
                 <span class="text-xl">①</span>
                 <div>
-                    <p class="font-medium text-gray-900">Add Repository</p>
+                    <p class="font-medium text-gray-900">{{ _("Add Repository") }}</p>
                     <p class="text-sm text-gray-600">Click "Add Anthropic Repo" to configure Anthropic's official skills repository</p>
                 </div>
             </div>
             <div class="flex items-start gap-3 p-3 bg-gray-50 rounded hover:bg-gray-100 transition">
                 <span class="text-xl">②</span>
                 <div>
-                    <p class="font-medium text-gray-900">Pull Skills</p>
+                    <p class="font-medium text-gray-900">{{ _("Pull Skills") }}</p>
                     <p class="text-sm text-gray-600">Click "Pull from Repos" to fetch skills into your hub</p>
                 </div>
             </div>
             <div class="flex items-start gap-3 p-3 bg-gray-50 rounded hover:bg-gray-100 transition">
                 <span class="text-xl">③</span>
                 <div>
-                    <p class="font-medium text-gray-900">Sync to Agents</p>
+                    <p class="font-medium text-gray-900">{{ _("Sync to Agents") }}</p>
                     <p class="text-sm text-gray-600">Go to Sync page to distribute skills to all your AI agents</p>
                 </div>
             </div>

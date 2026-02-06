@@ -58,11 +58,20 @@ class ConfigManager:
             # Create config
             config = Config(
                 version=data.get("version", "1.0.0"),
+                language=data.get("language", "en"),
                 conflict_resolution=data.get("conflict_resolution", "newest"),
                 agents=agents,
                 repositories=repositories,
                 sync=data.get("sync", {}),
             )
+
+            # Validate language code
+            if config.language not in {"en", "zh_CN"}:
+                logger.warning(
+                    "Invalid language code '%s' in config; falling back to 'en'",
+                    config.language,
+                )
+                config.language = "en"
 
             logger.debug(f"Loaded config from {self.config_path}")
             return config
@@ -113,6 +122,7 @@ class ConfigManager:
                     for repo in config.repositories
                 ],
                 "sync": config.sync,
+                "language": config.language,
             }
 
             with open(self.config_path, "w", encoding="utf-8") as f:
