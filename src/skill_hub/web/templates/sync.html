@@ -1,5 +1,13 @@
 <div>
-    <h2 class="text-3xl font-bold text-gray-900 mb-6">Sync</h2>
+    <h2 class="text-3xl font-bold text-gray-900 mb-6">{{ _("Sync") }}</h2>
+    
+    <!-- Info Banner -->
+    <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+        <p class="text-sm text-blue-800">
+            <strong>💡 Tip:</strong> Sync operations only work with your local hub (<code>~/.agents/skills/</code>) and agent directories. 
+            To fetch skills from remote repositories, use the <strong>"Pull from Repos"</strong> button on the Dashboard or Repositories page first.
+        </p>
+    </div>
     
     <div class="bg-white rounded-lg shadow p-6 mb-6">
         <p class="text-gray-700 mb-6">Synchronize skills between hub and agents.</p>
@@ -28,16 +36,29 @@
         </div>
     </div>
 
+    <!-- Quick Actions for Remote Repositories -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-semibold mb-4">📦 Remote Repository Actions</h3>
+        <p class="text-gray-600 mb-4 text-sm">Pull skills from configured remote repositories into your local hub.</p>
+        <button hx-post="/pull" hx-target="#sync-result" hx-swap="innerHTML"
+                class="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition shadow-md hover:shadow-lg flex items-center gap-2">
+            <span>🔽</span>
+            <span class="font-semibold">Pull from Repos</span>
+        </button>
+    </div>
+
     <!-- Sync Result -->
     <div id="sync-result" class="bg-white rounded-lg shadow p-6 min-h-[200px]">
-        <p class="text-gray-500 text-center py-8">Click a sync button above to see results</p>
+        <p class="text-gray-500 text-center py-8">Click a button above to see results</p>
     </div>
 </div>
 
 <!-- HTMX response handler -->
 <script>
     document.body.addEventListener('htmx:afterRequest', function(evt) {
-        if (evt.detail.pathInfo.requestPath === '/sync') {
+        const path = evt.detail.pathInfo.requestPath;
+        
+        if (path === '/sync') {
             const response = JSON.parse(evt.detail.xhr.response);
             const resultDiv = document.getElementById('sync-result');
             
@@ -73,6 +94,36 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                         <span class="text-lg font-semibold">Sync failed</span>
+                    </div>
+                `;
+            }
+        } else if (path === '/pull') {
+            const response = JSON.parse(evt.detail.xhr.response);
+            const resultDiv = document.getElementById('sync-result');
+            
+            if (response.success) {
+                resultDiv.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex items-center text-green-600 mb-4">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-lg font-semibold">Successfully pulled from repositories</span>
+                        </div>
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <p class="text-sm text-gray-600 mb-2">Skills Imported</p>
+                            <p class="text-3xl font-bold text-blue-600">${response.total_skills || 0}</p>
+                            <p class="text-xs text-gray-500 mt-2">${response.message || 'Skills added to ~/.agents/skills/'}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="flex items-center text-red-600">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        <span class="text-lg font-semibold">${response.message || 'Pull failed'}</span>
                     </div>
                 `;
             }

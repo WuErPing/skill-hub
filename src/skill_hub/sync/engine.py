@@ -39,7 +39,7 @@ class SyncEngine:
         """
         self.config = config or Config()
         self.adapter_registry = AdapterRegistry(config)
-        self.hub_path = expand_home("~/.skills")
+        self.hub_path = expand_home("~/.agents/skills")
         self.metadata_path = self.hub_path / ".skill-hub"
 
     def initialize_hub(self) -> None:

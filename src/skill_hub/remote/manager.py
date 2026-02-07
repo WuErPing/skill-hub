@@ -23,10 +23,10 @@ class RepositoryManager:
         Initialize repository manager.
 
         Args:
-            cache_dir: Directory to store cloned repositories (default: ~/.skills/.skill-hub/repos)
+            cache_dir: Directory to store cloned repositories (default: ~/.agents/skills/.skill-hub/repos)
         """
         if cache_dir is None:
-            cache_dir = expand_home("~/.skills/.skill-hub/repos")
+            cache_dir = expand_home("~/.agents/skills/.skill-hub/repos")
         self.cache_dir = cache_dir
         ensure_directory(cache_dir)
 

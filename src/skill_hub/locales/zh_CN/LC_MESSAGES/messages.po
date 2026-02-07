@@ -58,3 +58,9 @@ msgstr "同步到助手"
 
 msgid "Language"
 msgstr "语言"
+
+msgid "Official Repositories"
+msgstr "官方仓库"
+
+msgid "Or add custom repository"
+msgstr "或添加自定义仓库"

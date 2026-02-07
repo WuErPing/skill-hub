@@ -1,6 +1,6 @@
 # skill-hub
 
-Unified skill management system for AI coding agents (Cursor, Claude, Qoder, OpenCode).
+Unified skill management system for AI coding agents (Antigravity, Claude, Codex, Copilot, Cursor, Gemini CLI, OpenCode, Qoder, Windsurf).
 
 English | [简体中文](README.zh-CN.md)
 
@@ -12,7 +12,7 @@ English | [简体中文](README.zh-CN.md)
 
 ## Overview
 
-skill-hub discovers, synchronizes, and distributes AI coding agent skills across multiple platforms. It provides a centralized repository at `~/.skills/` and ensures all agents have access to the same skill definitions.
+skill-hub discovers, synchronizes, and distributes AI coding agent skills across multiple platforms. It provides a centralized repository at `~/.agents/skills/` and ensures all agents have access to the same skill definitions.
 
 ### Problem
 
@@ -26,12 +26,12 @@ AI coding agents each maintain their own skill definitions in separate configura
 
 skill-hub solves these problems by:
 1. **Discovering** skills from all agent configuration directories
-2. **Synchronizing** them to a central hub at `~/.skills/`
+2. **Synchronizing** them to a central hub at `~/.agents/skills/`
 3. **Distributing** updated skills back to all agent configurations
 
 ## Features
 
-- 🔍 **Multi-Agent Discovery**: Automatically find skills from Cursor, Claude, Qoder, and OpenCode
+- 🔍 **Multi-Agent Discovery**: Automatically find skills from 9+ AI coding assistants
 - 🔄 **Bi-Directional Sync**: Pull skills from agents to hub, push from hub to agents
 - 🎯 **Shared Skills Standard**: Support for `.agents/skills/` directory for agent-agnostic project skills
 - ⚡ **Incremental Updates**: Only sync changed skills for better performance
@@ -39,7 +39,7 @@ skill-hub solves these problems by:
 - 🏥 **Health Checks**: Verify adapter configurations, permissions, and shared skills detection
 - 📊 **Rich CLI**: Beautiful terminal output with tables and progress indicators
 - 🌐 **Web Interface**: Modern FastAPI + HTMX + Tailwind CSS web UI with real-time updates
-- 📦 **Remote Repositories**: Pull skills from GitHub and other sources
+- 📦 **Remote Repositories**: Pull skills from official and community repositories
 
 ## Installation
 
@@ -72,10 +72,15 @@ skill-hub discover
 
 This will scan:
 - `.agents/skills/` (shared, agent-agnostic - **NEW in v0.2.0**)
-- `~/.cursor/skills/`, `.cursor/skills/`
-- `~/.claude/skills/`, `.claude/skills/`
-- `~/.qoder/skills/`, `.qoder/skills/`
-- `~/.config/opencode/skills/`, `.opencode/skills/`
+- `~/.antigravity/skills/`, `.agent/skills/` (Antigravity)
+- `~/.claude/skills/`, `.claude/skills/` (Claude)
+- `~/.codex/skills/`, `.codex/skills/` (Codex)
+- `~/.copilot/skills/`, `.github/skills/` (GitHub Copilot)
+- `~/.cursor/skills/`, `.cursor/skills/` (Cursor)
+- `~/.gemini/skills/`, `.gemini/skills/` (Gemini CLI)
+- `~/.config/opencode/skills/`, `.opencode/skills/` (OpenCode)
+- `~/.qoder/skills/`, `.qoder/skills/` (Qoder)
+- `~/.codeium/windsurf/skills/`, `.windsurf/skills/` (Windsurf)
 
 ### 2. Sync Skills
 
@@ -106,11 +111,20 @@ skill-hub agents --check
 
 ### 5. Add Remote Repositories
 
-Pull skills from community repositories like https://github.com/anthropics/skills:
+Pull skills from official repositories:
 
 ```bash
-# Add a remote repository
-skill-hub repo add https://github.com/anthropics/skills
+# Quick setup with all official repositories
+skill-hub init --with-all
+
+# Or add individually
+skill-hub init --with-anthropic      # Claude, general AI skills
+skill-hub init --with-vercel         # React, Next.js, web design
+skill-hub init --with-cloudflare     # Workers, Durable Objects
+skill-hub init --with-supabase       # PostgreSQL best practices
+
+# Add custom repositories
+skill-hub repo add https://github.com/yourorg/skills
 
 # Pull skills from all configured repositories
 skill-hub pull
@@ -118,6 +132,13 @@ skill-hub pull
 # List configured repositories
 skill-hub repo list
 ```
+
+**Official Skill Repositories:**
+- **Anthropic**: https://github.com/anthropics/skills
+- **Vercel Labs**: https://github.com/vercel-labs/agent-skills
+- **Cloudflare**: https://github.com/cloudflare/skills
+- **Supabase**: https://github.com/supabase/agent-skills
+- **Qoder Community**: https://github.com/Qoder-AI/qoder-community (54+ skills, 9 categories)
 
 ### 6. Web Interface
 
@@ -184,18 +205,23 @@ When someone clones this project repository, they need to set up their **local u
 
 2. **Initialize configuration:**
    
-   **Option A: Quick setup with Anthropic skills (recommended)**
+   **Option A: Quick setup with all official repositories (recommended)**
+   ```bash
+   skill-hub init --with-all
+   ```
+   
+   **Option B: Quick setup with Anthropic only**
    ```bash
    skill-hub init --with-anthropic
    ```
    
-   **Option B: Interactive setup**
+   **Option C: Interactive setup**
    ```bash
    skill-hub init
-   # Follow the prompts to add repositories
+   # Follow the prompts to select repositories
    ```
    
-   **Option C: Custom repositories**
+   **Option D: Custom repositories**
    ```bash
    skill-hub init --repo https://github.com/yourorg/team-skills
    ```
@@ -212,10 +238,10 @@ When someone clones this project repository, they need to set up their **local u
 
 ### Configuration Storage
 
-**Important:** Configuration is stored **per-user** at `~/.skills/.skill-hub/config.json`, NOT in the project repository. This means:
+**Important:** Configuration is stored **per-user** at `~/.agents/skills/.skill-hub/config.json`, NOT in the project repository. This means:
 
 - ✅ Each user configures their own repositories
-- ✅ Each user manages their own hub at `~/.skills/`
+- ✅ Each user manages their own hub at `~/.agents/skills/`
 - ✅ Configuration is **not** checked into Git
 - ✅ Team members can share skill repository URLs via documentation
 
@@ -267,10 +293,15 @@ Add to your shell profile (`~/.zshrc`, `~/.bashrc`) to persist across sessions.
 
 | Agent | Project-Local | Global |
 |-------|--------------|--------|
-| **Cursor** | `.cursor/skills/` | `~/.cursor/skills/` |
+| **Antigravity** | `.agent/skills/` | `~/.gemini/antigravity/skills/` |
 | **Claude** | `.claude/skills/` | `~/.claude/skills/` |
-| **Qoder** | `.qoder/skills/` | `~/.qoder/skills/` |
+| **Codex** | `.codex/skills/` | `~/.codex/skills/` |
+| **GitHub Copilot** | `.github/skills/` | `~/.copilot/skills/` |
+| **Cursor** | `.cursor/skills/` | `~/.cursor/skills/` |
+| **Gemini CLI** | `.gemini/skills/` | `~/.gemini/skills/` |
 | **OpenCode** | `.opencode/skills/` | `~/.config/opencode/skills/` |
+| **Qoder** | `.qoder/skills/` | `~/.qoder/skills/` |
+| **Windsurf** | `.windsurf/skills/` | `~/.codeium/windsurf/skills/` |
 
 ## Shared Skills Directory (`.agents/skills/`)
 
@@ -410,7 +441,7 @@ cp -r .cursor/skills/my-skill .agents/skills/
 skill-hub sync --pull
 
 # 2. Copy from hub to .agents/skills/
-cp -r ~/.skills/my-skill .agents/skills/
+cp -r ~/.agents/skills/my-skill .agents/skills/
 
 # 3. Sync back to all agents
 skill-hub sync --push
@@ -488,9 +519,14 @@ Initialize skill-hub configuration with repository setup.
 
 ```bash
 skill-hub init                      # Interactive mode with prompts
-skill-hub init --with-anthropic     # Add Anthropic skills automatically
+skill-hub init --with-all           # Add all official repositories
+skill-hub init --with-anthropic     # Add Anthropic skills only
+skill-hub init --with-vercel        # Add Vercel Labs skills only
+skill-hub init --with-cloudflare    # Add Cloudflare skills only
+skill-hub init --with-supabase      # Add Supabase skills only
+skill-hub init --with-qoder         # Add Qoder Community skills only
 skill-hub init --repo <url>         # Add custom repository
-skill-hub init --with-anthropic --repo https://github.com/org/repo  # Combine options
+skill-hub init --with-all --repo https://github.com/org/repo  # Combine options
 ```
 
 **Interactive Mode Example:**
@@ -500,16 +536,23 @@ Initializing skill-hub configuration...
 
 Quick Setup:
 
-Add Anthropic's community skills repository? [Y/n]: y
-  ✓ Added: https://github.com/anthropics/skills
+Add official skills repositories? [Y/n]: y
+
+Select repositories to add:
+  • Anthropic (Claude, general AI skills) [Y/n]: y
+    ✓ Added: https://github.com/anthropics/skills
+  • Vercel Labs (React, Next.js, web design) [y/N]: y
+    ✓ Added: https://github.com/vercel-labs/agent-skills
+  • Cloudflare (Workers, Durable Objects, web perf) [y/N]: n
+  • Supabase (PostgreSQL best practices) [y/N]: n
 
 Add custom repository? [y/N]: y
   Repository URL: https://github.com/myorg/skills
     ✓ Added
   Add another? [y/N]: n
 
-✓ Configuration saved to ~/.skills/.skill-hub/config.json
-  2 repository(ies) configured
+✓ Configuration saved to ~/.agents/skills/.skill-hub/config.json
+  3 repository(ies) configured
 
 Next steps:
   1. Run: skill-hub pull to fetch skills
@@ -566,8 +609,12 @@ skill-hub repo remove <url>        # Remove a repository
 
 **Examples:**
 ```bash
-# Add Anthropic's community skills
+# Add official repositories
 skill-hub repo add https://github.com/anthropics/skills
+skill-hub repo add https://github.com/vercel-labs/agent-skills
+skill-hub repo add https://github.com/cloudflare/skills
+skill-hub repo add https://github.com/supabase/agent-skills
+skill-hub repo add https://github.com/Qoder-AI/qoder-community --path src/content/skills
 
 # Add with specific branch
 skill-hub repo add https://github.com/yourorg/skills --branch develop
@@ -588,7 +635,7 @@ skill-hub pull <url>                # Pull from specific repository
 **What it does:**
 1. Clones or updates repositories (shallow clone with `--depth 1`)
 2. Scans for `SKILL.md` files
-3. Imports skills to `~/.skills/`
+3. Imports skills to `~/.agents/skills/`
 4. Tracks commit hashes for incremental updates
 5. Saves metadata (sync count, last sync time, imported skills)
 
@@ -598,10 +645,15 @@ skill-hub pull <url>                # Pull from specific repository
 skill-hub/
 ├── src/skill_hub/
 │   ├── adapters/          # Agent-specific adapters
-│   │   ├── cursor.py
-│   │   ├── claude.py
-│   │   ├── qoder.py
-│   │   └── opencode.py
+│   │   ├── antigravity.py  # Google Antigravity
+│   │   ├── claude.py       # Anthropic Claude
+│   │   ├── codex.py        # OpenAI Codex
+│   │   ├── copilot.py      # GitHub Copilot
+│   │   ├── cursor.py       # Cursor IDE
+│   │   ├── gemini.py       # Gemini CLI
+│   │   ├── opencode.py     # OpenCode
+│   │   ├── qoder.py        # Qoder
+│   │   └── windsurf.py     # Windsurf
 │   ├── discovery/         # Skill discovery engine
 │   ├── sync/              # Synchronization engine
 │   ├── remote/            # Remote repository management
@@ -657,7 +709,7 @@ pytest --cov=skill_hub
 
 ## Configuration
 
-skill-hub uses a configuration file at `~/.skills/.skill-hub/config.json`:
+skill-hub uses a configuration file at `~/.agents/skills/.skill-hub/config.json`:
 
 ```json
 {
@@ -691,11 +743,12 @@ skill-hub uses a configuration file at `~/.skills/.skill-hub/config.json`:
 
 ## Roadmap
 
-### Phase 1 (Current)
+### Phase 1 (Completed)
 - ✅ Multi-agent skill discovery
 - ✅ Bi-directional synchronization
-- ✅ Support for Cursor, Claude, Qoder, OpenCode
+- ✅ Support for 9+ AI coding assistants (Antigravity, Claude, Codex, Copilot, Cursor, Gemini CLI, OpenCode, Qoder, Windsurf)
 - ✅ Basic conflict detection
+- ✅ Shared `.agents/skills/` directory support
 
 ### Phase 2 (Completed)
 - ✅ Remote repository support (pull from GitHub, etc.)
@@ -703,6 +756,7 @@ skill-hub uses a configuration file at `~/.skills/.skill-hub/config.json`:
 - ✅ Repository metadata tracking
 - ✅ Web interface (FastAPI + HTMX + Tailwind CSS, Streamlit, Flask)
 - ✅ Auto-open browser on web command
+- ✅ Official repository integrations (Anthropic, Vercel Labs, Cloudflare, Supabase, Qoder Community)
 
 ### Phase 3 (Future)
 - 🔲 File watching for automatic sync

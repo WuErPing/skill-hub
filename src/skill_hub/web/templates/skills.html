@@ -5,7 +5,7 @@
         <div class="flex items-center justify-between mb-4">
             <div>
                 <p class="text-lg font-semibold">Total Skills: <span class="text-blue-600">{{ skills|length }}</span></p>
-                <p class="text-xs text-gray-500 mt-1" title="Skills are stored in ~/.skills/ directory">Location: ~/.skills/</p>
+                <p class="text-xs text-gray-500 mt-1" title="Skills are stored in ~/.agents/skills/ directory">Location: ~/.agents/skills/</p>
             </div>
             <button hx-get="/skills" hx-target="#content" hx-swap="innerHTML"
                     class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-2"
@@ -59,7 +59,7 @@
         <div class="text-center py-12 text-gray-500">
             <div class="text-6xl mb-4">📦</div>
             <p class="text-lg font-semibold mb-2">No skills found in hub</p>
-            <p class="text-sm mb-4">Your central hub (~/.skills/) is empty</p>
+            <p class="text-sm mb-4">Your central hub (~/.agents/skills/) is empty</p>
             <div class="space-y-2 text-sm text-left max-w-md mx-auto">
                 <p class="flex items-start gap-2">
                     <span>•</span>

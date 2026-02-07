@@ -81,6 +81,28 @@
             }, 3000);
         }
 
+        function addOfficialRepo(url, name) {
+            const form = document.querySelector('form[hx-post="/repositories/add"]');
+            if (form) {
+                form.querySelector('input[name="url"]').value = url;
+                form.querySelector('input[name="branch"]').value = 'main';
+                form.querySelector('input[name="path"]').value = '';
+                form.querySelector('button[type="submit"]').click();
+                showToast(`Adding ${name} repository...`);
+            }
+        }
+
+        function addQoderRepo() {
+            const form = document.querySelector('form[hx-post="/repositories/add"]');
+            if (form) {
+                form.querySelector('input[name="url"]').value = 'https://github.com/Qoder-AI/qoder-community';
+                form.querySelector('input[name="branch"]').value = 'main';
+                form.querySelector('input[name="path"]').value = 'src/content/skills';
+                form.querySelector('button[type="submit"]').click();
+                showToast('Adding Qoder Community repository...');
+            }
+        }
+
         function setLanguage(lang) {
             fetch('/set-language', {
                 method: 'POST',

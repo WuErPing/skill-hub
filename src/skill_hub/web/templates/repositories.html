@@ -3,7 +3,41 @@
     
     <!-- Add Repository Form -->
     <div class="bg-white rounded-lg shadow p-6 mb-6">
-        <h3 class="text-xl font-semibold mb-4">Add Repository</h3>
+        <h3 class="text-xl font-semibold mb-4">{{ _("Add Repository") }}</h3>
+        
+        <!-- Quick Add Official Repositories -->
+        <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <p class="text-sm font-semibold text-blue-900 mb-3">📦 {{ _("Official Repositories") }}</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <button onclick="addOfficialRepo('https://github.com/anthropics/skills', 'Anthropic')"
+                        class="px-3 py-2 bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-100 transition text-sm text-left">
+                    <span class="font-medium">🤖 Anthropic</span>
+                    <span class="text-xs text-gray-600 block">Claude, general AI skills</span>
+                </button>
+                <button onclick="addOfficialRepo('https://github.com/vercel-labs/agent-skills', 'Vercel Labs')"
+                        class="px-3 py-2 bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-100 transition text-sm text-left">
+                    <span class="font-medium">▲ Vercel Labs</span>
+                    <span class="text-xs text-gray-600 block">React, Next.js, web design</span>
+                </button>
+                <button onclick="addOfficialRepo('https://github.com/cloudflare/skills', 'Cloudflare')"
+                        class="px-3 py-2 bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-100 transition text-sm text-left">
+                    <span class="font-medium">☁️ Cloudflare</span>
+                    <span class="text-xs text-gray-600 block">Workers, Durable Objects</span>
+                </button>
+                <button onclick="addOfficialRepo('https://github.com/supabase/agent-skills', 'Supabase')"
+                        class="px-3 py-2 bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-100 transition text-sm text-left">
+                    <span class="font-medium">🟢 Supabase</span>
+                    <span class="text-xs text-gray-600 block">PostgreSQL best practices</span>
+                </button>
+                <button onclick="addQoderRepo()"
+                        class="px-3 py-2 bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-100 transition text-sm text-left">
+                    <span class="font-medium">⚡ Qoder Community</span>
+                    <span class="text-xs text-gray-600 block">54+ skills, 9 categories</span>
+                </button>
+            </div>
+        </div>
+
+        <h4 class="text-md font-medium mb-3 text-gray-700">{{ _("Or add custom repository") }}</h4>
         <form hx-post="/repositories/add" hx-target="#repo-list" hx-swap="outerHTML">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>

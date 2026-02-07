@@ -3,11 +3,16 @@
 import logging
 from typing import Dict, List, Optional
 
+from skill_hub.adapters.antigravity import AntigravityAdapter
 from skill_hub.adapters.base import AgentAdapter
 from skill_hub.adapters.claude import ClaudeAdapter
+from skill_hub.adapters.codex import CodexAdapter
+from skill_hub.adapters.copilot import CopilotAdapter
 from skill_hub.adapters.cursor import CursorAdapter
+from skill_hub.adapters.gemini import GeminiAdapter
 from skill_hub.adapters.opencode import OpenCodeAdapter
 from skill_hub.adapters.qoder import QoderAdapter
+from skill_hub.adapters.windsurf import WindsurfAdapter
 from skill_hub.models import Config
 
 logger = logging.getLogger(__name__)
@@ -30,10 +35,15 @@ class AdapterRegistry:
     def _load_adapters(self) -> None:
         """Load all available adapters."""
         adapter_classes = [
-            CursorAdapter,
+            AntigravityAdapter,
             ClaudeAdapter,
-            QoderAdapter,
+            CodexAdapter,
+            CopilotAdapter,
+            CursorAdapter,
+            GeminiAdapter,
             OpenCodeAdapter,
+            QoderAdapter,
+            WindsurfAdapter,
         ]
 
         for adapter_class in adapter_classes:
@@ -52,7 +62,7 @@ class AdapterRegistry:
         Get adapter by name.
 
         Args:
-            name: Agent name (cursor, claude, qoder, opencode)
+            name: Agent name (antigravity, claude, codex, copilot, cursor, gemini, opencode, qoder, windsurf)
 
         Returns:
             AgentAdapter instance or None if not found

@@ -1,6 +1,6 @@
 # skill-hub
 
-AI 编程助手（Cursor、Claude、Qoder、OpenCode）的统一技能管理系统。
+AI 编程助手（Antigravity、Claude、Codex、Copilot、Cursor、Gemini CLI、OpenCode、Qoder、Windsurf）的统一技能管理系统。
 
 [English](README.md) | 简体中文
 
@@ -12,7 +12,7 @@ AI 编程助手（Cursor、Claude、Qoder、OpenCode）的统一技能管理系�
 
 ## 概述
 
-skill-hub 可以在多个平台上发现、同步和分发 AI 编程助手的技能。它在 `~/.skills/` 提供了一个中央仓库，确保所有助手都能访问相同的技能定义。
+skill-hub 可以在多个平台上发现、同步和分发 AI 编程助手的技能。它在 `~/.agents/skills/` 提供了一个中央仓库，确保所有助手都能访问相同的技能定义。
 
 ### 问题
 
@@ -26,12 +26,12 @@ AI 编程助手各自在独立的配置目录中维护自己的技能定义，�
 
 skill-hub 通过以下方式解决这些问题：
 1. **发现**所有助手配置目录中的技能
-2. **同步**它们到位于 `~/.skills/` 的中央仓库
+2. **同步**它们到位于 `~/.agents/skills/` 的中央仓库
 3. **分发**更新后的技能到所有助手配置
 
 ## 功能特性
 
-- 🔍 **多助手发现**：自动从 Cursor、Claude、Qoder 和 OpenCode 中查找技能
+- 🔍 **多助手发现**：自动从 9+ AI 编程助手中查找技能
 - 🔄 **双向同步**：从助手拉取技能到中央仓库，从中央仓库推送到助手
 - 🎯 **共享技能标准**：支持 `.agents/skills/` 目录用于跨助手的项目技能
 - ⚡ **增量更新**：仅同步变更的技能以提高性能
@@ -39,7 +39,7 @@ skill-hub 通过以下方式解决这些问题：
 - 🏥 **健康检查**：验证适配器配置、权限和共享技能检测
 - 📊 **丰富的 CLI**：精美的终端输出，包含表格和进度指示器
 - 🌐 **Web 界面**：现代化 FastAPI + HTMX + Tailwind CSS Web UI，实时更新
-- 📦 **远程仓库**：从 GitHub 等平台拉取社区技能
+- 📦 **远程仓库**：从官方和社区仓库拉取技能
 
 ## 安装
 
@@ -207,10 +207,10 @@ Web 界面提供：
 
 ### 配置存储
 
-**重要提示：** 配置存储在**每个用户**的 `~/.skills/.skill-hub/config.json`，而**不是**项目仓库中。这意味着：
+**重要提示：** 配置存储在**每个用户**的 `~/.agents/skills/.skill-hub/config.json`，而**不是**项目仓库中。这意味着：
 
 - ✅ 每个用户配置自己的仓库
-- ✅ 每个用户在 `~/.skills/` 管理自己的中央仓库
+- ✅ 每个用户在 `~/.agents/skills/` 管理自己的中央仓库
 - ✅ 配置**不会**提交到 Git
 - ✅ 团队成员可以通过文档共享技能仓库 URL
 
@@ -350,7 +350,7 @@ $ skill-hub init
     ✓ 已添加
   再添加一个？ [y/N]: n
 
-✓ 配置已保存到 ~/.skills/.skill-hub/config.json
+✓ 配置已保存到 ~/.agents/skills/.skill-hub/config.json
   已配置 2 个仓库
 
 下一步：
@@ -430,7 +430,7 @@ skill-hub pull <url>                # 从特定仓库拉取
 **功能说明：**
 1. 克隆或更新仓库（使用 `--depth 1` 浅克隆）
 2. 扫描 `SKILL.md` 文件
-3. 导入技能到 `~/.skills/`
+3. 导入技能到 `~/.agents/skills/`
 4. 跟踪提交哈希以实现增量更新
 5. 保存元数据（同步次数、最后同步时间、导入的技能）
 
@@ -499,7 +499,7 @@ pytest --cov=skill_hub
 
 ## 配置
 
-skill-hub 使用位于 `~/.skills/.skill-hub/config.json` 的配置文件：
+skill-hub 使用位于 `~/.agents/skills/.skill-hub/config.json` 的配置文件：
 
 ```json
 {

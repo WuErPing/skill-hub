@@ -19,10 +19,10 @@ class ConfigManager:
         Initialize config manager.
 
         Args:
-            config_path: Path to config file (default: ~/.skills/.skill-hub/config.json)
+            config_path: Path to config file (default: ~/.agents/skills/.skill-hub/config.json)
         """
         if config_path is None:
-            config_path = expand_home("~/.skills/.skill-hub/config.json")
+            config_path = expand_home("~/.agents/skills/.skill-hub/config.json")
         self.config_path = config_path
 
     def load(self, silent: bool = False) -> Config:

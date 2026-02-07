@@ -139,9 +139,14 @@ def web(ctx: click.Context, host: str, port: int, backend: str, no_browser: bool
 
 @cli.command()
 @click.option("--with-anthropic", is_flag=True, help="Add Anthropic skills repository")
+@click.option("--with-vercel", is_flag=True, help="Add Vercel Labs skills repository")
+@click.option("--with-cloudflare", is_flag=True, help="Add Cloudflare skills repository")
+@click.option("--with-supabase", is_flag=True, help="Add Supabase skills repository")
+@click.option("--with-qoder", is_flag=True, help="Add Qoder Community skills repository")
+@click.option("--with-all", is_flag=True, help="Add all official repositories (Anthropic, Vercel, Cloudflare, Supabase, Qoder)")
 @click.option("--repo", "-r", multiple=True, help="Add custom repository URL")
 @click.pass_context
-def init(ctx: click.Context, with_anthropic: bool, repo: tuple) -> None:
+def init(ctx: click.Context, with_anthropic: bool, with_vercel: bool, with_cloudflare: bool, with_supabase: bool, with_qoder: bool, with_all: bool, repo: tuple) -> None:
     """Initialize skill-hub configuration."""
     config = ctx.obj["config"]
     config_manager = ctx.obj["config_manager"]
@@ -159,15 +164,69 @@ def init(ctx: click.Context, with_anthropic: bool, repo: tuple) -> None:
 
     added_count = 0
 
+    # Add all official repositories if requested
+    if with_all:
+        with_anthropic = with_vercel = with_cloudflare = with_supabase = with_qoder = True
+
+    # Define official repositories
+    official_repos = {
+        "anthropic": "https://github.com/anthropics/skills",
+        "vercel": "https://github.com/vercel-labs/agent-skills",
+        "cloudflare": "https://github.com/cloudflare/skills",
+        "supabase": "https://github.com/supabase/agent-skills",
+        "qoder": "https://github.com/Qoder-AI/qoder-community",
+    }
+
     # Add Anthropic skills if requested
     if with_anthropic:
-        anthropic_url = "https://github.com/anthropics/skills"
+        anthropic_url = official_repos["anthropic"]
         if not any(r.url == anthropic_url for r in config.repositories):
             config.repositories.append(RepositoryConfig(url=anthropic_url))
             console.print(f"[green]✓[/green] Added: {anthropic_url}")
             added_count += 1
         else:
             console.print(f"[dim]Already configured: {anthropic_url}[/dim]")
+
+    # Add Vercel skills if requested
+    if with_vercel:
+        vercel_url = official_repos["vercel"]
+        if not any(r.url == vercel_url for r in config.repositories):
+            config.repositories.append(RepositoryConfig(url=vercel_url))
+            console.print(f"[green]✓[/green] Added: {vercel_url}")
+            added_count += 1
+        else:
+            console.print(f"[dim]Already configured: {vercel_url}[/dim]")
+
+    # Add Cloudflare skills if requested
+    if with_cloudflare:
+        cloudflare_url = official_repos["cloudflare"]
+        if not any(r.url == cloudflare_url for r in config.repositories):
+            config.repositories.append(RepositoryConfig(url=cloudflare_url))
+            console.print(f"[green]✓[/green] Added: {cloudflare_url}")
+            added_count += 1
+        else:
+            console.print(f"[dim]Already configured: {cloudflare_url}[/dim]")
+
+    # Add Supabase skills if requested
+    if with_supabase:
+        supabase_url = official_repos["supabase"]
+        if not any(r.url == supabase_url for r in config.repositories):
+            config.repositories.append(RepositoryConfig(url=supabase_url))
+            console.print(f"[green]✓[/green] Added: {supabase_url}")
+            added_count += 1
+        else:
+            console.print(f"[dim]Already configured: {supabase_url}[/dim]")
+
+    # Add Qoder Community skills if requested
+    if with_qoder:
+        qoder_url = official_repos["qoder"]
+        if not any(r.url == qoder_url for r in config.repositories):
+            # Qoder skills are in src/content/skills/ subdirectory
+            config.repositories.append(RepositoryConfig(url=qoder_url, path="src/content/skills"))
+            console.print(f"[green]✓[/green] Added: {qoder_url}")
+            added_count += 1
+        else:
+            console.print(f"[dim]Already configured: {qoder_url}[/dim]")
 
     # Add custom repositories
     for repo_url in repo:
@@ -184,16 +243,47 @@ def init(ctx: click.Context, with_anthropic: bool, repo: tuple) -> None:
         added_count += 1
 
     # Interactive mode if no flags provided
-    if not with_anthropic and not repo:
+    if not with_anthropic and not with_vercel and not with_cloudflare and not with_supabase and not with_qoder and not with_all and not repo:
         console.print("[bold]Quick Setup:[/bold]\n")
         
-        # Ask about Anthropic skills
-        if click.confirm("Add Anthropic's community skills repository?", default=True):
-            anthropic_url = "https://github.com/anthropics/skills"
-            if not any(r.url == anthropic_url for r in config.repositories):
-                config.repositories.append(RepositoryConfig(url=anthropic_url))
-                console.print(f"  [green]✓[/green] Added: {anthropic_url}")
-                added_count += 1
+        # Ask about official repositories
+        if click.confirm("Add official skills repositories?", default=True):
+            console.print("\n[bold]Select repositories to add:[/bold]")
+            
+            if click.confirm("  • Anthropic (Claude, general AI skills)", default=True):
+                anthropic_url = official_repos["anthropic"]
+                if not any(r.url == anthropic_url for r in config.repositories):
+                    config.repositories.append(RepositoryConfig(url=anthropic_url))
+                    console.print(f"    [green]✓[/green] Added: {anthropic_url}")
+                    added_count += 1
+            
+            if click.confirm("  • Vercel Labs (React, Next.js, web design)", default=False):
+                vercel_url = official_repos["vercel"]
+                if not any(r.url == vercel_url for r in config.repositories):
+                    config.repositories.append(RepositoryConfig(url=vercel_url))
+                    console.print(f"    [green]✓[/green] Added: {vercel_url}")
+                    added_count += 1
+            
+            if click.confirm("  • Cloudflare (Workers, Durable Objects, web perf)", default=False):
+                cloudflare_url = official_repos["cloudflare"]
+                if not any(r.url == cloudflare_url for r in config.repositories):
+                    config.repositories.append(RepositoryConfig(url=cloudflare_url))
+                    console.print(f"    [green]✓[/green] Added: {cloudflare_url}")
+                    added_count += 1
+            
+            if click.confirm("  • Supabase (PostgreSQL best practices)", default=False):
+                supabase_url = official_repos["supabase"]
+                if not any(r.url == supabase_url for r in config.repositories):
+                    config.repositories.append(RepositoryConfig(url=supabase_url))
+                    console.print(f"    [green]✓[/green] Added: {supabase_url}")
+                    added_count += 1
+            
+            if click.confirm("  • Qoder Community (54+ skills, 9 categories)", default=False):
+                qoder_url = official_repos["qoder"]
+                if not any(r.url == qoder_url for r in config.repositories):
+                    config.repositories.append(RepositoryConfig(url=qoder_url, path="src/content/skills"))
+                    console.print(f"    [green]✓[/green] Added: {qoder_url}")
+                    added_count += 1
 
         console.print()
         

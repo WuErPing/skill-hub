@@ -90,7 +90,7 @@ def _page_skills(config_manager: ConfigManager) -> None:
     skill_names = sync_engine.list_hub_skills()
 
     if not skill_names:
-        st.info("No skills found in hub (~/.skills)")
+        st.info("No skills found in hub (~/.agents/skills)")
         return
 
     # Build skill data with descriptions
