@@ -456,7 +456,12 @@ def create_app() -> FastAPI:
 
     @app.get("/preview/{encoded_path}", response_class=HTMLResponse)
     async def preview_skill(request: Request, encoded_path: str) -> HTMLResponse:
-        """Preview a skill file with markdown rendering."""
+        """Preview a skill file with markdown rendering and translation."""
+        from skill_hub.ai import ContentTranslator
+
+        language = request.cookies.get("language", "en")
+        config = _load_config()
+
         try:
             # Decode the path
             skill_path = base64.urlsafe_b64decode(encoded_path.encode()).decode()
@@ -470,7 +475,10 @@ def create_app() -> FastAPI:
                         "error": "Skill file not found",
                         "skill_name": "Error",
                         "content": "",
+                        "content_zh": None,
                         "metadata": {},
+                        "language": language,
+                        "translation_available": False,
                     },
                 )
 
@@ -485,12 +493,30 @@ def create_app() -> FastAPI:
                         "error": "Failed to parse skill file",
                         "skill_name": skill_file.parent.name,
                         "content": content,
+                        "content_zh": None,
                         "metadata": {},
                         "file_path": str(skill_path),
+                        "language": language,
+                        "translation_available": False,
                     },
                 )
 
             metadata, body = result
+
+            # Try to translate content if AI is enabled
+            content_zh = None
+            translation_available = False
+
+            if config.ai.enabled:
+                translator = ContentTranslator(config.ai)
+                available, _ = translator.is_available()
+
+                if available:
+                    translation_available = True
+                    # Detect language and translate if it's English
+                    detected_lang = translator.detect_language(body)
+                    if detected_lang == "en":
+                        content_zh = translator.translate_to_chinese(body)
 
             return templates.TemplateResponse(
                 "preview.html",
@@ -499,11 +525,14 @@ def create_app() -> FastAPI:
                     "skill_name": metadata.name,
                     "description": metadata.description,
                     "content": body,
+                    "content_zh": content_zh,
                     "metadata": {
                         "license": getattr(metadata, "license", None),
                         "compatibility": getattr(metadata, "compatibility", None),
                     },
                     "file_path": str(skill_path),
+                    "language": language,
+                    "translation_available": translation_available,
                 },
             )
         except Exception as e:
@@ -514,7 +543,10 @@ def create_app() -> FastAPI:
                     "error": f"Error loading skill: {str(e)}",
                     "skill_name": "Error",
                     "content": "",
+                    "content_zh": None,
                     "metadata": {},
+                    "language": language,
+                    "translation_available": False,
                 },
             )
 

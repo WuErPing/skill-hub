@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ language or 'en' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ skill_name }} - Skill Preview</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -87,6 +88,61 @@
     </style>
 </head>
 <body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 text-white flex flex-col">
+            <div class="p-4">
+                <h1 class="text-2xl font-bold">skill-hub</h1>
+                <p class="text-sm text-gray-400 mt-1">unified skills for AI agents</p>
+            </div>
+            <nav class="mt-8 flex-1">
+                <a href="/" 
+                   class="block px-4 py-3 hover:bg-gray-800 transition">
+                    📊 {{ _("Dashboard") }}
+                </a>
+                <a href="/" 
+                   class="block px-4 py-3 hover:bg-gray-800 transition">
+                    🔄 {{ _("Sync") }}
+                </a>
+                <a href="/" 
+                   class="block px-4 py-3 hover:bg-gray-800 transition">
+                    🎯 {{ _("Hub Skills") }}
+                </a>
+                <a href="/" 
+                   class="block px-4 py-3 hover:bg-gray-800 transition">
+                    🔍 {{ _("AI Finder") }}
+                </a>
+                <a href="/" 
+                   class="block px-4 py-3 hover:bg-gray-800 transition">
+                    📦 {{ _("Repositories") }}
+                </a>
+                <a href="/" 
+                   class="block px-4 py-3 hover:bg-gray-800 transition">
+                    🤖 {{ _("Agents") }}
+                </a>
+                <a href="/" 
+                   class="block px-4 py-3 hover:bg-gray-800 transition">
+                    ⚙️ {{ _("Config") }}
+                </a>
+            </nav>
+            <!-- Language switcher -->
+            <div class="px-4 py-4 border-t border-gray-800">
+                <p class="text-xs text-gray-500 mb-2">{{ _("Language") }}</p>
+                <div class="flex gap-2">
+                    <button onclick="setLanguage('en')"
+                            class="px-3 py-1 rounded text-xs font-medium {{ 'bg-white text-gray-900' if language == 'en' else 'bg-gray-700 text-gray-300' }}">
+                        EN
+                    </button>
+                    <button onclick="setLanguage('zh_CN')"
+                            class="px-3 py-1 rounded text-xs font-medium {{ 'bg-white text-gray-900' if language == 'zh_CN' else 'bg-gray-700 text-gray-300' }}">
+                        中文
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="flex-1 overflow-auto">
     <div class="min-h-screen">
         <!-- Header -->
         <header class="bg-white shadow-sm border-b border-gray-200">
@@ -151,11 +207,44 @@
             {% endif %}
 
             <!-- Markdown Content -->
+            {% if content_zh %}
+            <!-- Bilingual View -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-700">📝 English</h3>
+                        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Original</span>
+                    </div>
+                    <div id="markdown-content-en" class="markdown-body">
+                        <!-- Rendered English markdown will go here -->
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-700">📝 中文</h3>
+                        <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">AI Translation</span>
+                    </div>
+                    <div id="markdown-content-zh" class="markdown-body">
+                        <!-- Rendered Chinese markdown will go here -->
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- Single Language View -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
                 <div id="markdown-content" class="markdown-body">
                     <!-- Rendered markdown will go here -->
                 </div>
             </div>
+            {% if translation_available and not content_zh %}
+            <div class="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                <p class="text-sm text-blue-800">
+                    💡 <strong>Translation available:</strong> This content appears to be in Chinese or mixed language. 
+                    AI translation is currently optimized for English-to-Chinese translation.
+                </p>
+            </div>
+            {% endif %}
+            {% endif %}
 
             <!-- File Path -->
             {% if file_path %}
@@ -164,14 +253,40 @@
                 <code class="ml-2 px-2 py-1 bg-gray-100 rounded">{{ file_path }}</code>
             </div>
             {% endif %}
+        </div>
         </main>
     </div>
 
     <script>
         // Render markdown content
         const markdownContent = {{ content|tojson }};
-        if (markdownContent) {
-            document.getElementById('markdown-content').innerHTML = marked.parse(markdownContent);
+        const markdownContentZh = {{ content_zh|tojson }};
+
+        if (markdownContentZh) {
+            // Bilingual view - render both English and Chinese
+            if (markdownContent) {
+                document.getElementById('markdown-content-en').innerHTML = marked.parse(markdownContent);
+            }
+            document.getElementById('markdown-content-zh').innerHTML = marked.parse(markdownContentZh);
+        } else {
+            // Single language view
+            if (markdownContent) {
+                const contentDiv = document.getElementById('markdown-content');
+                if (contentDiv) {
+                    contentDiv.innerHTML = marked.parse(markdownContent);
+                }
+            }
+        }
+
+        function setLanguage(lang) {
+            fetch('/set-language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'language=' + encodeURIComponent(lang)
+            }).then(() => {
+                // Reload the whole page so sidebar and content use the new language
+                window.location.reload();
+            });
         }
     </script>
 </body>
