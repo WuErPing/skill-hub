@@ -456,9 +456,7 @@ def create_app() -> FastAPI:
 
     @app.get("/preview/{encoded_path}", response_class=HTMLResponse)
     async def preview_skill(request: Request, encoded_path: str) -> HTMLResponse:
-        """Preview a skill file with markdown rendering and translation."""
-        from skill_hub.ai import ContentTranslator
-
+        """Preview a skill file with markdown rendering."""
         language = request.cookies.get("language", "en")
         config = _load_config()
 
@@ -475,7 +473,6 @@ def create_app() -> FastAPI:
                         "error": "Skill file not found",
                         "skill_name": "Error",
                         "content": "",
-                        "content_zh": None,
                         "metadata": {},
                         "language": language,
                         "translation_available": False,
@@ -493,7 +490,6 @@ def create_app() -> FastAPI:
                         "error": "Failed to parse skill file",
                         "skill_name": skill_file.parent.name,
                         "content": content,
-                        "content_zh": None,
                         "metadata": {},
                         "file_path": str(skill_path),
                         "language": language,
@@ -503,20 +499,14 @@ def create_app() -> FastAPI:
 
             metadata, body = result
 
-            # Try to translate content if AI is enabled
-            content_zh = None
+            # Check if translation is available
             translation_available = False
-
             if config.ai.enabled:
+                from skill_hub.ai import ContentTranslator
+
                 translator = ContentTranslator(config.ai)
                 available, _ = translator.is_available()
-
-                if available:
-                    translation_available = True
-                    # Detect language and translate if it's English
-                    detected_lang = translator.detect_language(body)
-                    if detected_lang == "en":
-                        content_zh = translator.translate_to_chinese(body)
+                translation_available = available
 
             return templates.TemplateResponse(
                 "preview.html",
@@ -525,7 +515,6 @@ def create_app() -> FastAPI:
                     "skill_name": metadata.name,
                     "description": metadata.description,
                     "content": body,
-                    "content_zh": content_zh,
                     "metadata": {
                         "license": getattr(metadata, "license", None),
                         "compatibility": getattr(metadata, "compatibility", None),
@@ -533,6 +522,7 @@ def create_app() -> FastAPI:
                     "file_path": str(skill_path),
                     "language": language,
                     "translation_available": translation_available,
+                    "encoded_path": encoded_path,
                 },
             )
         except Exception as e:
@@ -543,11 +533,61 @@ def create_app() -> FastAPI:
                     "error": f"Error loading skill: {str(e)}",
                     "skill_name": "Error",
                     "content": "",
-                    "content_zh": None,
                     "metadata": {},
                     "language": language,
                     "translation_available": False,
                 },
             )
+
+    @app.post("/translate/{encoded_path}")
+    async def translate_skill(request: Request, encoded_path: str) -> Dict[str, Any]:
+        """Translate skill content to Chinese on demand."""
+        from skill_hub.ai import ContentTranslator
+
+        config = _load_config()
+
+        if not config.ai.enabled:
+            return {"success": False, "message": "AI translation is disabled"}
+
+        try:
+            # Decode the path
+            skill_path = base64.urlsafe_b64decode(encoded_path.encode()).decode()
+            skill_file = Path(skill_path)
+
+            if not skill_file.exists():
+                return {"success": False, "message": "Skill file not found"}
+
+            # Read and parse the skill file
+            result = parse_skill_file_from_path(skill_file)
+            if not result:
+                return {"success": False, "message": "Failed to parse skill file"}
+
+            _, body = result
+
+            # Translate content
+            translator = ContentTranslator(config.ai)
+            available, status = translator.is_available()
+
+            if not available:
+                return {"success": False, "message": status}
+
+            # Detect language
+            detected_lang = translator.detect_language(body)
+            if detected_lang != "en":
+                return {
+                    "success": False,
+                    "message": "Translation is currently optimized for English-to-Chinese. This content appears to be in a different language.",
+                }
+
+            translated = translator.translate_to_chinese(body)
+
+            if not translated:
+                return {"success": False, "message": "Translation failed"}
+
+            return {"success": True, "translated_content": translated}
+
+        except Exception as e:
+            logger.error(f"Translation failed: {e}")
+            return {"success": False, "message": f"Translation error: {str(e)}"}
 
     return app

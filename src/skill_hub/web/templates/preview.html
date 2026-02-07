@@ -206,45 +206,33 @@
             </div>
             {% endif %}
 
+            <!-- Translate Button -->
+            {% if translation_available %}
+            <div class="mb-4 flex justify-end">
+                <button id="translate-btn" 
+                        onclick="translateContent()"
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="translate-spinner" class="hidden">
+                        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
+                    <span id="translate-icon">🌐</span>
+                    <span id="translate-text">Translate to Chinese</span>
+                </button>
+            </div>
+            {% endif %}
+
             <!-- Markdown Content -->
-            {% if content_zh %}
-            <!-- Bilingual View -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-700">📝 English</h3>
-                        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Original</span>
-                    </div>
-                    <div id="markdown-content-en" class="markdown-body">
-                        <!-- Rendered English markdown will go here -->
-                    </div>
-                </div>
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-700">📝 中文</h3>
-                        <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">AI Translation</span>
-                    </div>
-                    <div id="markdown-content-zh" class="markdown-body">
-                        <!-- Rendered Chinese markdown will go here -->
+            <div id="content-container">
+                <!-- Single Language View (default) -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+                    <div id="markdown-content" class="markdown-body">
+                        <!-- Rendered markdown will go here -->
                     </div>
                 </div>
             </div>
-            {% else %}
-            <!-- Single Language View -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-                <div id="markdown-content" class="markdown-body">
-                    <!-- Rendered markdown will go here -->
-                </div>
-            </div>
-            {% if translation_available and not content_zh %}
-            <div class="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-                <p class="text-sm text-blue-800">
-                    💡 <strong>Translation available:</strong> This content appears to be in Chinese or mixed language. 
-                    AI translation is currently optimized for English-to-Chinese translation.
-                </p>
-            </div>
-            {% endif %}
-            {% endif %}
 
             <!-- File Path -->
             {% if file_path %}
@@ -260,21 +248,121 @@
     <script>
         // Render markdown content
         const markdownContent = {{ content|tojson }};
-        const markdownContentZh = {{ content_zh|tojson }};
+        const encodedPath = {{ encoded_path|tojson }};
+        let translatedContent = null;
+        let bilingualMode = false;
 
-        if (markdownContentZh) {
-            // Bilingual view - render both English and Chinese
+        // Initial render - single language
+        if (markdownContent) {
+            document.getElementById('markdown-content').innerHTML = marked.parse(markdownContent);
+        }
+
+        async function translateContent() {
+            const btn = document.getElementById('translate-btn');
+            const spinner = document.getElementById('translate-spinner');
+            const text = document.getElementById('translate-text');
+            const icon = document.getElementById('translate-icon');
+
+            if (bilingualMode) {
+                // Switch back to single view
+                showSingleView();
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-green-600', 'hover:bg-green-700');
+                text.textContent = 'Translate to Chinese';
+                icon.textContent = '🌐';
+                bilingualMode = false;
+                return;
+            }
+
+            // Show loading state
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            text.textContent = 'Translating...';
+            icon.textContent = '';
+
+            try {
+                const response = await fetch(`/translate/${encodedPath}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    translatedContent = result.translated_content;
+                    showBilingualView();
+                    bilingualMode = true;
+                    
+                    // Update button to "Show Original Only"
+                    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    text.textContent = 'Show Original Only';
+                    icon.textContent = '📝';
+                } else {
+                    alert('Translation failed: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Translation error:', error);
+                alert('Translation failed. Please try again.');
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                if (!bilingualMode) {
+                    text.textContent = 'Translate to Chinese';
+                    icon.textContent = '🌐';
+                }
+            }
+        }
+
+        function showBilingualView() {
+            const container = document.getElementById('content-container');
+            container.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-700">📝 English</h3>
+                            <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Original</span>
+                        </div>
+                        <div id="markdown-content-en" class="markdown-body">
+                            <!-- Rendered English markdown -->
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-700">📝 中文</h3>
+                            <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">AI Translation</span>
+                        </div>
+                        <div id="markdown-content-zh" class="markdown-body">
+                            <!-- Rendered Chinese markdown -->
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Render both contents
             if (markdownContent) {
                 document.getElementById('markdown-content-en').innerHTML = marked.parse(markdownContent);
             }
-            document.getElementById('markdown-content-zh').innerHTML = marked.parse(markdownContentZh);
-        } else {
-            // Single language view
+            if (translatedContent) {
+                document.getElementById('markdown-content-zh').innerHTML = marked.parse(translatedContent);
+            }
+        }
+
+        function showSingleView() {
+            const container = document.getElementById('content-container');
+            container.innerHTML = `
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+                    <div id="markdown-content" class="markdown-body">
+                        <!-- Rendered markdown -->
+                    </div>
+                </div>
+            `;
+            
+            // Render original content
             if (markdownContent) {
-                const contentDiv = document.getElementById('markdown-content');
-                if (contentDiv) {
-                    contentDiv.innerHTML = marked.parse(markdownContent);
-                }
+                document.getElementById('markdown-content').innerHTML = marked.parse(markdownContent);
             }
         }
 
