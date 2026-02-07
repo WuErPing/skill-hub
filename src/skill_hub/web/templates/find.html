@@ -107,12 +107,20 @@
                     const scorePercent = Math.round(match.score * 100);
                     const scoreColor = scorePercent >= 80 ? 'bg-green-500' : (scorePercent >= 60 ? 'bg-yellow-500' : 'bg-gray-400');
                     
+                    const skillPath = match.path || '';
+                    const encodedPath = match.encoded_path || '';
+                    const pathDisplay = skillPath ? `<code class="text-xs text-gray-500">${skillPath}</code>` : '';
+                    const previewUrl = encodedPath ? `/preview/${encodedPath}` : '#';
+                    
                     html += `
                         <div class="border rounded-lg p-4 hover:shadow-md transition">
                             <div class="flex items-start justify-between mb-2">
                                 <div class="flex items-center gap-2">
                                     <span class="text-xl">🎯</span>
-                                    <span class="font-semibold text-lg text-gray-900">${match.name}</span>
+                                    <a href="${previewUrl}" 
+                                       target="_blank"
+                                       class="font-semibold text-lg text-blue-600 hover:text-blue-800 hover:underline"
+                                       title="Preview ${match.name}">${match.name}</a>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <div class="w-24 bg-gray-200 rounded-full h-2.5">
@@ -126,6 +134,7 @@
                                 <summary class="cursor-pointer text-blue-600 hover:text-blue-800">Why this matches</summary>
                                 <p class="mt-2 pl-4 text-gray-600 italic">${match.reasoning}</p>
                             </details>
+                            ${pathDisplay ? `<div class="mt-2 pt-2 border-t border-gray-200">${pathDisplay}</div>` : ''}
                         </div>
                     `;
                 });

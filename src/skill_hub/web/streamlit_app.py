@@ -363,6 +363,8 @@ def _page_find(config_manager: ConfigManager) -> None:
                 st.progress(match.score, text=f"Relevance: {score_pct}%")
                 st.write(f"**Description:** {match.description}")
                 st.write(f"**Why this matches:** _{match.reasoning}_")
+                if match.path:
+                    st.caption(f"📄 Source: `{match.path}`")
 
 
 def main() -> None:

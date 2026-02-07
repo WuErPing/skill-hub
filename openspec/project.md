@@ -1,7 +1,7 @@
 # Project Context
 
 ## Purpose
-Skill-hub is a unified skill management system that discovers, synchronizes, and distributes AI coding agent skills across multiple platforms (Cursor, Claude, Qoder, OpenCode). It provides a centralized repository at ~/.skills/ and ensures all agents have access to the same skill definitions.
+Skill-hub is a unified skill management system that discovers, synchronizes, and distributes AI coding agent skills across multiple platforms (Antigravity, Claude, Codex, Copilot, Cursor, Gemini CLI, OpenCode, Qoder, Windsurf). It provides a centralized repository at `~/.agents/skills/` and ensures all agents have access to the same skill definitions.
 
 ## Tech Stack
 - **Language**: Python 3.9+
@@ -47,19 +47,24 @@ Skills are reusable instruction sets for AI coding agents, defined in SKILL.md f
 - Stored in hierarchical directories: `<location>/skills/<skill-name>/SKILL.md`
 - Can be project-local or global
 
-### Supported Agents (Phase 1)
-1. **Cursor**: Uses `.cursor/skills/` and `~/.cursor/skills/`
+### Supported Agents
+1. **Antigravity**: Uses `.agent/skills/` and `~/.antigravity/skills/`
 2. **Claude**: Uses `.claude/skills/` and `~/.claude/skills/`
-3. **Qoder**: Uses `.qoder/skills/` and `~/.qoder/skills/`
-4. **OpenCode**: Uses `.opencode/skills/` and `~/.config/opencode/skills/`
+3. **Codex**: Uses `.codex/skills/` and `~/.codex/skills/`
+4. **GitHub Copilot**: Uses `.github/skills/` and `~/.copilot/skills/`
+5. **Cursor**: Uses `.cursor/skills/` and `~/.cursor/skills/`
+6. **Gemini CLI**: Uses `.gemini/skills/` and `~/.gemini/skills/`
+7. **OpenCode**: Uses `.opencode/skills/` and `~/.config/opencode/skills/`
+8. **Qoder**: Uses `.qoder/skills/` and `~/.qoder/skills/`
+9. **Windsurf**: Uses `.windsurf/skills/` and `~/.codeium/windsurf/skills/`
 
 ### Skill Discovery Sources
 
 Priority order (highest to lowest):
 1. **Shared directory**: `.agents/skills/` (project-local, agent-agnostic)
-2. **Agent-specific project-local**: `.cursor/skills/`, `.claude/skills/`, `.qoder/skills/`, `.opencode/skills/`
-3. **Agent-specific global**: `~/.cursor/skills/`, `~/.claude/skills/`, `~/.qoder/skills/`, `~/.config/opencode/skills/`
-4. **Central hub**: `~/.skills/` (synchronization target)
+2. **Agent-specific project-local**: `.cursor/skills/`, `.claude/skills/`, `.qoder/skills/`, `.opencode/skills/`, etc.
+3. **Agent-specific global**: `~/.cursor/skills/`, `~/.claude/skills/`, `~/.qoder/skills/`, `~/.config/opencode/skills/`, etc.
+4. **Central hub**: `~/.agents/skills/` (synchronization target)
 
 The `.agents/skills/` standard (introduced in v0.2.0) provides a unified, agent-agnostic location for project-specific skills that can be shared across all AI coding agents and version controlled with the project.
 

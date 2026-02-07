@@ -40,11 +40,17 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for skill in skills %}
                     <tr class="hover:bg-gray-50 transition">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
-                            title="{{ skill.name }} - Click to view skill details">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             <div class="flex items-center gap-2">
                                 <span>🎯</span>
+                                {% if skill.encoded_path %}
+                                <a href="/preview/{{ skill.encoded_path }}"
+                                   target="_blank"
+                                   class="text-blue-600 hover:text-blue-800 hover:underline"
+                                   title="Preview {{ skill.name }}">{{ skill.name }}</a>
+                                {% else %}
                                 <span>{{ skill.name }}</span>
+                                {% endif %}
                             </div>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-700">

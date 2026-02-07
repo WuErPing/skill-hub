@@ -40,6 +40,7 @@ skill-hub solves these problems by:
 - 📊 **Rich CLI**: Beautiful terminal output with tables and progress indicators
 - 🌐 **Web Interface**: Modern FastAPI + HTMX + Tailwind CSS web UI with real-time updates
 - 📦 **Remote Repositories**: Pull skills from official and community repositories
+- 👁️ **Skill Preview**: View skill details with markdown rendering in the browser
 
 ## Installation
 
@@ -164,23 +165,17 @@ skill-hub web --no-browser
 
 *Dashboard showing skill count, repositories, quick actions, and getting started guide with the new `.agents/skills/` standard.*
 
-**Agents - Health Check & Shared Skills Detection**
+**Skill Preview - Markdown Rendering**
 
-![Agents Health Check](docs/images/agents-health.png)
+![Skill Preview](docs/images/skill-preview.png)
 
-*Health check results showing agent status, global paths, and shared skills detection.*
+*Skill preview page showing markdown-rendered skill content with metadata, license, and compatibility information. Click any skill name in Hub Skills or AI Skill Finder to preview.*
 
-**Skills Hub - Central Repository View**
-
-![Skills Hub](docs/images/skills-hub.png)
-
-*View all skills in your central hub with descriptions and discovery information.*
-
-**Sync - Bi-directional Synchronization**
-
-![Sync Operations](docs/images/sync.png)
-
-*Sync page with three modes: pull+push, pull only, or push only.*
+<!-- Additional screenshots coming soon:
+- Agents page with health check and shared skills detection
+- Skills hub central repository view
+- Sync operations with three modes
+-->
 
 The web interface provides:
 - 📊 Dashboard with quick actions and metrics
@@ -189,6 +184,7 @@ The web interface provides:
 - 🤖 Agent health checks with shared skills detection
 - ⚙️ Configuration viewer
 - 🔍 Skill discovery
+- 👁️ Skill preview with markdown rendering
 
 ## Setup for New Users
 
@@ -291,17 +287,17 @@ Add to your shell profile (`~/.zshrc`, `~/.bashrc`) to persist across sessions.
 
 ## Supported Agents
 
-| Agent | Project-Local | Global |
-|-------|--------------|--------|
-| **Antigravity** | `.agent/skills/` | `~/.gemini/antigravity/skills/` |
-| **Claude** | `.claude/skills/` | `~/.claude/skills/` |
-| **Codex** | `.codex/skills/` | `~/.codex/skills/` |
-| **GitHub Copilot** | `.github/skills/` | `~/.copilot/skills/` |
-| **Cursor** | `.cursor/skills/` | `~/.cursor/skills/` |
-| **Gemini CLI** | `.gemini/skills/` | `~/.gemini/skills/` |
-| **OpenCode** | `.opencode/skills/` | `~/.config/opencode/skills/` |
-| **Qoder** | `.qoder/skills/` | `~/.qoder/skills/` |
-| **Windsurf** | `.windsurf/skills/` | `~/.codeium/windsurf/skills/` |
+| Agent | Project-Local | Global | Status |
+|-------|--------------|--------|--------|
+| **Antigravity** | `.agent/skills/` | `~/.antigravity/skills/` | ✅ v0.2.0 |
+| **Claude** | `.claude/skills/` | `~/.claude/skills/` | ✅ v0.1.0 |
+| **Codex** | `.codex/skills/` | `~/.codex/skills/` | ✅ v0.2.0 |
+| **GitHub Copilot** | `.github/skills/` | `~/.copilot/skills/` | ✅ v0.2.0 |
+| **Cursor** | `.cursor/skills/` | `~/.cursor/skills/` | ✅ v0.1.0 |
+| **Gemini CLI** | `.gemini/skills/` | `~/.gemini/skills/` | ✅ v0.2.0 |
+| **OpenCode** | `.opencode/skills/` | `~/.config/opencode/skills/` | ✅ v0.1.0 |
+| **Qoder** | `.qoder/skills/` | `~/.qoder/skills/` | ✅ v0.1.0 |
+| **Windsurf** | `.windsurf/skills/` | `~/.codeium/windsurf/skills/` | ✅ v0.2.0 |
 
 ## Shared Skills Directory (`.agents/skills/`)
 
@@ -503,6 +499,8 @@ skill-hub web --no-browser              # Start without opening browser
 - **Dashboard**: Quick init, pull, health check, and metrics with `.agents/skills/` standard info
 - **Sync**: Bi-directional, pull-only, or push-only sync with real-time results
 - **Hub Skills**: View all skills in central hub with descriptions and discovery sources
+- **AI Skill Finder**: AI-powered semantic search to find relevant skills
+- **Skill Preview**: Click any skill name to view full content with markdown rendering
 - **Repositories**: Add/list/remove remote repos, pull skills from GitHub
 - **Agents**: List adapters and run health checks with shared skills detection
 - **Config**: View current configuration JSON
@@ -743,20 +741,24 @@ skill-hub uses a configuration file at `~/.agents/skills/.skill-hub/config.json`
 
 ## Roadmap
 
-### Phase 1 (Completed)
+### Phase 1 (Completed - v0.1.0)
 - ✅ Multi-agent skill discovery
 - ✅ Bi-directional synchronization
-- ✅ Support for 9+ AI coding assistants (Antigravity, Claude, Codex, Copilot, Cursor, Gemini CLI, OpenCode, Qoder, Windsurf)
+- ✅ Support for 4 AI coding assistants (Cursor, Claude, Qoder, OpenCode)
 - ✅ Basic conflict detection
-- ✅ Shared `.agents/skills/` directory support
-
-### Phase 2 (Completed)
 - ✅ Remote repository support (pull from GitHub, etc.)
 - ✅ Configuration management system
+- ✅ Web interface foundations
+
+### Phase 2 (Completed - v0.2.0)
+- ✅ Expanded ecosystem support (9+ agents: Antigravity, Claude, Codex, Copilot, Cursor, Gemini CLI, OpenCode, Qoder, Windsurf)
+- ✅ Shared `.agents/skills/` directory standard
+- ✅ Unified hub location (`~/.agents/skills/`)
 - ✅ Repository metadata tracking
-- ✅ Web interface (FastAPI + HTMX + Tailwind CSS, Streamlit, Flask)
+- ✅ Enhanced web interface (FastAPI + HTMX + Tailwind CSS, Streamlit, Flask)
 - ✅ Auto-open browser on web command
 - ✅ Official repository integrations (Anthropic, Vercel Labs, Cloudflare, Supabase, Qoder Community)
+- ✅ Internationalization (i18n) support for English and Chinese
 
 ### Phase 3 (Future)
 - 🔲 File watching for automatic sync

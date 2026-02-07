@@ -84,6 +84,7 @@ class SkillMatch:
     description: str
     score: float  # 0.0 to 1.0
     reasoning: str
+    path: str = ""  # Path to skill file in hub
 
 
 @dataclass

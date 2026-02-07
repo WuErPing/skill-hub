@@ -32,7 +32,7 @@ class AISkillFinder:
         """Load all skills from the hub with their metadata.
 
         Returns:
-            List of skill dicts with 'name' and 'description' keys
+            List of skill dicts with 'name', 'description', and 'path' keys
         """
         skills = []
         skill_names = self.sync_engine.list_hub_skills()
@@ -48,16 +48,17 @@ class AISkillFinder:
                     skills.append({
                         "name": metadata.name,
                         "description": metadata.description,
+                        "path": str(skill_file),
                     })
 
         return skills
 
-    def _parse_response(self, response: str, skills_map: dict) -> List[SkillMatch]:
+    def _parse_response(self, response: str, skills_data: dict) -> List[SkillMatch]:
         """Parse LLM response into SkillMatch objects.
 
         Args:
             response: Raw LLM response text
-            skills_map: Map of skill name to description
+            skills_data: Map of skill name to dict with 'description' and 'path'
 
         Returns:
             List of SkillMatch objects
@@ -78,17 +79,19 @@ class AISkillFinder:
         matches = []
         for item in data:
             skill_name = item.get("skill", "")
-            if skill_name not in skills_map:
+            if skill_name not in skills_data:
                 continue
 
             score = float(item.get("score", 0.0))
             reasoning = item.get("reasoning", "")
+            skill_info = skills_data[skill_name]
 
             matches.append(SkillMatch(
                 name=skill_name,
-                description=skills_map[skill_name],
+                description=skill_info["description"],
                 score=min(1.0, max(0.0, score)),  # Clamp to [0, 1]
                 reasoning=reasoning,
+                path=skill_info["path"],
             ))
 
         # Sort by score descending
@@ -118,8 +121,8 @@ class AISkillFinder:
         if not skills:
             return [], "No skills found in hub. Run 'skill-hub pull' first."
 
-        # Build skill name -> description map
-        skills_map = {s["name"]: s["description"] for s in skills}
+        # Build skill name -> data map (description and path)
+        skills_data = {s["name"]: {"description": s["description"], "path": s["path"]} for s in skills}
 
         # Build prompts
         system_prompt, user_prompt = build_prompt(query, skills, top_k)
@@ -128,7 +131,7 @@ class AISkillFinder:
         error_msg = None
         try:
             response = self.provider.complete(system_prompt, user_prompt)
-            matches = self._parse_response(response, skills_map)
+            matches = self._parse_response(response, skills_data)
             return matches[:top_k], None
         except ConnectionError as e:
             error_msg = str(e)
@@ -139,7 +142,7 @@ class AISkillFinder:
             try:
                 logger.info("Trying fallback provider...")
                 response = self.fallback_provider.complete(system_prompt, user_prompt)
-                matches = self._parse_response(response, skills_map)
+                matches = self._parse_response(response, skills_data)
                 return matches[:top_k], None
             except Exception as e:
                 logger.warning(f"Fallback provider also failed: {e}")

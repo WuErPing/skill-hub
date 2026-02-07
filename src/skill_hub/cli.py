@@ -735,6 +735,7 @@ def find(ctx: click.Context, query: str, top: int, output_json: bool) -> None:
                 "description": m.description,
                 "score": m.score,
                 "reasoning": m.reasoning,
+                "path": m.path,
             }
             for m in matches
         ]
@@ -759,6 +760,9 @@ def find(ctx: click.Context, query: str, top: int, output_json: bool) -> None:
             table.add_row(match.name, score_pct, desc, reasoning)
 
         console.print(table)
+        
+        # Show file paths hint
+        console.print(f"\n[dim]💡 Tip: Use --json to see full file paths[/dim]")
 
 
 def main() -> None:
