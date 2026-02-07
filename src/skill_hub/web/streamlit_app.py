@@ -304,6 +304,67 @@ def _page_pull(config_manager: ConfigManager, run_inline: bool = False) -> None:
         st.write(data)
 
 
+def _page_find(config_manager: ConfigManager) -> None:
+    st.title("AI Skill Finder")
+
+    config = _load_config(config_manager)
+
+    # Status indicator
+    if config.ai.enabled:
+        st.success(f"AI finder is enabled using **{config.ai.provider}** provider")
+    else:
+        st.warning("AI finder is disabled. Enable it in configuration.")
+        return
+
+    # Search form
+    query = st.text_area(
+        "Describe your problem or question:",
+        placeholder="e.g., How do I handle git merge conflicts? / I need help with React component testing...",
+        height=100,
+    )
+
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        top_k = st.selectbox("Results:", [3, 5, 10], index=1)
+
+    if st.button("Find Skills", type="primary", use_container_width=True):
+        if not query.strip():
+            st.error("Please enter a query")
+            return
+
+        from skill_hub.ai import AISkillFinder
+
+        finder = AISkillFinder(config)
+
+        # Check availability
+        available, status = finder.is_available()
+        if not available:
+            st.error(status)
+            return
+
+        with st.spinner(f"Searching with {config.ai.provider}..."):
+            matches, error = finder.find_skills(query, top_k=top_k)
+
+        if error:
+            st.error(f"Error: {error}")
+            return
+
+        if not matches:
+            st.info("No matching skills found for your query")
+            return
+
+        st.write(f"**Found {len(matches)} matching skills:**")
+        st.write("")
+
+        for match in matches:
+            score_pct = int(match.score * 100)
+
+            with st.expander(f"🎯 **{match.name}** — {score_pct}% match", expanded=True):
+                st.progress(match.score, text=f"Relevance: {score_pct}%")
+                st.write(f"**Description:** {match.description}")
+                st.write(f"**Why this matches:** _{match.reasoning}_")
+
+
 def main() -> None:
     st.set_page_config(page_title="skill-hub Web", layout="wide")
 
@@ -316,6 +377,7 @@ def main() -> None:
             "Dashboard",
             "Sync",
             "Hub Skills",
+            "AI Finder",
             "Repositories",
             "Agents",
             "Config",
@@ -329,6 +391,8 @@ def main() -> None:
         _page_sync(config_manager)
     elif page == "Hub Skills":
         _page_skills(config_manager)
+    elif page == "AI Finder":
+        _page_find(config_manager)
     elif page == "Repositories":
         _page_repos(config_manager)
     elif page == "Agents":

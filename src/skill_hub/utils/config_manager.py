@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from skill_hub.models import AgentConfig, Config, RepositoryConfig
+from skill_hub.models import AgentConfig, AIConfig, Config, RepositoryConfig
 from skill_hub.utils.path_utils import ensure_directory, expand_home
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,10 @@ class ConfigManager:
             for repo_data in data.get("repositories", []):
                 repositories.append(RepositoryConfig(**repo_data))
 
+            # Parse AI config
+            ai_data = data.get("ai", {})
+            ai_config = AIConfig(**ai_data) if ai_data else AIConfig()
+
             # Create config
             config = Config(
                 version=data.get("version", "1.0.0"),
@@ -63,6 +67,7 @@ class ConfigManager:
                 agents=agents,
                 repositories=repositories,
                 sync=data.get("sync", {}),
+                ai=ai_config,
             )
 
             # Validate language code
@@ -123,6 +128,15 @@ class ConfigManager:
                 ],
                 "sync": config.sync,
                 "language": config.language,
+                "ai": {
+                    "enabled": config.ai.enabled,
+                    "provider": config.ai.provider,
+                    "ollama_url": config.ai.ollama_url,
+                    "ollama_model": config.ai.ollama_model,
+                    "api_url": config.ai.api_url,
+                    "api_key": config.ai.api_key,
+                    "api_model": config.ai.api_model,
+                },
             }
 
             with open(self.config_path, "w", encoding="utf-8") as f:

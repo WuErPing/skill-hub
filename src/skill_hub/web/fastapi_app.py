@@ -344,4 +344,63 @@ def create_app() -> FastAPI:
         else:
             return {"success": False, "message": "Failed to save configuration"}
 
+    @app.get("/find", response_class=HTMLResponse)
+    async def find_page(request: Request) -> HTMLResponse:
+        """AI Skill Finder page fragment."""
+        config = _load_config()
+        language = _get_language(request)
+
+        return templates.TemplateResponse(
+            "find.html",
+            {
+                "request": request,
+                "ai_enabled": config.ai.enabled,
+                "ai_provider": config.ai.provider,
+                "language": language,
+            },
+        )
+
+    @app.post("/find")
+    async def find_skills(request: Request) -> Dict[str, Any]:
+        """Find relevant skills using AI-powered search."""
+        from skill_hub.ai import AISkillFinder
+
+        form = await request.form()
+        query = form.get("query", "").strip()
+        top_k = int(form.get("top_k", 5))
+
+        if not query:
+            return {"success": False, "message": "Query is required"}
+
+        config = _load_config()
+
+        if not config.ai.enabled:
+            return {"success": False, "message": "AI finder is disabled in configuration"}
+
+        finder = AISkillFinder(config)
+
+        # Check availability
+        available, status = finder.is_available()
+        if not available:
+            return {"success": False, "message": status}
+
+        # Find skills
+        matches, error = finder.find_skills(query, top_k=top_k)
+
+        if error:
+            return {"success": False, "message": error}
+
+        return {
+            "success": True,
+            "matches": [
+                {
+                    "name": m.name,
+                    "description": m.description,
+                    "score": m.score,
+                    "reasoning": m.reasoning,
+                }
+                for m in matches
+            ],
+        }
+
     return app

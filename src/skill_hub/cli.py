@@ -686,6 +686,81 @@ def pull(ctx: click.Context, url: Optional[str]) -> None:
     console.print(f"\n[bold green]✓[/bold green] Pull completed: {total_skills} skills imported")
 
 
+@cli.command()
+@click.argument("query")
+@click.option("--top", "-n", default=5, type=int, help="Number of results to return")
+@click.option("--json", "output_json", is_flag=True, help="Output as JSON")
+@click.pass_context
+def find(ctx: click.Context, query: str, top: int, output_json: bool) -> None:
+    """Find relevant skills using AI-powered search.
+
+    Example: skill-hub find "How do I handle git merge conflicts?"
+    """
+    from skill_hub.ai import AISkillFinder
+
+    config = ctx.obj["config"]
+
+    # Check if AI is enabled
+    if not config.ai.enabled:
+        console.print("[yellow]AI finder is disabled in configuration[/yellow]")
+        return
+
+    finder = AISkillFinder(config)
+
+    # Check availability
+    available, status = finder.is_available()
+    if not available:
+        console.print(f"[red]{status}[/red]")
+        return
+
+    console.print(f"[bold]Searching for skills...[/bold] ({status})\n")
+
+    # Find skills
+    matches, error = finder.find_skills(query, top_k=top)
+
+    if error:
+        console.print(f"[red]Error:[/red] {error}")
+        return
+
+    if not matches:
+        console.print("[yellow]No matching skills found[/yellow]")
+        return
+
+    if output_json:
+        import json as json_module
+
+        result = [
+            {
+                "name": m.name,
+                "description": m.description,
+                "score": m.score,
+                "reasoning": m.reasoning,
+            }
+            for m in matches
+        ]
+        print(json_module.dumps(result, indent=2))
+    else:
+        console.print(f"[bold green]Found {len(matches)} matching skills:[/bold green]\n")
+
+        table = Table(show_header=True)
+        table.add_column("Skill Name", style="cyan")
+        table.add_column("Score", justify="right")
+        table.add_column("Description")
+        table.add_column("Reasoning", style="dim")
+
+        for match in matches:
+            score_pct = f"{match.score * 100:.0f}%"
+            desc = match.description[:50]
+            if len(match.description) > 50:
+                desc += "..."
+            reasoning = match.reasoning[:40]
+            if len(match.reasoning) > 40:
+                reasoning += "..."
+            table.add_row(match.name, score_pct, desc, reasoning)
+
+        console.print(table)
+
+
 def main() -> None:
     """Main entry point."""
     try:

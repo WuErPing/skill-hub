@@ -1,0 +1,141 @@
+<div>
+    <h2 class="text-3xl font-bold text-gray-900 mb-6">AI Skill Finder</h2>
+    
+    <div class="bg-white rounded-lg shadow mb-6 p-6">
+        <!-- Status indicator -->
+        <div class="mb-4 p-3 {% if ai_enabled %}bg-green-50 border-l-4 border-green-500{% else %}bg-yellow-50 border-l-4 border-yellow-500{% endif %} rounded">
+            <p class="text-sm {% if ai_enabled %}text-green-800{% else %}text-yellow-800{% endif %}">
+                {% if ai_enabled %}
+                <strong>Status:</strong> AI finder is enabled using <code class="px-1 bg-green-100 rounded">{{ ai_provider }}</code> provider
+                {% else %}
+                <strong>Status:</strong> AI finder is disabled. Enable it in configuration.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Search form -->
+        <form id="find-form" hx-post="/find" hx-target="#results" hx-swap="innerHTML" hx-indicator="#spinner">
+            <div class="mb-4">
+                <label for="query" class="block text-sm font-medium text-gray-700 mb-2">
+                    Describe your problem or question
+                </label>
+                <textarea 
+                    name="query" 
+                    id="query"
+                    rows="3"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    placeholder="e.g., How do I handle git merge conflicts? / I need help with React component testing..."
+                    {% if not ai_enabled %}disabled{% endif %}
+                ></textarea>
+            </div>
+            
+            <div class="flex items-center gap-4 mb-4">
+                <div>
+                    <label for="top_k" class="block text-sm font-medium text-gray-700 mb-1">
+                        Number of results
+                    </label>
+                    <select name="top_k" id="top_k" 
+                            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            {% if not ai_enabled %}disabled{% endif %}>
+                        <option value="3">3</option>
+                        <option value="5" selected>5</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+                
+                <div class="flex-1"></div>
+                
+                <button type="submit" 
+                        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        {% if not ai_enabled %}disabled{% endif %}>
+                    <span id="spinner" class="htmx-indicator">
+                        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
+                    <span>Find Skills</span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Results container -->
+        <div id="results">
+            <!-- Results will be loaded here via HTMX -->
+            <div class="text-center py-12 text-gray-400">
+                <div class="text-5xl mb-4">🔍</div>
+                <p>Enter a query above to find relevant skills</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Handle form submission response
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.pathInfo.requestPath === '/find') {
+            try {
+                const response = JSON.parse(evt.detail.xhr.response);
+                const resultsDiv = document.getElementById('results');
+                
+                if (!response.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                            <p class="text-red-800"><strong>Error:</strong> ${response.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (!response.matches || response.matches.length === 0) {
+                    resultsDiv.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="text-4xl mb-4">🤔</div>
+                            <p>No matching skills found for your query</p>
+                            <p class="text-sm mt-2">Try a different description or check if skills are available in the hub</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = `
+                    <h3 class="text-lg font-semibold mb-4">Found ${response.matches.length} matching skills:</h3>
+                    <div class="space-y-4">
+                `;
+                
+                response.matches.forEach(function(match, index) {
+                    const scorePercent = Math.round(match.score * 100);
+                    const scoreColor = scorePercent >= 80 ? 'bg-green-500' : (scorePercent >= 60 ? 'bg-yellow-500' : 'bg-gray-400');
+                    
+                    html += `
+                        <div class="border rounded-lg p-4 hover:shadow-md transition">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">🎯</span>
+                                    <span class="font-semibold text-lg text-gray-900">${match.name}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-24 bg-gray-200 rounded-full h-2.5">
+                                        <div class="${scoreColor} h-2.5 rounded-full" style="width: ${scorePercent}%"></div>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-600">${scorePercent}%</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-700 mb-2">${match.description}</p>
+                            <details class="text-sm">
+                                <summary class="cursor-pointer text-blue-600 hover:text-blue-800">Why this matches</summary>
+                                <p class="mt-2 pl-4 text-gray-600 italic">${match.reasoning}</p>
+                            </details>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                resultsDiv.innerHTML = html;
+                
+            } catch (e) {
+                console.error('Failed to parse response:', e);
+            }
+        }
+    });
+</script>

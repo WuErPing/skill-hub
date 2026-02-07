@@ -64,6 +64,29 @@ class SkillHubMetadata:
 
 
 @dataclass
+class AIConfig:
+    """AI provider configuration."""
+
+    enabled: bool = True
+    provider: str = "ollama"  # ollama or openai
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "gpt-oss:120b"
+    api_url: str = ""  # OpenAI-compatible endpoint
+    api_key: str = ""
+    api_model: str = "gpt-4"
+
+
+@dataclass
+class SkillMatch:
+    """A skill match result from AI finder."""
+
+    name: str
+    description: str
+    score: float  # 0.0 to 1.0
+    reasoning: str
+
+
+@dataclass
 class AgentConfig:
     """Configuration for an agent adapter."""
 
@@ -112,3 +135,4 @@ class Config:
             "remote_priority": False,
         }
     )
+    ai: AIConfig = field(default_factory=AIConfig)
