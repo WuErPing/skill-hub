@@ -35,6 +35,10 @@ def create_app() -> FastAPI:
     def _load_config() -> Config:
         return config_manager.load(silent=True)
 
+    def _save_config(config: Config) -> None:
+        """Save configuration to disk."""
+        config_manager.save(config)
+
     @app.middleware("http")
     async def language_middleware(request: Request, call_next):
         """Set language for each request based on cookie, config, or headers."""
@@ -353,6 +357,83 @@ def create_app() -> FastAPI:
                 "language": language,
             },
         )
+
+    @app.post("/config/ai")
+    async def update_ai_config(request: Request) -> Dict[str, Any]:
+        """Update AI configuration."""
+        try:
+            form = await request.form()
+            config = _load_config()
+
+            # Update AI config
+            config.ai.enabled = form.get("ai_enabled") == "on"
+            config.ai.provider = form.get("provider", "ollama")
+            config.ai.ollama_url = form.get("ollama_url", "http://localhost:11434")
+            config.ai.ollama_model = form.get("ollama_model", "gpt-oss:120b")
+            config.ai.api_url = form.get("api_url", "")
+            config.ai.api_key = form.get("api_key", "")
+            config.ai.api_model = form.get("api_model", "gpt-4")
+
+            # Save config
+            _save_config(config)
+
+            return {"success": True, "message": "AI configuration updated successfully"}
+        except Exception as e:
+            logger.error(f"Failed to update AI config: {e}")
+            return {"success": False, "message": str(e)}
+
+    @app.post("/config/ai/test")
+    async def test_ai_connection(request: Request) -> Dict[str, Any]:
+        """Test AI connection with current form values."""
+        from skill_hub.ai import ContentTranslator
+        from skill_hub.models import AIConfig
+
+        try:
+            form = await request.form()
+
+            # Create temporary config from form data
+            ai_config = AIConfig(
+                enabled=form.get("ai_enabled") == "on",
+                provider=form.get("provider", "ollama"),
+                ollama_url=form.get("ollama_url", "http://localhost:11434"),
+                ollama_model=form.get("ollama_model", "gpt-oss:120b"),
+                api_url=form.get("api_url", ""),
+                api_key=form.get("api_key", ""),
+                api_model=form.get("api_model", "gpt-4"),
+            )
+
+            if not ai_config.enabled:
+                return {"success": False, "message": "AI is disabled"}
+
+            # Test connection
+            translator = ContentTranslator(ai_config)
+            available, status = translator.is_available()
+
+            if not available:
+                return {"success": False, "message": status}
+
+            # Try a simple test
+            test_content = "Hello, this is a test."
+            from skill_hub.ai.providers import create_provider
+
+            provider = create_provider(ai_config)
+            if not provider:
+                return {"success": False, "message": "Failed to create provider"}
+
+            try:
+                response = provider.complete(
+                    "You are a helpful assistant.", "Respond with exactly: OK"
+                )
+                return {
+                    "success": True,
+                    "message": f"Connected to {ai_config.provider} ({ai_config.ollama_model if ai_config.provider == 'ollama' else ai_config.api_model})",
+                }
+            except Exception as e:
+                return {"success": False, "message": f"Connection test failed: {str(e)}"}
+
+        except Exception as e:
+            logger.error(f"AI connection test failed: {e}")
+            return {"success": False, "message": str(e)}
 
     @app.post("/set-language")
     async def set_language(request: Request) -> JSONResponse:
