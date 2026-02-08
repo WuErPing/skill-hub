@@ -137,19 +137,49 @@ skill-hub web --no-browser
 
 ![仪表板](docs/images/dashboard.png)
 
-*仪表板显示技能数量、仓库、快速操作以及包含新 `.agents/skills/` 标准的入门指南。*
+*仪表板显示 54 个中央仓库技能、仓库数量、快速操作以及包含 `.agents/skills/` 标准的入门指南。*
 
-**技能预览 - Markdown 渲染**
+**AI 技能查找器 - 语义搜索界面**
+
+![AI 技能查找器](docs/images/ai-finder.png)
+
+*AI 驱动的技能查找器，支持自然语言搜索。输入类似"git workflow"的查询来查找相关技能，带有匹配分数和推理说明。*
+
+**技能预览 - Markdown 渲染与双语翻译**
 
 ![技能预览](docs/images/skill-preview.png)
 
-*技能预览页面显示 Markdown 渲染的技能内容，包含元数据、许可证和兼容性信息。在中央仓库技能或 AI 技能查找器中点击任意技能名称即可预览。*
+*技能预览页面，支持 Markdown 渲染和按需 AI 翻译为中文。英中双语对照视图，方便比较。*
 
-<!-- 更多截图即将推出：
-- 助手页面，包含健康检查和共享技能检测
-- 技能中心的中央仓库视图
-- 三种模式的同步操作
--->
+**AI/LLM 配置 - 统一提供商设置**
+
+![AI/LLM 配置](docs/images/config-ai.png)
+
+*配置本地 Ollama 或云端 OpenAI 兼容 API。在提供商之间切换、测试连接并管理 API 设置。*
+
+**助手健康检查 - 适配器状态**
+
+![助手健康检查](docs/images/agents-health.png)
+
+*所有 9 个助手适配器的健康检查结果，显示状态、全局路径和 `.agents/skills/` 共享目录检测。*
+
+**技能中心 - 中央仓库视图**
+
+![技能中心](docs/images/skills-hub.png)
+
+*中央仓库显示所有 54 个可用技能及其描述和兼容性。点击任意技能名称即可预览。*
+
+**同步操作 - 三种模式**
+
+![同步操作](docs/images/sync.png)
+
+*在中央仓库和助手之间同步技能，提供三种模式：双向、仅拉取或仅推送同步。*
+
+**仓库管理 - 远程来源**
+
+![仓库管理](docs/images/repositories.png)
+
+*管理远程技能仓库。添加官方来源（Anthropic、Vercel、Cloudflare、Supabase）或自定义仓库。*
 
 Web 界面提供：
 - 📊 仪表板：快速操作、健康检查和指标，包含 `.agents/skills/` 标准信息

@@ -163,19 +163,49 @@ skill-hub web --no-browser
 
 ![Dashboard](docs/images/dashboard.png)
 
-*Dashboard showing skill count, repositories, quick actions, and getting started guide with the new `.agents/skills/` standard.*
+*Dashboard showing 54 hub skills, repository count, quick actions, and getting started guide with the `.agents/skills/` standard.*
 
-**Skill Preview - Markdown Rendering**
+**AI Skill Finder - Semantic Search Interface**
+
+![AI Skill Finder](docs/images/ai-finder.png)
+
+*AI-powered skill finder with natural language search. Enter queries like "git workflow" to find relevant skills with match scores and reasoning.*
+
+**Skill Preview - Markdown Rendering with Bilingual Translation**
 
 ![Skill Preview](docs/images/skill-preview.png)
 
-*Skill preview page showing markdown-rendered skill content with metadata, license, and compatibility information. Click any skill name in Hub Skills or AI Skill Finder to preview.*
+*Skill preview page with markdown rendering and on-demand AI translation to Chinese. Side-by-side bilingual view for easy comparison.*
 
-<!-- Additional screenshots coming soon:
-- Agents page with health check and shared skills detection
-- Skills hub central repository view
-- Sync operations with three modes
--->
+**AI/LLM Configuration - Unified Provider Settings**
+
+![AI/LLM Configuration](docs/images/config-ai.png)
+
+*Configure local Ollama or cloud OpenAI-compatible APIs. Toggle between providers, test connections, and manage API settings.*
+
+**Agents Health Check - Adapter Status**
+
+![Agents Health Check](docs/images/agents-health.png)
+
+*Health check results for all 9 agent adapters showing status, global paths, and `.agents/skills/` shared directory detection.*
+
+**Skills Hub - Central Repository View**
+
+![Skills Hub](docs/images/skills-hub.png)
+
+*Central hub displaying all 54 available skills with descriptions and compatibility. Click any skill name to preview.*
+
+**Sync Operations - Three Modes**
+
+![Sync Operations](docs/images/sync.png)
+
+*Synchronize skills between hub and agents with three modes: bi-directional, pull-only, or push-only sync.*
+
+**Repositories Management - Remote Sources**
+
+![Repositories Management](docs/images/repositories.png)
+
+*Manage remote skill repositories. Add official sources (Anthropic, Vercel, Cloudflare, Supabase) or custom repos.*
 
 The web interface provides:
 - 📊 Dashboard with quick actions and metrics
