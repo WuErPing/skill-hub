@@ -1,0 +1,13 @@
+- [x] Implement CLI `delete` command for global skills with confirmation and `--force` flag
+- [x] Extend `find` command with `--global` and optional `--query` flag
+- [x] Add FastAPI DELETE endpoint `/api/skills/<skill_name>` for global skill deletion
+- [x] Add FastAPI GET endpoint `/api/skills` with `global` and `query` parameters for listing
+- [x] Write unit tests for delete command and API endpoints
+- [x] Extend `find` command with `--global` and optional `--query` flag
+- [x] Add FastAPI DELETE endpoint `/api/skills/<skill_name>` for global skill deletion
+- [x] Add FastAPI GET endpoint `/api/skills` with `global` and `query` parameters for listing
+- [x] Write unit tests for delete command and API endpoints
+- [x] Extend `find` command with `--global` and optional `--query` flag
+- [x] Add FastAPI DELETE endpoint `/api/skills/<skill_name>` for global skill deletion
+- [x] Add FastAPI GET endpoint `/api/skills` with `global` and `query` parameters for listing
+- [x] Write unit tests for delete command and API endpoints

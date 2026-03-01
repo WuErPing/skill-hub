@@ -687,11 +687,13 @@ def pull(ctx: click.Context, url: Optional[str]) -> None:
 
 
 @cli.command()
-@click.argument("query")
+@click.argument("query", required=False, default="")
+@click.option("--global-search", "global_search", is_flag=True, help="Search only global skills")
 @click.option("--top", "-n", default=5, type=int, help="Number of results to return")
 @click.option("--json", "output_json", is_flag=True, help="Output as JSON")
 @click.pass_context
-def find(ctx: click.Context, query: str, top: int, output_json: bool) -> None:
+def find(ctx: click.Context, query: str, top: int, output_json: bool, global_search: bool) -> None:
+    from skill_hub.adapters import AdapterRegistry
     """Find relevant skills using AI-powered search.
 
     Example: skill-hub find "How do I handle git merge conflicts?"
@@ -721,7 +723,11 @@ def find(ctx: click.Context, query: str, top: int, output_json: bool) -> None:
     if error:
         console.print(f"[red]Error:[/red] {error}")
         return
-
+    # If global_search flag is set, filter matches to only those in global skill directories
+    if global_search:
+        # Gather global paths from all enabled adapters
+        global_paths = [str(adapter.get_global_path()) for adapter in adapter_registry.get_enabled_adapters()]
+        matches = [m for m in matches if any(m.path.startswith(gp) for gp in global_paths)]
     if not matches:
         console.print("[yellow]No matching skills found[/yellow]")
         return
@@ -776,3 +782,27 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+@cli.command()
+@click.argument("skill_name")
+@click.option("--force", is_flag=True, help="Force deletion without confirmation")
+def delete(ctx: click.Context, skill_name: str, force: bool) -> None:
+    """Delete a global skill."""
+    config = ctx.obj["config"]
+    adapter_registry = AdapterRegistry(config)
+    for adapter in adapter_registry.get_enabled_adapters():
+        global_path = adapter.get_global_path()
+        skill_dir = global_path / "skills" / skill_name
+        if skill_dir.exists():
+            if not force:
+                if not click.confirm(f"Delete global skill '{skill_name}'? This cannot be undone.", default=False):
+                    console.print("[yellow]Deletion cancelled[/yellow]")
+                    return
+            try:
+                import shutil
+                shutil.rmtree(skill_dir)
+                console.print(f"[green]Deleted global skill '{skill_name}'.[/green]")
+            except Exception as e:
+                console.print(f"[red]Error deleting skill: {e}[/red]")
+            return
+    console.print(f"[red]Global skill '{skill_name}' not found.[/red]")
