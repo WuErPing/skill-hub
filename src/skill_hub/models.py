@@ -75,6 +75,41 @@ class AIConfig:
     api_key: str = ""
     api_model: str = "gpt-4"
 
+    @property
+    def provider_type(self) -> str:
+        """Get provider type for backward compatibility."""
+        return self.provider
+    
+    @property
+    def endpoint(self) -> str:
+        """Get provider endpoint for backward compatibility."""
+        if self.provider == "ollama":
+            return self.ollama_url
+        else:
+            return self.api_url
+    
+    @property
+    def model(self) -> str:
+        """Get model name for backward compatibility."""
+        if self.provider == "ollama":
+            return self.ollama_model
+        else:
+            return self.api_model
+
+
+@dataclass
+class BilingualConfig:
+    """Bilingual skill storage configuration."""
+
+    enabled: bool = True
+    """Enable bilingual storage with translation."""
+    auto_translate: bool = True
+    """Auto-translate skills when pulling from remote."""
+    backup_path: str = "~/.agents/skills_bak"
+    """Path to store bilingual backups (en/ and zh_CN/ subdirs)."""
+    translate_on_sync: bool = True
+    """Translate skills during sync operations."""
+
 
 @dataclass
 class SkillMatch:
@@ -137,3 +172,4 @@ class Config:
         }
     )
     ai: AIConfig = field(default_factory=AIConfig)
+    bilingual: BilingualConfig = field(default_factory=BilingualConfig)

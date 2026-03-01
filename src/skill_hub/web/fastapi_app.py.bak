@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 import base64
-import logging
 from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import unquote
 
-import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -20,10 +18,6 @@ from skill_hub.remote import RepositoryManager, RepositorySkillScanner
 from skill_hub.sync import SyncEngine
 from skill_hub.utils import ConfigManager, parse_skill_file_from_path
 from skill_hub.i18n import _, init_translation, get_current_language
-
-# Logger
-logger = logging.getLogger(__name__)
-
 
 app = FastAPI(title="skill-hub", version="1.0.0")
 # Global FastAPI app instance
@@ -40,9 +34,9 @@ def create_app() -> FastAPI:
     def _load_config() -> Config:
         return config_manager.load(silent=True)
 
-    def _save_config(config: Config):
+    def _save_config(config: Config) -> None:
         """Save configuration to disk."""
-        return config_manager.save(config)
+        config_manager.save(config)
 
     @app.middleware("http")
     async def language_middleware(request: Request, call_next):
@@ -314,16 +308,7 @@ def create_app() -> FastAPI:
             if not available:
                 return {"success": False, "message": message}
 
-            try:
-                translated = translator.translate_to_chinese(skill_content)
-            except RuntimeError as e:
-                # Translation failed with a RuntimeError - return the actual error message
-                logger.error(f"Translation error: {e}")
-                return {"success": False, "message": str(e)}
-            except Exception as e:
-                # Any other unexpected error
-                logger.error(f"Unexpected translation error: {e}")
-                return {"success": False, "message": f"Translation failed: {str(e)}"}
+            translated = translator.translate_to_chinese(skill_content)
 
             if translated is None:
                 return {"success": False, "message": "Translation failed"}
@@ -331,8 +316,8 @@ def create_app() -> FastAPI:
             return {"success": True, "translated_content": translated}
 
         except Exception as e:
-            logger.error(f"Translation endpoint error: {e}")
             return {"success": False, "message": f"Translation error: {str(e)}"}
+
     @app.get('/find', response_class=HTMLResponse)
     async def find_page(request: Request) -> HTMLResponse:
         """AI Skill Finder page fragment."""
@@ -499,268 +484,238 @@ def create_app() -> FastAPI:
         response.set_cookie(key="language", value=language, max_age=365 * 24 * 60 * 60, path="/")
         return response
 
-    @app.post("/config/ai")
-    async def save_ai_configuration(request: Request) -> Dict[str, Any]:
-        """Save AI configuration."""
-        try:
-            form = await request.form()
-            config = _load_config()
-            
-            # Update AI configuration
-            config.ai.enabled = form.get("ai_enabled") == "on"
-            config.ai.provider = form.get("provider", "ollama")
-            config.ai.ollama_url = form.get("ollama_url", "http://localhost:11434")
-            config.ai.ollama_model = form.get("ollama_model", "llama2")
-            config.ai.api_url = form.get("api_url", "")
-            config.ai.api_key = form.get("api_key", "")
-            config.ai.api_model = form.get("api_model", "gpt-4")
-            
-            # Save configuration
-            if _save_config(config):
-                return {"success": True, "message": "AI configuration saved"}
-            else:
-                return {"success": False, "message": "Failed to save configuration"}
-        
-        except Exception as e:
-            logger.error(f"Error saving AI configuration: {e}")
-            return {"success": False, "message": f"Error: {str(e)}"}
-
-
-
-    @app.post("/config/ai/test")
-    async def test_ai_connection(request: Request) -> JSONResponse:
-        """Test the AI provider connection."""
-        try:
-            form = await request.form()
-            provider_type = form.get("provider", "ollama")
-            
-            if provider_type == "ollama":
-                endpoint = form.get("ollama_url", "http://localhost:11434")
-                model = form.get("ollama_model", "llama2")
-                
-                # Test Ollama connection
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    try:
-                        # First check if Ollama is running
-                        response = await client.get(f"{endpoint}/api/tags")
-                        if response.status_code == 200:
-                            # Check if model exists
-                            models_data = response.json()
-                            models = models_data.get("models", [])
-                            model_names = [m.get("name", "").split(":")[0] for m in models]
-                            
-                            if any(model.split(":")[0] in m for m in model_names):
-                                return JSONResponse({
-                                    "success": True,
-                                    "message": f"Ollama is running with model '{model}'"
-                                })
-                            else:
-                                return JSONResponse({
-                                    "success": True,
-                                    "message": f"Ollama is running but model '{model}' not found. Available: {', '.join(model_names[:5])}"
-                                })
-                        else:
-                            return JSONResponse({
-                                "success": False,
-                                "message": f"Ollama returned status {response.status_code}"
-                            })
-                    except httpx.ConnectError:
-                        return JSONResponse({
-                            "success": False,
-                            "message": "Cannot connect to Ollama. Make sure Ollama is running with 'ollama serve'."
-                        })
-            
-            elif provider_type == "openai":
-                api_url = form.get("api_url", "https://api.openai.com/v1")
-                api_key = form.get("api_key", "")
-                model = form.get("api_model", "gpt-4")
-                
-                if not api_url.endswith("/chat/completions"):
-                    api_url = f"{api_url}/chat/completions"
-                
-                # Test OpenAI connection
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    try:
-                        response = await client.post(
-                            api_url,
-                            json={
-                                "model": model,
-                                "messages": [{"role": "user", "content": "Hello"}],
-                                "max_tokens": 1,
-                            },
-                            headers={
-                                "Authorization": f"Bearer {api_key}",
-                                "Content-Type": "application/json",
-                            }
-                        )
-                        
-                        if response.status_code == 200:
-                            return JSONResponse({
-                                "success": True,
-                                "message": "Successfully connected to OpenAI API"
-                            })
-                        elif response.status_code == 401:
-                            return JSONResponse({
-                                "success": False,
-                                "message": "Invalid API key"
-                            })
-                        else:
-                            return JSONResponse({
-                                "success": False,
-                                "message": f"API returned status {response.status_code}: {response.text[:100]}"
-                            })
-                    except httpx.ConnectError:
-                        return JSONResponse({
-                            "success": False,
-                            "message": "Cannot connect to API endpoint"
-                        })
-            
-            else:
-                return JSONResponse({
-                    "success": False,
-                    "message": f"Unsupported provider: {provider_type}"
-                })
-        
-        except Exception as e:
-            logger.error(f"Error testing connection: {e}")
-            return JSONResponse({
-                "success": False,
-                "message": f"Error testing connection: {str(e)}"
-            })
-
+    return app
 
     return app
 
-    async def save_ai_configuration(request: Request) -> Dict[str, Any]:
-        """Save AI configuration."""
-        try:
-            form = await request.form()
-            config = _load_config()
-            
-            # Update AI configuration
-            config.ai.enabled = form.get("ai_enabled") == "on"
-            config.ai.provider = form.get("provider", "ollama")
-            config.ai.ollama_url = form.get("ollama_url", "http://localhost:11434")
-            config.ai.ollama_model = form.get("ollama_model", "llama2")
-            config.ai.api_url = form.get("api_url", "")
-            config.ai.api_key = form.get("api_key", "")
-            config.ai.api_model = form.get("api_model", "gpt-4")
-            
-            # Save configuration
-            if _save_config(config):
-                return {"success": True, "message": "AI configuration saved"}
-            else:
-                return {"success": False, "message": "Failed to save configuration"}
+    @app.post("/config/bilingual")
+    async def update_bilingual_config(request: Request) -> Dict[str, Any]:
+        """Update bilingual configuration."""
+        config = _load_config()
+        form = await request.form()
         
-        except Exception as e:
-            logger.error(f"Error saving AI configuration: {e}")
-            return {"success": False, "message": f"Error: {str(e)}"}
+        # Update bilingual settings
+        config.bilingual.enabled = form.get("bilingual_enabled") == "on"
+        config.bilingual.auto_translate = form.get("auto_translate") == "on"
+        config.bilingual.translate_on_sync = form.get("translate_on_sync") == "on"
+        
+        # Save configuration
+        if _save_config(config):
+            return {"success": True, "message": "Bilingual configuration updated"}
+        else:
+            return {"success": False, "message": "Failed to save configuration"}
+
+    @app.post("/config/bilingual/switch")
+    async def switch_language(request: Request) -> Dict[str, Any]:
+        """Switch active language for skills."""
+        from skill_hub.bilingual import BilingualStorageManager
+        
+        config = _load_config()
+        form = await request.form()
+        language = form.get("language", "en")
+        
+        if language not in {"en", "zh_CN"}:
+            return {"success": False, "message": "Invalid language"}
+        
+        manager = BilingualStorageManager(config)
+        
+        if manager.switch_language(language):
+            return {"success": True, "message": f"Successfully switched to {language} skills"}
+        else:
+            return {"success": False, "message": f"Failed to switch to {language}. Make sure skills are translated first."}
 
 
 
-    @app.post("/config/ai/test")
-    async def test_ai_connection(request: Request) -> JSONResponse:
-        """Test the AI provider connection."""
-        try:
-            form = await request.form()
-            provider_type = form.get("provider", "ollama")
+# SSE Streaming Endpoints for AI
+@app.post("/api/ai/find-stream")
+async def find_skills_stream_api(request: Request):
+    """Stream AI skill finder results via SSE.
+    
+    Request body: JSON with "query" and "top_k" fields
+    Response: SSE stream of chunks
+    """
+    from skill_hub.ai import AISkillFinder
+    
+    config = _load_config()
+    
+    if not config.ai.enabled:
+        return StreamingResponse(
+            iter([format_sse_event("error", {"message": "AI finder is disabled"})]),
+            media_type="text/event-stream",
+            headers=get_sse_headers(),
+        )
+    
+    finder = AISkillFinder(config)
+    available, message = finder.is_available()
+    
+    if not available:
+        return StreamingResponse(
+            iter([format_sse_event("error", {"message": message})]),
+            media_type="text/event-stream",
+            headers=get_sse_headers(),
+        )
+    
+    # Get request body
+    try:
+        body = await request.json()
+        query = body.get("query", "").strip()
+        top_k = body.get("top_k", 5)
+    except Exception:
+        return StreamingResponse(
+            iter([format_sse_event("error", {"message": "Invalid request body"})]),
+            media_type="text/event-stream",
+            headers=get_sse_headers(),
+        )
+    
+    if not query:
+        return StreamingResponse(
+            iter([format_sse_event("error", {"message": "Query is required"})]),
+            media_type="text/event-stream",
+            headers=get_sse_headers(),
+        )
+    
+    # Create streaming generator
+    async def generate():
+        async for chunk in finder.find_skills_stream(query, top_k=top_k):
+            yield format_sse_event("data", {"chunk": chunk})
+        yield format_sse_event("done", {"done": True})
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers=get_sse_headers(),
+    )
+
+
+# Helper functions for SSE
+def format_sse_event(event_type: str, data: dict) -> str:
+    """Format a Server-Sent Event.
+    
+    Args:
+        event_type: Type of event (e.g., 'data', 'error', 'done')
+        data: Data to send
+        
+    Returns:
+        Formatted SSE event string
+    """
+    import json
+    return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+
+def get_sse_headers() -> dict:
+    """Get headers for SSE response.
+    
+    Returns:
+        Dictionary of SSE headers
+    """
+    return {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+        "Access-Control-Allow-Origin": "*",
+    }
+
+
+# AI Configuration Test Endpoint
+@app.post("/config/ai/test")
+async def test_ai_connection(request: Request) -> Dict[str, Any]:
+    """Test the AI provider connection."""
+    from skill_hub.ai.providers import create_provider, ProviderConfig
+    
+    try:
+        form = await request.form()
+        provider_type = form.get("provider", "ollama")
+        
+        if provider_type == "ollama":
+            endpoint = form.get("ollama_url", "http://localhost:11434")
+            model = form.get("ollama_model", "llama2")
             
-            if provider_type == "ollama":
-                endpoint = form.get("ollama_url", "http://localhost:11434")
-                model = form.get("ollama_model", "llama2")
-                
-                # Test Ollama connection
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    try:
-                        # First check if Ollama is running
-                        response = await client.get(f"{endpoint}/api/tags")
-                        if response.status_code == 200:
-                            # Check if model exists
-                            models_data = response.json()
-                            models = models_data.get("models", [])
-                            model_names = [m.get("name", "").split(":")[0] for m in models]
-                            
-                            if any(model.split(":")[0] in m for m in model_names):
-                                return JSONResponse({
-                                    "success": True,
-                                    "message": f"Ollama is running with model '{model}'"
-                                })
-                            else:
-                                return JSONResponse({
-                                    "success": True,
-                                    "message": f"Ollama is running but model '{model}' not found. Available: {', '.join(model_names[:5])}"
-                                })
-                        else:
-                            return JSONResponse({
-                                "success": False,
-                                "message": f"Ollama returned status {response.status_code}"
-                            })
-                    except httpx.ConnectError:
-                        return JSONResponse({
-                            "success": False,
-                            "message": "Cannot connect to Ollama. Make sure Ollama is running with 'ollama serve'."
-                        })
-            
-            elif provider_type == "openai":
-                api_url = form.get("api_url", "https://api.openai.com/v1")
-                api_key = form.get("api_key", "")
-                model = form.get("api_model", "gpt-4")
-                
-                if not api_url.endswith("/chat/completions"):
-                    api_url = f"{api_url}/chat/completions"
-                
-                # Test OpenAI connection
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    try:
-                        response = await client.post(
-                            api_url,
-                            json={
-                                "model": model,
-                                "messages": [{"role": "user", "content": "Hello"}],
-                                "max_tokens": 1,
-                            },
-                            headers={
-                                "Authorization": f"Bearer {api_key}",
-                                "Content-Type": "application/json",
-                            }
-                        )
+            # Test Ollama connection
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                try:
+                    # First check if Ollama is running
+                    response = await client.get(f"{endpoint}/api/tags")
+                    if response.status_code == 200:
+                        # Check if model exists
+                        models_data = response.json()
+                        models = models_data.get("models", [])
+                        model_names = [m.get("name", "") for m in models]
                         
-                        if response.status_code == 200:
-                            return JSONResponse({
+                        if any(model in m for m in model_names):
+                            return {
                                 "success": True,
-                                "message": "Successfully connected to OpenAI API"
-                            })
-                        elif response.status_code == 401:
-                            return JSONResponse({
-                                "success": False,
-                                "message": "Invalid API key"
-                            })
+                                "message": f"Ollama is running with model '{model}'",
+                            }
                         else:
-                            return JSONResponse({
-                                "success": False,
-                                "message": f"API returned status {response.status_code}: {response.text[:100]}"
-                            })
-                    except httpx.ConnectError:
-                        return JSONResponse({
+                            return {
+                                "success": True,
+                                "message": f"Ollama is running but model '{model}' not found. Available: {', '.join(model_names[:5])}",
+                            }
+                    else:
+                        return {
                             "success": False,
-                            "message": "Cannot connect to API endpoint"
-                        })
-            
-            else:
-                return JSONResponse({
-                    "success": False,
-                    "message": f"Unsupported provider: {provider_type}"
-                })
+                            "message": f"Ollama returned status {response.status_code}",
+                        }
+                except httpx.ConnectError:
+                    return {
+                        "success": False,
+                        "message": "Cannot connect to Ollama. Make sure Ollama is running with 'ollama serve'.",
+                    }
         
-        except Exception as e:
-            logger.error(f"Error testing connection: {e}")
-            return JSONResponse({
+        elif provider_type == "openai":
+            api_url = form.get("api_url", "https://api.openai.com/v1")
+            api_key = form.get("api_key", "")
+            model = form.get("api_model", "gpt-4")
+            
+            if not api_url.endswith("/chat/completions"):
+                api_url = f"{api_url}/chat/completions"
+            
+            # Test OpenAI connection
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                try:
+                    response = await client.post(
+                        api_url,
+                        json={
+                            "model": model,
+                            "messages": [{"role": "user", "content": "Hello"}],
+                            "max_tokens": 1,
+                        },
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                        }
+                    )
+                    
+                    if response.status_code == 200:
+                        return {
+                            "success": True,
+                            "message": "Successfully connected to OpenAI API",
+                        }
+                    elif response.status_code == 401:
+                        return {
+                            "success": False,
+                            "message": "Invalid API key",
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "message": f"API returned status {response.status_code}: {response.text[:200]}",
+                        }
+                except httpx.ConnectError:
+                    return {
+                        "success": False,
+                        "message": "Cannot connect to API endpoint",
+                    }
+        
+        else:
+            return {
                 "success": False,
-                "message": f"Error testing connection: {str(e)}"
-            })
-
-
-    return app
-
-
-# AI Configuration Save Endpoint
+                "message": f"Unsupported provider: {provider_type}",
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error testing connection: {str(e)}",
+        }

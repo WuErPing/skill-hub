@@ -657,11 +657,31 @@ def pull(ctx: click.Context, url: Optional[str]) -> None:
         # Convert to Skill objects
         skills = scanner.create_skill_objects(scanned_skills, repo_config.url)
 
-        # Import skills to hub
+        # Import skills to hub with bilingual translation
+        bilingual_manager = None
+        if config.bilingual.enabled and config.bilingual.auto_translate:
+            from skill_hub.bilingual import BilingualStorageManager
+            bilingual_manager = BilingualStorageManager(config)
+            bilingual_manager.initialize_backup_directories()
+            console.print(f"  [dim]🌐 Bilingual translation enabled[/dim]")
+
         for skill in skills:
             try:
                 sync_engine._sync_skill_to_hub(skill)
                 total_skills += 1
+                
+                # Store bilingual versions if enabled
+                if bilingual_manager:
+                    success, _ = bilingual_manager.sync_skill_to_backup(
+                        skill.name,
+                        skill.content,
+                        auto_translate=config.bilingual.auto_translate
+                    )
+                    if success:
+                        console.print(f"    [green]✓ Stored bilingual versions[/green]")
+                    else:
+                        console.print(f"    [yellow]⚠ Translation skipped[/yellow]")
+                        
             except Exception as e:
                 console.print(f"  [red]✗ Failed to import '{skill.name}': {e}[/red]")
 
@@ -806,3 +826,45 @@ def delete(ctx: click.Context, skill_name: str, force: bool) -> None:
                 console.print(f"[red]Error deleting skill: {e}[/red]")
             return
     console.print(f"[red]Global skill '{skill_name}' not found.[/red]")
+@cli.command()
+@click.argument("language", type=click.Choice(["en", "zh_CN"]))
+@click.pass_context
+def lang(ctx: click.Context, language: str) -> None:
+    """Switch active skills to a different language.
+    
+    Switches the hub skills to the specified language version.
+    Skills are stored in ~/.agents/skills_bak/<lang>/ directory.
+    """
+    from skill_hub.bilingual import BilingualStorageManager
+    
+    config = ctx.obj["config"]
+    config_manager = ctx.obj["config_manager"]
+    
+    # Check if bilingual storage is enabled
+    if not config.bilingual.enabled:
+        console.print("[red]Bilingual storage is disabled in configuration[/red]")
+        console.print("\nEnable it by setting bilingual.enabled=true in config")
+        return
+    
+    manager = BilingualStorageManager(config)
+    
+    # Initialize backup directories if needed
+    manager.initialize_backup_directories()
+    
+    console.print(f"[bold]Switching to {language} skills...[/bold]\n")
+    
+    # Switch language
+    if manager.switch_language(language):
+        console.print(f"[green]✓ Successfully switched to {language} skills[/green]")
+        console.print(f"\n[dim]Active skills are now from: {manager.backup_path / language}[/dim]")
+        
+        # Show available bilingual skills
+        if manager.hub_path.exists():
+            skill_count = len([d for d in manager.hub_path.iterdir() if d.is_dir() and d.name != ".skill-hub"])
+            console.print(f"[dim]Found {skill_count} skills in {language}[/dim]")
+    else:
+        console.print(f"[red]✗ Failed to switch to {language} skills[/red]")
+        console.print("\n[yellow]Possible reasons:[/yellow]")
+        console.print("  • No skills found in backup directory")
+        console.print("  • Translation not yet completed for this language")
+        console.print("\n[dim]Run 'skill-hub pull' to fetch and translate skills first[/dim]")

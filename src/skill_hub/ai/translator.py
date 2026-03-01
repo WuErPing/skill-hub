@@ -67,12 +67,11 @@ IMPORTANT RULES:
 {content}"""
 
         try:
-            translated = self.provider.complete(system_prompt, user_prompt)
+            translated = self.provider.generate(system_prompt, user_prompt)
             return translated.strip()
         except Exception as e:
             logger.error(f"Translation failed: {e}")
-            return None
-
+            raise RuntimeError(f"Translation failed: {str(e)}")
     def detect_language(self, content: str) -> str:
         """Detect the primary language of the content.
 

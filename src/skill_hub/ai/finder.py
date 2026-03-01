@@ -3,10 +3,15 @@
 import json
 import logging
 import re
-from typing import List, Optional
+from typing import AsyncGenerator, List, Optional, Tuple
 
+from skill_hub.ai.config.manager import ProviderConfig
+from skill_hub.ai.providers import (
+    LLMProvider,
+    create_provider,
+    get_available_providers,
+)
 from skill_hub.ai.prompts import build_prompt
-from skill_hub.ai.providers import create_fallback_provider, create_provider
 from skill_hub.models import Config, SkillMatch
 from skill_hub.sync import SyncEngine
 from skill_hub.utils import parse_skill_file_from_path
@@ -24,9 +29,70 @@ class AISkillFinder:
             config: Application configuration
         """
         self.config = config
-        self.provider = create_provider(config.ai)
-        self.fallback_provider = create_fallback_provider(config.ai)
+        self.provider: Optional[LLMProvider] = None
         self.sync_engine = SyncEngine(config)
+        
+        # Initialize provider based on new config structure
+        self._init_provider()
+
+    def _init_provider(self) -> None:
+        """Initialize the LLM provider from config."""
+        if not self.config.ai.enabled:
+            return
+
+        # Try new multi-provider config first
+        if hasattr(self.config.ai, 'providers') and self.config.ai.providers:
+            # Find active provider
+            active_id = self.config.ai.active_provider_id
+            for prov_config in self.config.ai.providers:
+                if prov_config.get('id') == active_id or prov_config.get('is_active'):
+                    try:
+                        provider_config = ProviderConfig(
+                            id=prov_config.get('id', 0),
+                            provider_type=prov_config.get('provider_type', 'ollama'),
+                            name=prov_config.get('name', 'Provider'),
+                            endpoint=prov_config.get('endpoint', ''),
+                            model=prov_config.get('model', ''),
+                            api_key=prov_config.get('api_key', ''),
+                            is_active=prov_config.get('is_active', False),
+                        )
+                        self.provider = create_provider(provider_config)
+                        logger.info(f"Initialized provider: {provider_config.provider_type}")
+                        return
+                    except Exception as e:
+                        logger.error(f"Failed to initialize provider: {e}")
+                        continue
+        
+        # Fallback to legacy config
+        if not self.provider:
+            self._init_legacy_provider()
+
+    def _init_legacy_provider(self) -> None:
+        """Initialize provider from legacy config structure."""
+        try:
+            if self.config.ai.provider == "ollama":
+                provider_config = ProviderConfig(
+                    id=0,
+                    provider_type="ollama",
+                    name="Ollama",
+                    endpoint=self.config.ai.ollama_url,
+                    model=self.config.ai.ollama_model,
+                )
+                self.provider = create_provider(provider_config)
+                logger.info("Initialized Ollama provider from legacy config")
+            elif self.config.ai.provider == "openai":
+                provider_config = ProviderConfig(
+                    id=0,
+                    provider_type="openai",
+                    name="OpenAI",
+                    endpoint=self.config.ai.api_url,
+                    model=self.config.ai.api_model,
+                    api_key=self.config.ai.api_key,
+                )
+                self.provider = create_provider(provider_config)
+                logger.info("Initialized OpenAI provider from legacy config")
+        except Exception as e:
+            logger.error(f"Failed to initialize legacy provider: {e}")
 
     def _load_hub_skills(self) -> List[dict]:
         """Load all skills from the hub with their metadata.
@@ -100,7 +166,7 @@ class AISkillFinder:
 
     def find_skills(
         self, query: str, top_k: int = 5
-    ) -> tuple[List[SkillMatch], Optional[str]]:
+    ) -> Tuple[List[SkillMatch], Optional[str]]:
         """Find relevant skills for a query.
 
         Args:
@@ -127,30 +193,57 @@ class AISkillFinder:
         # Build prompts
         system_prompt, user_prompt = build_prompt(query, skills, top_k)
 
-        # Try primary provider
-        error_msg = None
+        # Call provider
         try:
-            response = self.provider.complete(system_prompt, user_prompt)
+            response = self.provider.generate(system_prompt, user_prompt)
             matches = self._parse_response(response, skills_data)
             return matches[:top_k], None
-        except ConnectionError as e:
+        except Exception as e:
             error_msg = str(e)
-            logger.warning(f"Primary provider failed: {e}")
+            logger.error(f"Provider failed: {e}")
+            return [], f"Provider error: {error_msg}"
 
-        # Try fallback provider if available
-        if self.fallback_provider:
-            try:
-                logger.info("Trying fallback provider...")
-                response = self.fallback_provider.complete(system_prompt, user_prompt)
-                matches = self._parse_response(response, skills_data)
-                return matches[:top_k], None
-            except Exception as e:
-                logger.warning(f"Fallback provider also failed: {e}")
-                error_msg = f"All providers failed. Primary: {error_msg}, Fallback: {e}"
+    async def find_skills_stream(
+        self, query: str, top_k: int = 5
+    ) -> AsyncGenerator[str, None]:
+        """Find relevant skills for a query with streaming response.
 
-        return [], error_msg
+        Args:
+            query: User's search query
+            top_k: Maximum number of results to return
 
-    def is_available(self) -> tuple[bool, str]:
+        Yields:
+            Chunks of the LLM response
+        """
+        if not self.config.ai.enabled:
+            yield "AI finder is disabled in configuration"
+            return
+
+        if not self.provider:
+            yield "No AI provider configured"
+            return
+
+        # Load skills from hub
+        skills = self._load_hub_skills()
+        if not skills:
+            yield "No skills found in hub. Run 'skill-hub pull' first."
+            return
+
+        # Build skill name -> data map (description and path)
+        skills_data = {s["name"]: {"description": s["description"], "path": s["path"]} for s in skills}
+
+        # Build prompts
+        system_prompt, user_prompt = build_prompt(query, skills, top_k)
+
+        # Stream from provider
+        try:
+            async for chunk in self.provider.generate_stream(system_prompt, user_prompt):
+                yield chunk
+        except Exception as e:
+            logger.error(f"Stream provider failed: {e}")
+            yield f"Stream error: {str(e)}"
+
+    def is_available(self) -> Tuple[bool, str]:
         """Check if AI finder is available.
 
         Returns:
@@ -162,4 +255,4 @@ class AISkillFinder:
         if not self.provider:
             return False, "No AI provider configured"
 
-        return True, f"Using {self.config.ai.provider} provider"
+        return True, f"Using provider: {type(self.provider).__name__}"
