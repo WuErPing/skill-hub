@@ -1,6 +1,0 @@
-# English translations for skill-hub
-# This file is intentionally minimal; msgstr defaults to msgid
-msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
-"Language: en\n"

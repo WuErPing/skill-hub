@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-13
+
+### Changed
+- **Simplified to view-only**: Removed all features except viewing skills in `~/.agents/skills`
+- Removed remote repository management (pull, repo commands)
+- Removed synchronization features (sync command)
+- Removed agent adapters (Cursor, Claude, Qoder, etc.)
+- Removed bilingual translation support
+- Removed AI-powered skill finder
+- Removed web interface (FastAPI, Streamlit, Flask)
+- Removed configuration management system
+- Simplified CLI to three commands: `list`, `view`, `path`
+
+### Removed
+- All modules: adapters, remote, sync, bilingual, ai, web, locales, config
+- Complex configuration options
+- Multi-agent support
+- Health checks
+
 ## [0.2.0] - 2026-02-07
 
 ### Added

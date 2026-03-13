@@ -1,5 +1,5 @@
-"""Skill discovery engine."""
+"""Skill discovery module."""
 
-from .engine import DiscoveryEngine, SkillRegistry
+from .engine import DiscoveryEngine
 
-__all__ = ["DiscoveryEngine", "SkillRegistry"]
+__all__ = ["DiscoveryEngine"]

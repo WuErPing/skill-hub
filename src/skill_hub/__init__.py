@@ -1,3 +1,3 @@
-"""skill-hub: Unified skill management system for AI coding agents."""
+"""skill-hub: View skills from ~/.agents/skills."""
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"

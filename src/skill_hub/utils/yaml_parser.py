@@ -1,12 +1,12 @@
 """YAML frontmatter parser for SKILL.md files."""
 
 import re
+from pathlib import Path
 from typing import Optional, Tuple
 
 import yaml
 
 from skill_hub.models import SkillMetadata
-from skill_hub.utils import validate_description, validate_skill_name
 
 
 class SkillParseError(Exception):
@@ -58,18 +58,6 @@ def parse_skill_file(content: str) -> Tuple[SkillMetadata, str]:
     if not isinstance(name, str) or not isinstance(description, str):
         raise SkillParseError("name and description must be strings")
 
-    # Validate name and description
-    if not validate_skill_name(name):
-        raise SkillParseError(
-            f"Invalid skill name '{name}': must be lowercase alphanumeric "
-            "with single hyphens, 1-64 chars"
-        )
-
-    if not validate_description(description):
-        raise SkillParseError(
-            f"Invalid description: must be 1-1024 characters, got {len(description)}"
-        )
-
     # Extract optional fields
     license_field = frontmatter.get("license")
     compatibility = frontmatter.get("compatibility")
@@ -78,10 +66,6 @@ def parse_skill_file(content: str) -> Tuple[SkillMetadata, str]:
     # Validate metadata is dict if present
     if metadata is not None and not isinstance(metadata, dict):
         raise SkillParseError("metadata field must be a dictionary")
-
-    # Convert metadata values to strings if present
-    if metadata:
-        metadata = {k: str(v) for k, v in metadata.items()}
 
     skill_metadata = SkillMetadata(
         name=name,
@@ -94,7 +78,7 @@ def parse_skill_file(content: str) -> Tuple[SkillMetadata, str]:
     return skill_metadata, body
 
 
-def parse_skill_file_from_path(path) -> Optional[Tuple[SkillMetadata, str]]:
+def parse_skill_file_from_path(path: Path) -> Optional[Tuple[SkillMetadata, str]]:
     """
     Parse SKILL.md file from filesystem path.
 
@@ -103,10 +87,6 @@ def parse_skill_file_from_path(path) -> Optional[Tuple[SkillMetadata, str]]:
 
     Returns:
         Tuple of (SkillMetadata, content) or None if parsing fails
-
-    Note:
-        Returns None instead of raising to allow graceful handling
-        during batch discovery operations.
     """
     try:
         content = path.read_text(encoding="utf-8")

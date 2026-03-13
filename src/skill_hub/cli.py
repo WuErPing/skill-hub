@@ -1,870 +1,187 @@
 """Command-line interface for skill-hub."""
 
-import json
-import logging
-import subprocess
-import sys
 from pathlib import Path
-from typing import Optional
 
 import click
 from rich.console import Console
 from rich.table import Table
 
 from skill_hub import __version__
-from skill_hub.adapters import AdapterRegistry
 from skill_hub.discovery import DiscoveryEngine
-from skill_hub.models import Config, RepositoryConfig
-from skill_hub.remote import RepositoryManager, RepositorySkillScanner
-from skill_hub.sync import SyncEngine
-from skill_hub.utils import ConfigManager
-from skill_hub.web import create_app  # Flask app (legacy web UI)
-from skill_hub.i18n import _, init_translation
+from skill_hub.utils import expand_home
 
 console = Console()
 
 
-def setup_logging(verbose: bool = False) -> None:
-    """
-    Configure logging.
-
-    Args:
-        verbose: Enable verbose logging
-    """
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(levelname)s: %(message)s",
-    )
-
-
 @click.group()
 @click.version_option(version=__version__)
-@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
-@click.pass_context
-def cli(ctx: click.Context, verbose: bool) -> None:
-    """skill-hub: Unified skill management for AI coding agents."""
-    setup_logging(verbose)
-    ctx.ensure_object(dict)
-    ctx.obj["verbose"] = verbose
-
-    # Load configuration from file
-    config_manager = ConfigManager()
-    ctx.obj["config_manager"] = config_manager
-    config = config_manager.load(silent=True)
-
-    # Initialize translations based on configured language
-    try:
-        language = getattr(config, "language", "en")
-        init_translation(language)
-    except Exception:
-        init_translation("en")
-
-    ctx.obj["config"] = config
-
-
-@cli.command()
-@click.option("--host", default="127.0.0.1", show_default=True, help="Host for web UI")
-@click.option("--port", default=8501, show_default=True, type=int, help="Port for web UI")
-@click.option(
-    "--backend",
-    type=click.Choice(["fastapi", "streamlit", "flask"]),
-    default="fastapi",
-    show_default=True,
-    help="Web backend to use",
-)
-@click.option(
-    "--no-browser",
-    is_flag=True,
-    help="Do not open browser automatically",
-)
-@click.pass_context
-def web(ctx: click.Context, host: str, port: int, backend: str, no_browser: bool) -> None:
-    """Start the skill-hub web interface (FastAPI/Streamlit/Flask)."""
-    import webbrowser
-    import time
-    from threading import Timer
-
-    url = f"http://{host}:{port}"
-
-    def open_browser():
-        """Open browser after a short delay."""
-        if not no_browser:
-            webbrowser.open(url)
-
-    if backend == "flask":
-        app = create_app()
-        console.print(
-            f"[bold]Starting Flask web UI at[/bold] {url}\n" "Press CTRL+C to stop."
-        )
-        Timer(1.5, open_browser).start()
-        app.run(host=host, port=port, debug=ctx.obj["verbose"])
-        return
-
-    if backend == "streamlit":
-        console.print(
-            f"[bold]Starting Streamlit web UI at[/bold] {url}\n" "Press CTRL+C to stop."
-        )
-        if not no_browser:
-            Timer(2.0, open_browser).start()
-        app_path = Path(__file__).with_name("web") / "streamlit_app.py"
-        cmd = [
-            sys.executable,
-            "-m",
-            "streamlit",
-            "run",
-            str(app_path),
-            "--server.address",
-            host,
-            "--server.port",
-            str(port),
-        ]
-        subprocess.run(cmd)
-        return
-
-    # Default: FastAPI-based UI
-    console.print(
-        f"[bold]Starting FastAPI web UI at[/bold] {url}\n" "Press CTRL+C to stop."
-    )
-    from skill_hub.web.fastapi_app import create_app as create_fastapi_app
-    import uvicorn
-
-    app = create_fastapi_app()
-    
-    if not no_browser:
-        Timer(1.0, open_browser).start()
-    
-    uvicorn.run(app, host=host, port=port, log_level="info" if ctx.obj["verbose"] else "warning")
-
-
-@cli.command()
-@click.option("--with-anthropic", is_flag=True, help="Add Anthropic skills repository")
-@click.option("--with-vercel", is_flag=True, help="Add Vercel Labs skills repository")
-@click.option("--with-cloudflare", is_flag=True, help="Add Cloudflare skills repository")
-@click.option("--with-supabase", is_flag=True, help="Add Supabase skills repository")
-@click.option("--with-qoder", is_flag=True, help="Add Qoder Community skills repository")
-@click.option("--with-all", is_flag=True, help="Add all official repositories (Anthropic, Vercel, Cloudflare, Supabase, Qoder)")
-@click.option("--repo", "-r", multiple=True, help="Add custom repository URL")
-@click.pass_context
-def init(ctx: click.Context, with_anthropic: bool, with_vercel: bool, with_cloudflare: bool, with_supabase: bool, with_qoder: bool, with_all: bool, repo: tuple) -> None:
-    """Initialize skill-hub configuration."""
-    config = ctx.obj["config"]
-    config_manager = ctx.obj["config_manager"]
-    repo_manager = RepositoryManager()
-
-    console.print("[bold]Initializing skill-hub configuration...[/bold]\n")
-
-    # Check if already configured
-    if config.repositories:
-        console.print(f"[yellow]Configuration already exists with {len(config.repositories)} repositories[/yellow]")
-        if not click.confirm("Do you want to add more repositories?", default=True):
-            console.print("\nRun 'skill-hub repo list' to view configured repositories")
-            return
-        console.print()
-
-    added_count = 0
-
-    # Add all official repositories if requested
-    if with_all:
-        with_anthropic = with_vercel = with_cloudflare = with_supabase = with_qoder = True
-
-    # Define official repositories
-    official_repos = {
-        "anthropic": "https://github.com/anthropics/skills",
-        "vercel": "https://github.com/vercel-labs/agent-skills",
-        "cloudflare": "https://github.com/cloudflare/skills",
-        "supabase": "https://github.com/supabase/agent-skills",
-        "qoder": "https://github.com/Qoder-AI/qoder-community",
-    }
-
-    # Add Anthropic skills if requested
-    if with_anthropic:
-        anthropic_url = official_repos["anthropic"]
-        if not any(r.url == anthropic_url for r in config.repositories):
-            config.repositories.append(RepositoryConfig(url=anthropic_url))
-            console.print(f"[green]✓[/green] Added: {anthropic_url}")
-            added_count += 1
-        else:
-            console.print(f"[dim]Already configured: {anthropic_url}[/dim]")
-
-    # Add Vercel skills if requested
-    if with_vercel:
-        vercel_url = official_repos["vercel"]
-        if not any(r.url == vercel_url for r in config.repositories):
-            config.repositories.append(RepositoryConfig(url=vercel_url))
-            console.print(f"[green]✓[/green] Added: {vercel_url}")
-            added_count += 1
-        else:
-            console.print(f"[dim]Already configured: {vercel_url}[/dim]")
-
-    # Add Cloudflare skills if requested
-    if with_cloudflare:
-        cloudflare_url = official_repos["cloudflare"]
-        if not any(r.url == cloudflare_url for r in config.repositories):
-            config.repositories.append(RepositoryConfig(url=cloudflare_url))
-            console.print(f"[green]✓[/green] Added: {cloudflare_url}")
-            added_count += 1
-        else:
-            console.print(f"[dim]Already configured: {cloudflare_url}[/dim]")
-
-    # Add Supabase skills if requested
-    if with_supabase:
-        supabase_url = official_repos["supabase"]
-        if not any(r.url == supabase_url for r in config.repositories):
-            config.repositories.append(RepositoryConfig(url=supabase_url))
-            console.print(f"[green]✓[/green] Added: {supabase_url}")
-            added_count += 1
-        else:
-            console.print(f"[dim]Already configured: {supabase_url}[/dim]")
-
-    # Add Qoder Community skills if requested
-    if with_qoder:
-        qoder_url = official_repos["qoder"]
-        if not any(r.url == qoder_url for r in config.repositories):
-            # Qoder skills are in src/content/skills/ subdirectory
-            config.repositories.append(RepositoryConfig(url=qoder_url, path="src/content/skills"))
-            console.print(f"[green]✓[/green] Added: {qoder_url}")
-            added_count += 1
-        else:
-            console.print(f"[dim]Already configured: {qoder_url}[/dim]")
-
-    # Add custom repositories
-    for repo_url in repo:
-        if not repo_manager.validate_url(repo_url):
-            console.print(f"[red]✗ Invalid URL:[/red] {repo_url}")
-            continue
-
-        if any(r.url == repo_url for r in config.repositories):
-            console.print(f"[dim]Already configured: {repo_url}[/dim]")
-            continue
-
-        config.repositories.append(RepositoryConfig(url=repo_url))
-        console.print(f"[green]✓[/green] Added: {repo_url}")
-        added_count += 1
-
-    # Interactive mode if no flags provided
-    if not with_anthropic and not with_vercel and not with_cloudflare and not with_supabase and not with_qoder and not with_all and not repo:
-        console.print("[bold]Quick Setup:[/bold]\n")
-        
-        # Ask about official repositories
-        if click.confirm("Add official skills repositories?", default=True):
-            console.print("\n[bold]Select repositories to add:[/bold]")
-            
-            if click.confirm("  • Anthropic (Claude, general AI skills)", default=True):
-                anthropic_url = official_repos["anthropic"]
-                if not any(r.url == anthropic_url for r in config.repositories):
-                    config.repositories.append(RepositoryConfig(url=anthropic_url))
-                    console.print(f"    [green]✓[/green] Added: {anthropic_url}")
-                    added_count += 1
-            
-            if click.confirm("  • Vercel Labs (React, Next.js, web design)", default=False):
-                vercel_url = official_repos["vercel"]
-                if not any(r.url == vercel_url for r in config.repositories):
-                    config.repositories.append(RepositoryConfig(url=vercel_url))
-                    console.print(f"    [green]✓[/green] Added: {vercel_url}")
-                    added_count += 1
-            
-            if click.confirm("  • Cloudflare (Workers, Durable Objects, web perf)", default=False):
-                cloudflare_url = official_repos["cloudflare"]
-                if not any(r.url == cloudflare_url for r in config.repositories):
-                    config.repositories.append(RepositoryConfig(url=cloudflare_url))
-                    console.print(f"    [green]✓[/green] Added: {cloudflare_url}")
-                    added_count += 1
-            
-            if click.confirm("  • Supabase (PostgreSQL best practices)", default=False):
-                supabase_url = official_repos["supabase"]
-                if not any(r.url == supabase_url for r in config.repositories):
-                    config.repositories.append(RepositoryConfig(url=supabase_url))
-                    console.print(f"    [green]✓[/green] Added: {supabase_url}")
-                    added_count += 1
-            
-            if click.confirm("  • Qoder Community (54+ skills, 9 categories)", default=False):
-                qoder_url = official_repos["qoder"]
-                if not any(r.url == qoder_url for r in config.repositories):
-                    config.repositories.append(RepositoryConfig(url=qoder_url, path="src/content/skills"))
-                    console.print(f"    [green]✓[/green] Added: {qoder_url}")
-                    added_count += 1
-
-        console.print()
-        
-        # Ask about custom repositories
-        if click.confirm("Add custom repository?", default=False):
-            while True:
-                repo_url = click.prompt("  Repository URL", type=str)
-                
-                if not repo_manager.validate_url(repo_url):
-                    console.print(f"    [red]✗ Invalid URL format[/red]")
-                    continue
-
-                if any(r.url == repo_url for r in config.repositories):
-                    console.print(f"    [yellow]Already configured[/yellow]")
-                else:
-                    config.repositories.append(RepositoryConfig(url=repo_url))
-                    console.print(f"    [green]✓[/green] Added")
-                    added_count += 1
-
-                if not click.confirm("  Add another?", default=False):
-                    break
-            console.print()
-
-    # Save configuration
-    if added_count > 0:
-        if config_manager.save(config):
-            console.print(f"\n[bold green]✓[/bold green] Configuration saved to {config_manager.config_path}")
-            console.print(f"  {added_count} repository(ies) configured\n")
-            
-            console.print("[bold]Next steps:[/bold]")
-            console.print("  1. Run: [cyan]skill-hub pull[/cyan] to fetch skills")
-            console.print("  2. Run: [cyan]skill-hub sync[/cyan] to distribute to agents")
-        else:
-            console.print("\n[red]Failed to save configuration[/red]")
-    else:
-        console.print("\n[yellow]No repositories added[/yellow]")
-        console.print("\nAdd repositories with: skill-hub repo add <url>")
-
-
-@cli.command()
-@click.argument("language_code", required=False)
-@click.pass_context
-def language(ctx: click.Context, language_code: Optional[str]) -> None:
-    """Show or set interface language (en or zh_CN)."""
-    config: Config = ctx.obj["config"]
-    config_manager: ConfigManager = ctx.obj["config_manager"]
-
-    if language_code is None:
-        console.print(_("Current language: {lang}").format(lang=config.language))
-        console.print(_("Supported languages: en (English), zh_CN (Simplified Chinese)"))
-        console.print(_("Use: skill-hub language <code> to change."))
-        return
-
-    if language_code not in {"en", "zh_CN"}:
-        console.print(_("[red]Unsupported language code:[/red] {code}").format(code=language_code))
-        console.print(_("Use 'en' for English or 'zh_CN' for Simplified Chinese."))
-        return
-
-    config.language = language_code
-    if config_manager.save(config):
-        init_translation(language_code)
-        console.print(_("[green]✓[/green] Language updated to {lang}").format(lang=language_code))
-    else:
-        console.print(_("[red]Failed to save configuration[/red]"))
-
-
-@cli.command()
-@click.option("--pull", is_flag=True, help="Only pull skills from agents to hub")
-@click.option("--push", is_flag=True, help="Only push skills from hub to agents")
-@click.pass_context
-def sync(ctx: click.Context, pull: bool, push: bool) -> None:
-    """Synchronize skills between hub and agents."""
-    config = ctx.obj["config"]
-    sync_engine = SyncEngine(config)
-
-    console.print("[bold]Starting skill synchronization...[/bold]")
-
-    if pull:
-        result = sync_engine.pull_from_agents()
-    elif push:
-        result = sync_engine.push_to_agents()
-    else:
-        result = sync_engine.sync()
-
-    # Display results
-    console.print(f"\n[bold green]✓[/bold green] Sync completed: {result.operation}")
-    console.print(f"  • Skills synced: {result.skills_synced}")
-    console.print(f"  • Skills skipped: {result.skills_skipped}")
-
-    if result.conflicts_detected > 0:
-        console.print(
-            f"  [yellow]• Conflicts detected: {result.conflicts_detected}[/yellow]"
-        )
-
-    if result.errors:
-        console.print(f"\n[bold red]Errors:[/bold red]")
-        for error in result.errors:
-            console.print(f"  • {error}")
-
-
-@cli.command()
-@click.option("--json", "output_json", is_flag=True, help="Output as JSON")
-@click.pass_context
-def discover(ctx: click.Context, output_json: bool) -> None:
-    """Discover skills from all agent configurations."""
-    config = ctx.obj["config"]
-    adapter_registry = AdapterRegistry(config)
-    discovery = DiscoveryEngine()
-
-    console.print("[bold]Discovering skills...[/bold]")
-
-    # Collect search paths
-    search_paths = []
-    for adapter in adapter_registry.get_enabled_adapters():
-        for path in adapter.get_all_search_paths():
-            search_paths.append((path, adapter.name))
-
-    # Discover skills
-    registry = discovery.discover_skills(search_paths)
-
-    if output_json:
-        print(json.dumps(registry.export_json(), indent=2))
-    else:
-        skills = registry.list_skills()
-        console.print(f"\n[bold green]Found {len(skills)} skills:[/bold green]")
-
-        table = Table(show_header=True)
-        table.add_column("Skill Name")
-        table.add_column("Description")
-        table.add_column("Sources")
-
-        for skill_name in skills:
-            skill = registry.get_skill(skill_name)
-            if skill:
-                sources = ", ".join(set(src.agent for src in skill.sources))
-                table.add_row(skill_name, skill.metadata.description[:60], sources)
-
-        console.print(table)
-
-        if registry.has_duplicates():
-            console.print(
-                f"\n[yellow]⚠ {len(registry.duplicates)} skills have conflicts[/yellow]"
-            )
-
-
-@cli.command(name="list")
-@click.pass_context
-def list_skills(ctx: click.Context) -> None:
-    """List all skills in the hub."""
-    config = ctx.obj["config"]
-    sync_engine = SyncEngine(config)
-
-    skills = sync_engine.list_hub_skills()
-
-    if not skills:
-        console.print("[yellow]No skills found in hub[/yellow]")
-        return
-
-    console.print(f"[bold]Skills in hub ({len(skills)}):[/bold]\n")
-    for skill in skills:
-        console.print(f"  • {skill}")
-
-
-@cli.command()
-@click.option("--check", is_flag=True, help="Run health checks")
-@click.pass_context
-def agents(ctx: click.Context, check: bool) -> None:
-    """List available agent adapters."""
-    config = ctx.obj["config"]
-    adapter_registry = AdapterRegistry(config)
-
-    if check:
-        console.print("[bold]Running health checks...[/bold]\n")
-        results = adapter_registry.health_check_all()
-
-        table = Table(show_header=True)
-        table.add_column("Agent")
-        table.add_column("Enabled")
-        table.add_column("Global Path")
-        table.add_column("Status")
-
-        for agent_name, health in results.items():
-            enabled = "✓" if health["enabled"] else "✗"
-            status = []
-            if health["global_path_exists"]:
-                status.append("exists")
-            if health["global_path_writable"]:
-                status.append("writable")
-
-            status_str = ", ".join(status) if status else "not available"
-
-            table.add_row(
-                agent_name, enabled, health["global_path"], status_str
-            )
-
-        console.print(table)
-    else:
-        adapters = adapter_registry.list_adapters()
-        console.print(f"[bold]Available adapters ({len(adapters)}):[/bold]\n")
-        for adapter_name in adapters:
-            adapter = adapter_registry.get_adapter(adapter_name)
-            if adapter:
-                status = "enabled" if adapter.is_enabled() else "disabled"
-                console.print(f"  • {adapter_name} ({status})")
-
-
-@cli.group(name="repo")
-@click.pass_context
-def repo(ctx: click.Context) -> None:
-    """Manage remote skill repositories."""
+def cli() -> None:
+    """skill-hub: View skills from ~/.agents/skills"""
     pass
 
 
-@repo.command(name="add")
-@click.argument("url")
-@click.option("--branch", default="main", help="Git branch (default: main)")
-@click.option("--path", default="", help="Subdirectory path in repository")
-@click.pass_context
-def repo_add(ctx: click.Context, url: str, branch: str, path: str) -> None:
-    """Add a remote repository."""
-    config = ctx.obj["config"]
-    config_manager = ctx.obj["config_manager"]
-    repo_manager = RepositoryManager()
+@cli.command(name="list")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed information")
+def list_skills(verbose: bool) -> None:
+    """List all skills in ~/.agents/skills."""
+    skills_path = Path(expand_home("~/.agents/skills"))
 
-    # Validate URL
-    if not repo_manager.validate_url(url):
-        console.print(f"[red]Invalid repository URL:[/red] {url}")
+    if not skills_path.exists():
+        console.print(f"[yellow]Skills directory not found:[/yellow] {skills_path}")
+        console.print("\nCreate it with: mkdir -p ~/.agents/skills")
         return
 
-    # Check if already exists
-    for repo in config.repositories:
-        if repo.url == url:
-            console.print(f"[yellow]Repository already configured:[/yellow] {url}")
-            return
+    engine = DiscoveryEngine(skills_path)
+    skills = engine.discover_skills()
 
-    # Add to config
-    repo_config = RepositoryConfig(url=url, branch=branch, path=path)
-    config.repositories.append(repo_config)
-    
-    # Save configuration
-    if not config_manager.save(config):
-        console.print("[red]Failed to save configuration[/red]")
+    if not skills:
+        console.print("[yellow]No skills found in ~/.agents/skills[/yellow]")
         return
 
-    console.print(f"[green]✓[/green] Added repository: {url}")
-    console.print(f"  Branch: {branch}")
-    if path:
-        console.print(f"  Path: {path}")
-    console.print("\n[bold]Run 'skill-hub pull' to fetch skills[/bold]")
+    console.print(f"[bold]Skills in ~/.agents/skills ({len(skills)}):[/bold]\n")
 
-
-@repo.command(name="list")
-@click.pass_context
-def repo_list(ctx: click.Context) -> None:
-    """List configured repositories."""
-    config = ctx.obj["config"]
-    config_manager = ctx.obj["config_manager"]
-    repo_manager = RepositoryManager()
-
-    if not config.repositories:
-        if not config_manager.exists():
-            console.print("[yellow]No configuration found[/yellow]\n")
-            console.print("Get started with: [cyan]skill-hub init[/cyan]")
-        else:
-            console.print("[yellow]No repositories configured[/yellow]\n")
-            console.print("Add a repository with: [cyan]skill-hub repo add <url>[/cyan]")
-            console.print("Or run: [cyan]skill-hub init[/cyan] for interactive setup")
-        return
-
-    console.print(f"[bold]Configured repositories ({len(config.repositories)}):[/bold]\n")
-
-    table = Table(show_header=True)
-    table.add_column("URL")
-    table.add_column("Branch")
-    table.add_column("Enabled")
-    table.add_column("Status")
-
-    for repo in config.repositories:
-        enabled = "✓" if repo.enabled else "✗"
-        metadata = repo_manager.load_metadata(repo.url)
-
-        if metadata and metadata.last_sync_at:
-            status = f"Synced {metadata.sync_count} times"
-        else:
-            status = "Not synced yet"
-
-        table.add_row(repo.url, repo.branch, enabled, status)
-
-    console.print(table)
-
-
-@repo.command(name="remove")
-@click.argument("url")
-@click.pass_context
-def repo_remove(ctx: click.Context, url: str) -> None:
-    """Remove a repository."""
-    config = ctx.obj["config"]
-    config_manager = ctx.obj["config_manager"]
-
-    # Find and remove
-    for i, repo in enumerate(config.repositories):
-        if repo.url == url:
-            config.repositories.pop(i)
-            
-            # Save configuration
-            if not config_manager.save(config):
-                console.print("[red]Failed to save configuration[/red]")
-                return
-                
-            console.print(f"[green]✓[/green] Removed repository: {url}")
-            return
-
-    console.print(f"[yellow]Repository not found:[/yellow] {url}")
-
-
-@cli.command()
-@click.argument("url", required=False)
-@click.pass_context
-def pull(ctx: click.Context, url: Optional[str]) -> None:
-    """Pull skills from remote repositories."""
-    config = ctx.obj["config"]
-    config_manager = ctx.obj["config_manager"]
-    repo_manager = RepositoryManager()
-    scanner = RepositorySkillScanner()
-    sync_engine = SyncEngine(config)
-
-    # Check if configuration exists
-    if not config_manager.exists() and not config.repositories:
-        console.print("[yellow]No configuration found[/yellow]\n")
-        console.print("Initialize skill-hub with: [cyan]skill-hub init[/cyan]")
-        console.print("\nExample:")
-        console.print("  skill-hub init --with-anthropic")
-        return
-
-    # Determine which repositories to pull
-    if url:
-        repos = [r for r in config.repositories if r.url == url]
-        if not repos:
-            console.print(f"[red]Repository not configured:[/red] {url}")
-            return
+    if verbose:
+        for skill in skills:
+            console.print(f"[bold]{skill.name}[/bold]")
+            console.print(f"  Description: {skill.description}")
+            console.print(f"  Path: {skill.path}")
+            if skill.metadata.license:
+                console.print(f"  License: {skill.metadata.license}")
+            if skill.metadata.compatibility:
+                console.print(f"  Compatibility: {skill.metadata.compatibility}")
+            console.print()
     else:
-        repos = [r for r in config.repositories if r.enabled]
-
-    if not repos:
-        console.print("[yellow]No enabled repositories to pull from[/yellow]")
-        console.print("\nAdd a repository with: skill-hub repo add <url>")
-        return
-
-    console.print("[bold]Pulling skills from remote repositories...[/bold]\n")
-
-    total_skills = 0
-    for repo_config in repos:
-        console.print(f"📦 {repo_config.url}")
-
-        # Clone or update repository
-        if not repo_manager.clone_or_update(repo_config):
-            console.print(f"  [red]✗ Failed to sync repository[/red]")
-            continue
-
-        # Get current commit hash
-        commit_hash = repo_manager.get_commit_hash(repo_config.url)
-
-        # Scan for skills
-        repo_dir = repo_manager.get_repository_path(repo_config.url)
-        scanned_skills = scanner.scan_repository(repo_dir, repo_config)
-
-        if not scanned_skills:
-            console.print(f"  [yellow]No skills found[/yellow]")
-            continue
-
-        # Convert to Skill objects
-        skills = scanner.create_skill_objects(scanned_skills, repo_config.url)
-
-        # Import skills to hub with bilingual translation
-        bilingual_manager = None
-        if config.bilingual.enabled and config.bilingual.auto_translate:
-            from skill_hub.bilingual import BilingualStorageManager
-            bilingual_manager = BilingualStorageManager(config)
-            bilingual_manager.initialize_backup_directories()
-            console.print(f"  [dim]🌐 Bilingual translation enabled[/dim]")
+        table = Table(show_header=True)
+        table.add_column("Skill Name")
+        table.add_column("Description")
 
         for skill in skills:
-            try:
-                sync_engine._sync_skill_to_hub(skill)
-                total_skills += 1
-                
-                # Store bilingual versions if enabled
-                if bilingual_manager:
-                    success, _ = bilingual_manager.sync_skill_to_backup(
-                        skill.name,
-                        skill.content,
-                        auto_translate=config.bilingual.auto_translate
-                    )
-                    if success:
-                        console.print(f"    [green]✓ Stored bilingual versions[/green]")
-                    else:
-                        console.print(f"    [yellow]⚠ Translation skipped[/yellow]")
-                        
-            except Exception as e:
-                console.print(f"  [red]✗ Failed to import '{skill.name}': {e}[/red]")
-
-        # Save metadata
-        from datetime import datetime
-        from skill_hub.models import RepositoryMetadata
-
-        metadata = RepositoryMetadata(
-            url=repo_config.url,
-            branch=repo_config.branch,
-            commit_hash=commit_hash,
-            last_sync_at=datetime.now().isoformat(),
-            skills_imported=[s.name for s in skills],
-            sync_count=(repo_manager.load_metadata(repo_config.url).sync_count + 1
-                        if repo_manager.load_metadata(repo_config.url)
-                        else 1),
-        )
-        repo_manager.save_metadata(metadata)
-
-        console.print(f"  [green]✓ Imported {len(skills)} skills[/green]")
-
-    console.print(f"\n[bold green]✓[/bold green] Pull completed: {total_skills} skills imported")
-
-
-@cli.command()
-@click.argument("query", required=False, default="")
-@click.option("--global-search", "global_search", is_flag=True, help="Search only global skills")
-@click.option("--top", "-n", default=5, type=int, help="Number of results to return")
-@click.option("--json", "output_json", is_flag=True, help="Output as JSON")
-@click.pass_context
-def find(ctx: click.Context, query: str, top: int, output_json: bool, global_search: bool) -> None:
-    from skill_hub.adapters import AdapterRegistry
-    """Find relevant skills using AI-powered search.
-
-    Example: skill-hub find "How do I handle git merge conflicts?"
-    """
-    from skill_hub.ai import AISkillFinder
-
-    config = ctx.obj["config"]
-
-    # Check if AI is enabled
-    if not config.ai.enabled:
-        console.print("[yellow]AI finder is disabled in configuration[/yellow]")
-        return
-
-    finder = AISkillFinder(config)
-
-    # Check availability
-    available, status = finder.is_available()
-    if not available:
-        console.print(f"[red]{status}[/red]")
-        return
-
-    console.print(f"[bold]Searching for skills...[/bold] ({status})\n")
-
-    # Find skills
-    matches, error = finder.find_skills(query, top_k=top)
-
-    if error:
-        console.print(f"[red]Error:[/red] {error}")
-        return
-    # If global_search flag is set, filter matches to only those in global skill directories
-    if global_search:
-        # Gather global paths from all enabled adapters
-        global_paths = [str(adapter.get_global_path()) for adapter in adapter_registry.get_enabled_adapters()]
-        matches = [m for m in matches if any(m.path.startswith(gp) for gp in global_paths)]
-    if not matches:
-        console.print("[yellow]No matching skills found[/yellow]")
-        return
-
-    if output_json:
-        import json as json_module
-
-        result = [
-            {
-                "name": m.name,
-                "description": m.description,
-                "score": m.score,
-                "reasoning": m.reasoning,
-                "path": m.path,
-            }
-            for m in matches
-        ]
-        print(json_module.dumps(result, indent=2))
-    else:
-        console.print(f"[bold green]Found {len(matches)} matching skills:[/bold green]\n")
-
-        table = Table(show_header=True)
-        table.add_column("Skill Name", style="cyan")
-        table.add_column("Score", justify="right")
-        table.add_column("Description")
-        table.add_column("Reasoning", style="dim")
-
-        for match in matches:
-            score_pct = f"{match.score * 100:.0f}%"
-            desc = match.description[:50]
-            if len(match.description) > 50:
-                desc += "..."
-            reasoning = match.reasoning[:40]
-            if len(match.reasoning) > 40:
-                reasoning += "..."
-            table.add_row(match.name, score_pct, desc, reasoning)
+            desc = skill.description[:80] + "..." if len(skill.description) > 80 else skill.description
+            table.add_row(skill.name, desc)
 
         console.print(table)
-        
-        # Show file paths hint
-        console.print(f"\n[dim]💡 Tip: Use --json to see full file paths[/dim]")
 
-
-def main() -> None:
-    """Main entry point."""
-    try:
-        cli(obj={})
-    except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
 
 @cli.command()
 @click.argument("skill_name")
-@click.option("--force", is_flag=True, help="Force deletion without confirmation")
-def delete(ctx: click.Context, skill_name: str, force: bool) -> None:
-    """Delete a global skill."""
-    config = ctx.obj["config"]
-    adapter_registry = AdapterRegistry(config)
-    for adapter in adapter_registry.get_enabled_adapters():
-        global_path = adapter.get_global_path()
-        skill_dir = global_path / "skills" / skill_name
-        if skill_dir.exists():
-            if not force:
-                if not click.confirm(f"Delete global skill '{skill_name}'? This cannot be undone.", default=False):
-                    console.print("[yellow]Deletion cancelled[/yellow]")
-                    return
-            try:
-                import shutil
-                shutil.rmtree(skill_dir)
-                console.print(f"[green]Deleted global skill '{skill_name}'.[/green]")
-            except Exception as e:
-                console.print(f"[red]Error deleting skill: {e}[/red]")
-            return
-    console.print(f"[red]Global skill '{skill_name}' not found.[/red]")
-@cli.command()
-@click.argument("language", type=click.Choice(["en", "zh_CN"]))
-@click.pass_context
-def lang(ctx: click.Context, language: str) -> None:
-    """Switch active skills to a different language.
-    
-    Switches the hub skills to the specified language version.
-    Skills are stored in ~/.agents/skills_bak/<lang>/ directory.
-    """
-    from skill_hub.bilingual import BilingualStorageManager
-    
-    config = ctx.obj["config"]
-    config_manager = ctx.obj["config_manager"]
-    
-    # Check if bilingual storage is enabled
-    if not config.bilingual.enabled:
-        console.print("[red]Bilingual storage is disabled in configuration[/red]")
-        console.print("\nEnable it by setting bilingual.enabled=true in config")
+def view(skill_name: str) -> None:
+    """View a specific skill's content."""
+    skills_path = Path(expand_home("~/.agents/skills"))
+
+    if not skills_path.exists():
+        console.print(f"[yellow]Skills directory not found:[/yellow] {skills_path}")
         return
-    
-    manager = BilingualStorageManager(config)
-    
-    # Initialize backup directories if needed
-    manager.initialize_backup_directories()
-    
-    console.print(f"[bold]Switching to {language} skills...[/bold]\n")
-    
-    # Switch language
-    if manager.switch_language(language):
-        console.print(f"[green]✓ Successfully switched to {language} skills[/green]")
-        console.print(f"\n[dim]Active skills are now from: {manager.backup_path / language}[/dim]")
-        
-        # Show available bilingual skills
-        if manager.hub_path.exists():
-            skill_count = len([d for d in manager.hub_path.iterdir() if d.is_dir() and d.name != ".skill-hub"])
-            console.print(f"[dim]Found {skill_count} skills in {language}[/dim]")
+
+    engine = DiscoveryEngine(skills_path)
+    skills = engine.discover_skills()
+
+    # Find the skill
+    skill = next((s for s in skills if s.name == skill_name), None)
+
+    if not skill:
+        console.print(f"[red]Skill not found:[/red] {skill_name}")
+        console.print("\nAvailable skills:")
+        for s in skills:
+            console.print(f"  • {s.name}")
+        return
+
+    console.print(f"[bold]{skill.name}[/bold]")
+    console.print(f"[dim]Path: {skill.path}[/dim]\n")
+    console.print(skill.content)
+
+
+@cli.command()
+def path() -> None:
+    """Show the skills directory path."""
+    skills_path = Path(expand_home("~/.agents/skills"))
+    console.print(skills_path)
+
+    if skills_path.exists():
+        console.print("[green]✓ Directory exists[/green]")
     else:
-        console.print(f"[red]✗ Failed to switch to {language} skills[/red]")
-        console.print("\n[yellow]Possible reasons:[/yellow]")
-        console.print("  • No skills found in backup directory")
-        console.print("  • Translation not yet completed for this language")
-        console.print("\n[dim]Run 'skill-hub pull' to fetch and translate skills first[/dim]")
+        console.print("[yellow]✗ Directory does not exist[/yellow]")
+        console.print("\nCreate it with:")
+        console.print("  mkdir -p ~/.agents/skills")
+
+
+# New commands for skill lifecycle management
+
+@cli.command(name="install")
+@click.argument("source")
+@click.option("--as", "skill_name", default=None, help="Custom name for the installed skill")
+def install_skill(source: str, skill_name: str) -> None:
+    """Install a skill from GitHub, local path, or URL."""
+    # Import installer after CLI definition to avoid circular imports
+    from skill_hub.installer import install_from_github, install_from_local, install_from_url
+    
+    console.print(f"[yellow]Installing skill from {source}...[/yellow]")
+    
+    # Determine installation method based on source format
+    if source.startswith(("http://", "https://")):
+        # URL installation
+        skill = install_from_url(source, skill_name)
+    elif source.startswith("/") or source.startswith("~/") or source.startswith("./"):
+        # Local path installation
+        skill = install_from_local(source, skill_name)
+    else:
+        # Assume GitHub repository format (user/repo/skill-name)
+        skill = install_from_github(source, skill_name)
+    
+    console.print(f"[green]✓ Skill '{skill.name}' installed successfully![/green]")
+
+
+@cli.command(name="upgrade")
+@click.argument("skill_name")
+def upgrade_skill(skill_name: str) -> None:
+    """Upgrade a skill to global format."""
+    from skill_hub.upgrader import upgrade_skill as do_upgrade
+    
+    try:
+        skill = do_upgrade(skill_name)
+        console.print(f"[green]✓ Skill '{skill.name}' upgraded successfully![/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Upgrade failed: {e}[/red]")
+        raise click.Abort()
+
+
+@cli.command(name="update")
+@click.argument("skill_name", required=False)
+def update_skill(skill_name: str) -> None:
+    """Check for and apply skill updates."""
+    from skill_hub.version import update_skill as do_update, check_update
+    
+    if skill_name:
+        # Update specific skill
+        success = do_update(skill_name)
+        if not success:
+            raise click.Abort()
+    else:
+        # Check all skills
+        skills_path = Path(expand_home("~/.agents/skills"))
+        
+        if not skills_path.exists():
+            console.print(f"[yellow]Skills directory not found:[/yellow] {skills_path}")
+            return
+        
+        engine = DiscoveryEngine(skills_path)
+        skills = engine.discover_skills()
+        
+        if not skills:
+            console.print("[yellow]No skills found in ~/.agents/skills[/yellow]")
+            return
+        
+        has_updates = False
+        for skill in skills:
+            has_update, current_version, latest_version = check_update(
+                skill.name, 
+                skill.path.parent
+            )
+            
+            if has_update:
+                has_updates = True
+                console.print(f"[yellow]Update available:[/yellow] {skill.name} ({current_version} → {latest_version})")
+            else:
+                console.print(f"[green]Up to date:[/green] {skill.name} ({current_version})")
+        
+        if not has_updates:
+            console.print("[green]All skills are up to date![/green]")
