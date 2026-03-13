@@ -34,6 +34,28 @@ skill-hub view <skill-name>
 skill-hub path
 ```
 
+### Compare local and global skills
+
+Compare skills in your local project with global skills:
+
+```bash
+# Full comparison table
+skill-hub compare
+
+# Summary only (no detailed table)
+skill-hub compare --summary
+
+# Specify custom paths
+skill-hub compare --local ./skills --global ~/.agents/skills
+```
+
+This command compares skills in your local project (e.g., `.opencode/skills`) with global skills (`~/.agents/skills`) and shows:
+
+- **Local only**: Skills only in your local project
+- **Global only**: Skills only in global directory
+- **Update available**: Skills with version differences
+- **Up to date**: Skills with matching versions
+
 ## Skill Lifecycle Management
 
 ### Install a skill
@@ -130,6 +152,8 @@ updateUrl: https://raw.githubusercontent.com/user/repo/main/VERSION
 | `skill-hub list --verbose` | List skills with detailed info |
 | `skill-hub view <name>` | View a specific skill |
 | `skill-hub path` | Show skills directory path |
+| `skill-hub compare` | Compare local and global skills (full table) |
+| `skill-hub compare --summary` | Compare with summary only |
 | `skill-hub install <source>` | Install a skill from GitHub, local path, or URL |
 | `skill-hub install <source> --as <name>` | Install with custom name |
 | `skill-hub upgrade <name>` | Upgrade a skill to global format |

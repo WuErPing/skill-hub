@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.table import Table
 
 from skill_hub import __version__
+from skill_hub.comparison import compare_skills, format_comparison_result
 from skill_hub.discovery import DiscoveryEngine
 from skill_hub.utils import expand_home
 
@@ -102,6 +103,73 @@ def path() -> None:
         console.print("[yellow]✗ Directory does not exist[/yellow]")
         console.print("\nCreate it with:")
         console.print("  mkdir -p ~/.agents/skills")
+
+
+@cli.command(name="compare")
+@click.option(
+    "--local",
+    "local_path",
+    default=None,
+    help="Path to local skills directory (default: auto-discover)"
+)
+@click.option(
+    "--global",
+    "global_path",
+    default=None,
+    help="Path to global skills directory (default: ~/.agents/skills)"
+)
+@click.option(
+    "--summary",
+    is_flag=True,
+    help="Show only summary (no detailed table)"
+)
+def compare_skills_cmd(local_path: str, global_path: str, summary: bool) -> None:
+    """Compare local project skills with global skills.
+    
+    This command compares skills in your local project (e.g., .opencode/skills)
+    with global skills (~/.agents/skills) and shows:
+    
+    - Skills only in local (local-only)
+    - Skills only in global (global-only)
+    - Skills with version differences (update-available)
+    - Skills up to date (up-to-date)
+    
+    Examples:
+    
+        # Compare local and global skills
+        skill-hub compare
+        
+        # Show only summary
+        skill-hub compare --summary
+        
+        # Specify custom paths
+        skill-hub compare --local ./skills --global ~/.agents/skills
+    """
+    # Convert paths
+    local_p = Path(local_path) if local_path else None
+    global_p = Path(global_path) if global_path else None
+    
+    console.print("[bold]Comparing local and global skills...[/bold]\n")
+    
+    try:
+        result = compare_skills(local_path=local_p, global_path=global_p)
+        
+        if summary:
+            # Show only summary
+            console.print(f"[bold]Summary:[/bold]")
+            console.print(f"  Local skills: {result.local_count}")
+            console.print(f"  Global skills: {result.global_count}")
+            console.print(f"  Up to date: {len(result.up_to_date)}")
+            console.print(f"  Needs update: {len(result.needs_update)}")
+            console.print(f"  Local only: {len(result.local_only)}")
+            console.print(f"  Global only: {len(result.global_only)}")
+        else:
+            # Show full comparison table
+            format_comparison_result(result)
+        
+    except Exception as e:
+        console.print(f"[red]✗ Comparison failed: {e}[/red]")
+        raise click.Abort()
 
 
 # New commands for skill lifecycle management

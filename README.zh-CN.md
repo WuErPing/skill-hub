@@ -34,6 +34,28 @@ skill-hub view <技能名称>
 skill-hub path
 ```
 
+### 比较本地和全局技能
+
+比较项目本地技能与全局技能：
+
+```bash
+# 完整比较表格
+skill-hub compare
+
+# 仅显示摘要（无详细表格）
+skill-hub compare --summary
+
+# 指定自定义路径
+skill-hub compare --local ./skills --global ~/.agents/skills
+```
+
+此命令比较项目本地技能（例如 `.opencode/skills`）与全局技能（`~/.agents/skills`），并显示：
+
+- **仅本地**: 仅在本地项目中的技能
+- **仅全局**: 仅在全局目录中的技能
+- **有可用更新**: 版本不同的技能
+- **已最新**: 版本匹配的技能
+
 ## 技能生命周期管理
 
 ### 安装技能
@@ -130,6 +152,8 @@ updateUrl: https://raw.githubusercontent.com/user/repo/main/VERSION
 | `skill-hub list --verbose` | 显示详细信息 |
 | `skill-hub view <名称>` | 查看特定技能 |
 | `skill-hub path` | 显示技能目录路径 |
+| `skill-hub compare` | 比较本地和全局技能（完整表格） |
+| `skill-hub compare --summary` | 比较并仅显示摘要 |
 | `skill-hub install <来源>` | 从 GitHub、本地路径或 URL 安装技能 |
 | `skill-hub install <来源> --as <名称>` | 使用自定义名称安装 |
 | `skill-hub upgrade <名称>` | 将技能升级为全局格式 |

@@ -39,6 +39,7 @@
 - [x] 6.1 Add `install` command with GitHub/local/URL sources
 - [x] 6.2 Add `upgrade` command for upgrading skills
 - [x] 6.3 Add `update` command for checking/updating versions
+- [x] 6.4 Add `compare` command for local vs global skill comparison
 
 ## 7. Dependencies (`pyproject.toml`)
 
@@ -57,3 +58,11 @@
 - [x] 9.1 Update README.md with installation instructions
 - [x] 9.2 Add upgrade documentation
 - [x] 9.3 Add version management documentation
+
+## 10. Skill Comparison Feature (NEW)
+
+- [x] 10.1 Create comparison module for local vs global skills
+- [x] 10.2 Implement version parsing from SKILL.md files
+- [x] 10.3 Add compare command to CLI with summary mode
+- [x] 10.4 Update README.md with compare command documentation
+- [x] 10.5 Update README.zh-CN.md with compare command documentation
