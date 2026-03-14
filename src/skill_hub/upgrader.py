@@ -7,6 +7,7 @@ from typing import Optional
 
 from rich.console import Console
 
+from skill_hub.discovery.engine import discover_local_skills_dirs
 from skill_hub.models import Skill, SkillMetadata
 from skill_hub.utils.yaml_parser import parse_skill_file
 
@@ -151,25 +152,39 @@ def backup_skill(skill: Skill) -> Path:
 
 def upgrade_skill(skill_name: str, dest_dir: Optional[Path] = None) -> Skill:
     """Upgrade a skill (convert to global format).
-    
+
     Args:
         skill_name: Name of the skill to upgrade
         dest_dir: Optional destination directory (default: ~/.agents/skills)
-        
+
     Returns:
         Upgraded Skill object
-        
+
     Raises:
         UpgradeError: If upgrade fails
     """
     if dest_dir is None:
         dest_dir = Path.home() / ".agents" / "skills"
-    
-    # Find the skill
-    skills_dir = Path.home() / ".agents" / "skills"
-    source_path = skills_dir / skill_name
-    
-    if not source_path.exists():
+
+    # Search for skill in all local directories first
+    local_dirs = discover_local_skills_dirs(Path.cwd())
+    source_path = None
+
+    for skills_dir, tool_name in local_dirs:
+        potential_path = skills_dir / skill_name
+        if potential_path.exists():
+            source_path = potential_path
+            console.print(f"[yellow]Found skill '{skill_name}' in {tool_name}[/yellow]")
+            break
+
+    # If not found locally, check global
+    if source_path is None:
+        global_skills = Path.home() / ".agents" / "skills"
+        source_path = global_skills / skill_name
+        if source_path.exists():
+            console.print(f"[yellow]Found skill '{skill_name}' in global[/yellow]")
+
+    if not source_path or not source_path.exists():
         raise UpgradeError(f"Skill not found: {skill_name}")
     
     # Load skill

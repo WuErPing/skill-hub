@@ -5,7 +5,14 @@ View, install, upgrade, and manage skills from `~/.agents/skills` directory.
 ## Installation
 
 ```bash
+# Install in editable mode (for development)
 pip install -e .
+
+# Or install globally
+pip install skill-hub
+
+# Or install from GitHub
+pip install git+https://github.com/wuerping/skill-hub.git
 ```
 
 ## Usage
@@ -98,6 +105,26 @@ skill-hub update
 skill-hub update skill-name
 ```
 
+### Version management
+
+Check skill-hub version and updates:
+
+```bash
+# Show current version
+skill-hub version
+
+# Check for available updates
+skill-hub version --check
+```
+
+### Self-update
+
+Update skill-hub to the latest version:
+
+```bash
+skill-hub self-update
+```
+
 ## Directory Structure
 
 ```
@@ -159,6 +186,9 @@ updateUrl: https://raw.githubusercontent.com/user/repo/main/VERSION
 | `skill-hub upgrade <name>` | Upgrade a skill to global format |
 | `skill-hub update` | Check all skills for updates |
 | `skill-hub update <name>` | Check specific skill for updates |
+| `skill-hub version` | Show current version |
+| `skill-hub version --check` | Check for available updates |
+| `skill-hub self-update` | Update skill-hub to latest version |
 
 ## License
 

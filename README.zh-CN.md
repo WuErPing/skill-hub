@@ -5,7 +5,14 @@
 ## 安装
 
 ```bash
+# 以可编辑模式安装（用于开发）
 pip install -e .
+
+# 或全局安装
+pip install skill-hub
+
+# 或从 GitHub 安装
+pip install git+https://github.com/wuerping/skill-hub.git
 ```
 
 ## 使用方法
@@ -98,6 +105,26 @@ skill-hub update
 skill-hub update 技能名称
 ```
 
+### 版本管理
+
+查看 skill-hub 版本和更新：
+
+```bash
+# 显示当前版本
+skill-hub version
+
+# 检查可用更新
+skill-hub version --check
+```
+
+### 自我更新
+
+更新 skill-hub 到最新版本：
+
+```bash
+skill-hub self-update
+```
+
 ## 目录结构
 
 ```
@@ -159,6 +186,9 @@ updateUrl: https://raw.githubusercontent.com/user/repo/main/VERSION
 | `skill-hub upgrade <名称>` | 将技能升级为全局格式 |
 | `skill-hub update` | 检查所有技能的更新 |
 | `skill-hub update <名称>` | 检查特定技能的更新 |
+| `skill-hub version` | 显示当前版本 |
+| `skill-hub version --check` | 检查可用更新 |
+| `skill-hub self-update` | 更新 skill-hub 到最新版本 |
 
 ## 许可证
 

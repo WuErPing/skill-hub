@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "skill-hub"
 version = "0.3.0"
-description = "View skills from ~/.agents/skills"
+description = "View, install, upgrade and manage skills from ~/.agents/skills"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -14,6 +14,24 @@ dependencies = [
     "pyyaml>=6.0",
     "requests>=2.28.0",
 ]
+keywords = ["skills", "agents", "cli", "skill-management"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+]
+
+[project.urls]
+Homepage = "https://github.com/wuerping/skill-hub"
+Repository = "https://github.com/wuerping/skill-hub"
+Issues = "https://github.com/wuerping/skill-hub/issues"
+Changelog = "https://github.com/wuerping/skill-hub/blob/main/CHANGELOG.md"
 
 [project.scripts]
 skill-hub = "skill_hub.cli:cli"

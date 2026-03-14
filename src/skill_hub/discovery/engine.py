@@ -2,12 +2,63 @@
 
 import logging
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional, Tuple
 
 from skill_hub.models import Skill, SkillMetadata
 from skill_hub.utils import parse_skill_file_from_path
 
 logger = logging.getLogger(__name__)
+
+
+def discover_local_skills_dirs(base_path: Optional[Path] = None) -> List[Tuple[Path, str]]:
+    """Discover all local skill directories matching .*/skills pattern.
+    
+    Args:
+        base_path: Base directory to search (default: current working directory)
+        
+    Returns:
+        List of tuples (skills_directory_path, tool_name)
+        where tool_name is the name of the tool (e.g., 'opencode', 'agents')
+    """
+    if base_path is None:
+        base_path = Path.cwd()
+    
+    skill_dirs: List[Tuple[Path, str]] = []
+    
+    # Look for hidden directories that contain a 'skills' subdirectory
+    for item in base_path.iterdir():
+        if item.is_dir() and item.name.startswith("."):
+            skills_dir = item / "skills"
+            if skills_dir.exists() and skills_dir.is_dir():
+                # Extract tool name from directory name (e.g., '.opencode' -> 'opencode')
+                tool_name = item.name[1:]  # Remove leading dot
+                skill_dirs.append((skills_dir, tool_name))
+    
+    return skill_dirs
+
+
+def discover_all_local_skills(base_path: Optional[Path] = None) -> Dict[str, List[Skill]]:
+    """Discover all skills from all local skill directories.
+    
+    Args:
+        base_path: Base directory to search (default: current working directory)
+        
+    Returns:
+        Dictionary mapping tool_name to list of skills
+    """
+    if base_path is None:
+        base_path = Path.cwd()
+    
+    result: Dict[str, List[Skill]] = {}
+    skill_dirs = discover_local_skills_dirs(base_path)
+    
+    for skills_dir, tool_name in skill_dirs:
+        engine = DiscoveryEngine(skills_dir)
+        skills = engine.discover_skills()
+        if skills:
+            result[tool_name] = skills
+    
+    return result
 
 
 class DiscoveryEngine:
