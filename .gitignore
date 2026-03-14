@@ -209,5 +209,8 @@ __marimo__/
 # VSCode Counter
 .VSCodeCounter/
 
+.crush/
 .agents/
 .opencode/
+.vscode/
+.sisyphus/

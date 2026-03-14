@@ -19,12 +19,31 @@ class InstallationError(Exception):
     pass
 
 
-def install_from_github(repo_path: str, skill_name: Optional[str] = None) -> Skill:
+def get_install_path(skill_name: str, target: str = "public") -> Path:
+    """Get the installation path for a skill.
+    
+    Args:
+        skill_name: Name of the skill
+        target: Target directory type ("public" or "project")
+        
+    Returns:
+        Path to the installation directory
+    """
+    if target == "project":
+        # Install to project-level directory
+        return Path.cwd() / ".agents" / "skills" / skill_name
+    else:
+        # Install to public directory (default)
+        return Path.home() / ".agents" / "skills" / skill_name
+
+
+def install_from_github(repo_path: str, skill_name: Optional[str] = None, target: Optional[Path] = None) -> Skill:
     """Install a skill from a GitHub repository.
     
     Args:
         repo_path: GitHub repository path (e.g., user/repo/skill-name)
         skill_name: Optional custom name for the installed skill
+        target: Target directory path (defaults to project-level ./.agents/skills/)
         
     Returns:
         Installed Skill object
@@ -73,8 +92,10 @@ def install_from_github(repo_path: str, skill_name: Optional[str] = None) -> Ski
         raise InstallationError(f"Invalid SKILL.md format: {e}")
     
     # Determine installation path
-    skills_dir = Path.home() / ".agents" / "skills"
-    install_path = skills_dir / skill_name
+    if target is None:
+        # Default: install to project-level directory
+        target = Path.cwd() / ".agents" / "skills"
+    install_path = target / skill_name
     
     # Create directory and save SKILL.md
     install_path.mkdir(parents=True, exist_ok=True)
@@ -96,12 +117,13 @@ def install_from_github(repo_path: str, skill_name: Optional[str] = None) -> Ski
     return Skill(metadata=metadata, content=full_content, path=install_path / "SKILL.md")
 
 
-def install_from_local(source_path: str, skill_name: Optional[str] = None) -> Skill:
+def install_from_local(source_path: str, skill_name: Optional[str] = None, target: Optional[Path] = None) -> Skill:
     """Install a skill from a local directory path.
     
     Args:
         source_path: Local path to the skill directory
         skill_name: Optional custom name for the installed skill
+        target: Target directory path (defaults to project-level ./.agents/skills/)
         
     Returns:
         Installed Skill object
@@ -129,12 +151,14 @@ def install_from_local(source_path: str, skill_name: Optional[str] = None) -> Sk
         metadata, body = parse_skill_file(content)
     except Exception as e:
         raise InstallationError(f"Invalid SKILL.md format: {e}")
-    
+
     # Determine installation path
-    skills_dir = Path.home() / ".agents" / "skills"
+    if target is None:
+        # Default: install to project-level directory
+        target = Path.cwd() / ".agents" / "skills"
     target_name = skill_name or metadata.name
-    install_path = skills_dir / target_name
-    
+    install_path = target / target_name
+
     # Copy directory contents
     console.print(f"[yellow]Installing skill '{target_name}'...[/yellow]")
     
@@ -166,12 +190,13 @@ def install_from_local(source_path: str, skill_name: Optional[str] = None) -> Sk
     return Skill(metadata=metadata, content=full_content, path=install_path / "SKILL.md")
 
 
-def install_from_url(url: str, skill_name: Optional[str] = None) -> Skill:
+def install_from_url(url: str, skill_name: Optional[str] = None, target: Optional[Path] = None) -> Skill:
     """Install a skill from a direct URL to SKILL.md.
     
     Args:
         url: Direct URL to the SKILL.md file
         skill_name: Optional custom name for the installed skill
+        target: Target directory path (defaults to project-level ./.agents/skills/)
         
     Returns:
         Installed Skill object
@@ -193,12 +218,14 @@ def install_from_url(url: str, skill_name: Optional[str] = None) -> Skill:
         metadata, body = parse_skill_file(skill_content)
     except Exception as e:
         raise InstallationError(f"Invalid SKILL.md format: {e}")
-    
+
     # Determine installation path
-    skills_dir = Path.home() / ".agents" / "skills"
+    if target is None:
+        # Default: install to project-level directory
+        target = Path.cwd() / ".agents" / "skills"
     target_name = skill_name or metadata.name
-    install_path = skills_dir / target_name
-    
+    install_path = target / target_name
+
     # Create directory and save SKILL.md
     install_path.mkdir(parents=True, exist_ok=True)
     
@@ -216,3 +243,46 @@ def install_from_url(url: str, skill_name: Optional[str] = None) -> Skill:
     console.print(f"[green]✓ Successfully installed skill '{target_name}'[/green]")
     
     return Skill(metadata=metadata, content=full_content, path=install_path / "SKILL.md")
+
+
+def sync_skill(skill: Skill, target: Path, dry_run: bool = False) -> Skill:
+    """Sync a skill from one directory to another.
+    
+    Args:
+        skill: The skill to sync
+        target: Target directory path
+        dry_run: If True, don't actually copy, just return what would be synced
+        
+    Returns:
+        The synced Skill object
+        
+    Raises:
+        InstallationError: If sync fails
+    """
+    target_name = skill.name
+    target_path = target / target_name
+    
+    target_str = str(target)
+    
+    if dry_run:
+        return Skill(
+            metadata=skill.metadata,
+            content=skill.content,
+            path=target_path / "SKILL.md",
+            source_directory=target_str
+        )
+    
+    # Copy skill directory
+    target_path.mkdir(parents=True, exist_ok=True)
+    
+    # Write SKILL.md
+    (target_path / "SKILL.md").write_text(skill.content, encoding="utf-8")
+    
+    console.print(f"[green]✓ Successfully synced skill '{target_name}' to {target_str}[/green]")
+    
+    return Skill(
+        metadata=skill.metadata,
+        content=skill.content,
+        path=target_path / "SKILL.md",
+        source_directory=target_str
+    )

@@ -37,6 +37,7 @@ class Skill:
     metadata: SkillMetadata
     content: str
     path: Path
+    source_directory: Optional[str] = None  # Track which directory this skill came from
 
     @property
     def name(self) -> str:
