@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-16
+
+### Added
+- **Comprehensive Test Suite**: Added complete test coverage for all modules
+  - 10 test files with 1700+ lines of test code
+  - CLI command tests (`test_cli.py`)
+  - Comparison module tests (`test_comparison.py`)
+  - Discovery engine tests (`test_discovery.py`)
+  - Installer tests (`test_installer.py`)
+  - Data models tests (`test_models.py`)
+  - Upgrader tests (`test_upgrader.py`)
+  - Utility function tests (`test_utils.py`)
+  - Version management tests (`test_version.py`)
+- **Pytest Configuration**: Added pytest setup with coverage support
+  - Dev dependencies: `pytest>=7.0`, `pytest-cov>=4.0`
+  - Test discovery configuration in `pyproject.toml`
+
+### Fixed
+- **Installer Bug**: Fixed missing parent directory creation during skill installation
+  - `install_path.mkdir(parents=True, exist_ok=True)` now called before copying files
+
 ## [0.3.0] - 2026-03-13
 
 ### Changed
@@ -81,6 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/yourusername/skill-hub/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/yourusername/skill-hub/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/yourusername/skill-hub/releases/tag/v0.4.0
+[0.3.0]: https://github.com/yourusername/skill-hub/releases/tag/v0.3.0
 [0.2.0]: https://github.com/yourusername/skill-hub/releases/tag/v0.2.0
 [0.1.0]: https://github.com/yourusername/skill-hub/releases/tag/v0.1.0

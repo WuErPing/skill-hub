@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skill-hub"
-version = "0.3.0"
+version = "0.4.0"
 description = "View, install, upgrade and manage skills from ~/.agents/skills"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,3 +38,18 @@ skill-hub = "skill_hub.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

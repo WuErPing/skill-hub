@@ -161,6 +161,7 @@ def install_from_local(source_path: str, skill_name: Optional[str] = None, targe
 
     # Copy directory contents
     console.print(f"[yellow]Installing skill '{target_name}'...[/yellow]")
+    install_path.mkdir(parents=True, exist_ok=True)
     
     # Copy all files except SKILL.md (we'll rewrite it)
     for item in source.iterdir():
