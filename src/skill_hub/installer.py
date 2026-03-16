@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 import requests
+import yaml
 from rich.console import Console
 
 from skill_hub.models import Skill, SkillMetadata
@@ -17,6 +18,18 @@ class InstallationError(Exception):
     """Error during skill installation."""
 
     pass
+
+
+def _build_skill_content(metadata: SkillMetadata, body: str) -> str:
+    """Reconstruct SKILL.md content from parsed metadata and body."""
+    frontmatter: dict = {"name": metadata.name, "description": metadata.description}
+    if metadata.license:
+        frontmatter["license"] = metadata.license
+    if metadata.compatibility:
+        frontmatter["compatibility"] = metadata.compatibility
+    if metadata.metadata:
+        frontmatter["metadata"] = metadata.metadata
+    return f"---\n{yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)}---\n\n{body}"
 
 
 def get_install_path(skill_name: str, target: str = "public") -> Path:
@@ -100,16 +113,7 @@ def install_from_github(repo_path: str, skill_name: Optional[str] = None, target
     # Create directory and save SKILL.md
     install_path.mkdir(parents=True, exist_ok=True)
     
-    # Write full content (frontmatter + body)
-    full_content = f"---\nname: {metadata.name}\ndescription: {metadata.description}"
-    if metadata.license:
-        full_content += f"\nlicense: {metadata.license}"
-    if metadata.compatibility:
-        full_content += f"\ncompatibility: {metadata.compatibility}"
-    if metadata.metadata:
-        full_content += f"\n{metadata.metadata}"
-    full_content += f"\n---\n\n{body}"
-    
+    full_content = _build_skill_content(metadata, body)
     (install_path / "SKILL.md").write_text(full_content, encoding="utf-8")
     
     console.print(f"[green]✓ Successfully installed skill '{skill_name}'[/green]")
@@ -174,15 +178,7 @@ def install_from_local(source_path: str, skill_name: Optional[str] = None, targe
             shutil.copy2(item, dest)
     
     # Write SKILL.md
-    full_content = f"---\nname: {metadata.name}\ndescription: {metadata.description}"
-    if metadata.license:
-        full_content += f"\nlicense: {metadata.license}"
-    if metadata.compatibility:
-        full_content += f"\ncompatibility: {metadata.compatibility}"
-    if metadata.metadata:
-        full_content += f"\n{metadata.metadata}"
-    full_content += f"\n---\n\n{body}"
-    
+    full_content = _build_skill_content(metadata, body)
     install_path.mkdir(parents=True, exist_ok=True)
     (install_path / "SKILL.md").write_text(full_content, encoding="utf-8")
     
@@ -230,15 +226,7 @@ def install_from_url(url: str, skill_name: Optional[str] = None, target: Optiona
     # Create directory and save SKILL.md
     install_path.mkdir(parents=True, exist_ok=True)
     
-    full_content = f"---\nname: {metadata.name}\ndescription: {metadata.description}"
-    if metadata.license:
-        full_content += f"\nlicense: {metadata.license}"
-    if metadata.compatibility:
-        full_content += f"\ncompatibility: {metadata.compatibility}"
-    if metadata.metadata:
-        full_content += f"\n{metadata.metadata}"
-    full_content += f"\n---\n\n{body}"
-    
+    full_content = _build_skill_content(metadata, body)
     (install_path / "SKILL.md").write_text(full_content, encoding="utf-8")
     
     console.print(f"[green]✓ Successfully installed skill '{target_name}'[/green]")

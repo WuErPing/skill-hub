@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-16
+
+### Added
+- **Version-aware `list` command**: default view now shows Version and Status columns when both public and private scopes are visible, surfacing `Up to date`, `⚠ Out of sync`, `Private only`, and `Public only` states inline
+- **`list --diff`**: replaces the removed `compare` command, showing a full version comparison table between private and public skills
+
+### Changed
+- **CLI simplified**: removed `compare`, `upgrade`, and `list-local` commands (11 → 8 commands)
+- **`list` default**: now shows all skills (public + private) in one table with a Source column; use `--public` or `--private` to filter
+- **`sync` positional args**: `--from`/`--to` flags replaced by positional arguments — `skill-hub sync my-skill private public`; path-style skill argument still supported (e.g. `.agents/skills/my-skill`)
+- **`install --to`**: accepts `public`/`private` keywords instead of raw paths (explicit paths still work)
+
+### Fixed
+- **Metadata serialization bug**: `metadata` dict in SKILL.md frontmatter was serialized as Python `str()` repr (`{'key': 'val'}`) instead of valid YAML; now uses `yaml.dump()`
+- **`sync` skill resolution**: skill argument can now be a path like `.agents/skills/git-commit-helper`; the skill name and source directory are resolved correctly
+
 ## [0.4.0] - 2026-03-16
 
 ### Added
@@ -102,8 +118,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/yourusername/skill-hub/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/yourusername/skill-hub/releases/tag/v0.4.0
-[0.3.0]: https://github.com/yourusername/skill-hub/releases/tag/v0.3.0
-[0.2.0]: https://github.com/yourusername/skill-hub/releases/tag/v0.2.0
-[0.1.0]: https://github.com/yourusername/skill-hub/releases/tag/v0.1.0
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.5.0
+[0.4.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.4.0
+[0.3.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.3.0
+[0.2.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.2.0
+[0.1.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.1.0

@@ -11,16 +11,13 @@ from click.testing import CliRunner
 
 from skill_hub.cli import (
     cli,
-    compare_skills_cmd,
     install_skill,
-    list_local_skills,
     list_skills,
     path as path_cmd,
     show_version,
     self_update,
     sync_skill_cmd,
     update_skill,
-    upgrade_skill,
     view,
 )
 
@@ -34,10 +31,9 @@ def runner():
 class TestListSkillsCommand:
     """Tests for the 'list' command."""
 
-    def test_list_skills_no_directory(self, runner, temp_skills_dir):
-        """Test listing skills when no directory exists."""
-        result = runner.invoke(list_skills, ["--all"])
-        # Should handle missing directory gracefully
+    def test_list_skills_default(self, runner, temp_skills_dir):
+        """Test listing all skills (default: public + private)."""
+        result = runner.invoke(list_skills)
         assert result.exit_code == 0
 
     def test_list_skills_with_public_flag(self, runner):
@@ -55,27 +51,16 @@ class TestListSkillsCommand:
         result = runner.invoke(list_skills, ["--verbose"])
         assert result.exit_code == 0
 
+    def test_list_skills_diff(self, runner):
+        """Test list --diff shows comparison output."""
+        result = runner.invoke(list_skills, ["--diff"])
+        assert result.exit_code == 0
+
     def test_list_skills_help(self, runner):
         """Test list command help message."""
         result = runner.invoke(list_skills, ["--help"])
         assert result.exit_code == 0
-        assert "List all skills" in result.output
-
-
-class TestListLocalSkillsCommand:
-    """Tests for the 'list-local' command."""
-
-    def test_list_local_skills_no_directories(self, runner):
-        """Test listing local skills when no directories exist."""
-        result = runner.invoke(list_local_skills)
-        assert result.exit_code == 0
-        # Should output message about no directories found
-        assert "No local skill directories found" in result.output or result.exit_code == 0
-
-    def test_list_local_skills_with_verbose(self, runner):
-        """Test listing local skills with verbose output."""
-        result = runner.invoke(list_local_skills, ["--verbose"])
-        assert result.exit_code == 0
+        assert "List skills" in result.output
 
 
 class TestViewSkillCommand:
@@ -107,27 +92,7 @@ class TestPathCommand:
         """Test path command help message."""
         result = runner.invoke(path_cmd, ["--help"])
         assert result.exit_code == 0
-        assert "Show the skills directory path" in result.output
-
-
-class TestCompareCommand:
-    """Tests for the 'compare' command."""
-
-    def test_compare_help(self, runner):
-        """Test compare command help message."""
-        result = runner.invoke(compare_skills_cmd, ["--help"])
-        assert result.exit_code == 0
-        assert "Compare local project skills" in result.output
-
-    def test_compare_with_summary(self, runner):
-        """Test compare with summary flag."""
-        result = runner.invoke(compare_skills_cmd, ["--summary"])
-        assert result.exit_code == 0
-
-    def test_compare_all_locals(self, runner):
-        """Test compare with all-locals flag."""
-        result = runner.invoke(compare_skills_cmd, ["--all-locals"])
-        assert result.exit_code == 0
+        assert "Show the public skills directory path" in result.output
 
 
 class TestInstallSkillCommand:
@@ -144,15 +109,46 @@ class TestInstallSkillCommand:
         result = runner.invoke(install_skill, [])
         assert result.exit_code != 0
 
+    def test_install_to_public_keyword(self, runner, tmp_path):
+        """Test --to public resolves to ~/.agents/skills."""
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test skill\n---\n\nBody.",
+            encoding="utf-8",
+        )
+        with patch("skill_hub.installer.install_from_local") as mock_install:
+            from skill_hub.models import Skill, SkillMetadata
+            mock_install.return_value = Skill(
+                metadata=SkillMetadata(name="my-skill", description="Test skill"),
+                content="",
+                path=tmp_path / "my-skill" / "SKILL.md",
+            )
+            result = runner.invoke(install_skill, [str(skill_dir), "--to", "public"])
+            assert result.exit_code == 0
+            called_target = mock_install.call_args[0][2]
+            assert str(called_target).endswith(".agents/skills")
+            assert str(called_target).startswith(str(Path.home()))
 
-class TestUpgradeSkillCommand:
-    """Tests for the 'upgrade' command."""
-
-    def test_upgrade_help(self, runner):
-        """Test upgrade command help message."""
-        result = runner.invoke(upgrade_skill, ["--help"])
-        assert result.exit_code == 0
-        assert "Upgrade a skill" in result.output
+    def test_install_to_private_keyword(self, runner, tmp_path):
+        """Test --to private (default) resolves to ./.agents/skills."""
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: my-skill\ndescription: Test skill\n---\n\nBody.",
+            encoding="utf-8",
+        )
+        with patch("skill_hub.installer.install_from_local") as mock_install:
+            from skill_hub.models import Skill, SkillMetadata
+            mock_install.return_value = Skill(
+                metadata=SkillMetadata(name="my-skill", description="Test skill"),
+                content="",
+                path=tmp_path / "my-skill" / "SKILL.md",
+            )
+            result = runner.invoke(install_skill, [str(skill_dir), "--to", "private"])
+            assert result.exit_code == 0
+            called_target = mock_install.call_args[0][2]
+            assert str(called_target).endswith(".agents/skills")
 
 
 class TestUpdateSkillCommand:
@@ -175,15 +171,25 @@ class TestSyncSkillCommand:
         assert "Sync a skill" in result.output
 
     def test_sync_same_source_target(self, runner):
-        """Test sync with same source and target."""
-        result = runner.invoke(sync_skill_cmd, ["skill-name", "--from", "public", "--to", "public"])
+        """Test sync with same FROM and TO."""
+        result = runner.invoke(sync_skill_cmd, ["skill-name", "public", "public"])
         assert result.exit_code != 0
-        assert "Source and target directories must be different" in result.output
+        assert "FROM and TO must be different" in result.output
 
     def test_sync_missing_skill(self, runner):
         """Test sync for skill that doesn't exist."""
-        result = runner.invoke(sync_skill_cmd, ["nonexistent-skill", "--from", "public", "--to", "private"])
-        # Should fail since skill doesn't exist
+        result = runner.invoke(sync_skill_cmd, ["nonexistent-skill", "public", "private"])
+        assert result.exit_code != 0
+
+    def test_sync_positional_args(self, runner):
+        """Test sync uses positional FROM/TO args."""
+        result = runner.invoke(sync_skill_cmd, ["nonexistent-skill", "private", "public"])
+        assert result.exit_code != 0
+        assert "nonexistent-skill" in result.output
+
+    def test_sync_dry_run_missing_skill(self, runner):
+        """Test sync --dry-run with missing skill still errors."""
+        result = runner.invoke(sync_skill_cmd, ["no-skill", "public", "private", "--dry-run"])
         assert result.exit_code != 0
 
 
@@ -241,3 +247,10 @@ class TestCliGroup:
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
         assert "skill-hub" in result.output
+
+    def test_removed_commands_absent(self, runner):
+        """Verify removed commands (upgrade, compare, list-local) are gone."""
+        result = runner.invoke(cli, ["--help"])
+        assert "upgrade" not in result.output
+        assert "compare" not in result.output
+        assert "list-local" not in result.output

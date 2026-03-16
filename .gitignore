@@ -214,3 +214,5 @@ __marimo__/
 .opencode/
 .vscode/
 .sisyphus/
+.cursor/
+.qwen/
