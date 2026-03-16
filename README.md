@@ -20,113 +20,55 @@ pip install git+https://github.com/wuerping/skill-hub.git
 skill-hub supports a hierarchical skill directory structure with both **public** (global) and **project-level** (project-specific) skill directories:
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              REMOTE                                            │
-│                           GitHub                                               │
-│  skill-hub install user/repo/skill-name --to public|private                    │
-└───────────────────────────┬──────────────────────────────────┬───────────────┘
-                            │                                  │
-                            ▼                                  ▼
-┌───────────────────────────────┐        ┌───────────────────────────────┐
-│          PUBLIC               │        │          PUBLIC               │
-│   ~/.agents/skills/           │        │   ~/.claude/skills/           │
-│   (Global - shared)           │◄──────►│   (Global - tool-specific)    │
-│                               │        │                               │
-│   skill-hub list --public     │        │   skill-hub list --public     │
-│   skill-hub install ...       │        │   skill-hub install ...       │
-│   --to public                 │        │   --to public                 │
-└───────────┬───────────────────┘        └───────────┬───────────────────┘
-            │                                        │
-            │     Bidirectional Config Sync          │
-            │     (automatic tool detection)         │
-            │                                        │
-            ▼                                        ▼
-┌───────────────────────────────┐        ┌───────────────────────────────┐
-│     PROJECT-LEVEL             │        │     PROJECT-LEVEL             │
-│   .agents/skills/             │        │   .claude/skills/             │
-│   (Project-specific skills)   │        │   (Project-specific skills)   │
-│                               │        │                               │
-│   skill-hub list --private    │        │   skill-hub list --private    │
-│   skill-hub install ...       │        │   skill-hub install ...       │
-│   --to private                │        │   --to private                │
-│                               │        │                               │
-│   skill-hub sync <skill>      │        │   skill-hub sync <skill>      │
-│   --from public --to private  │        │   --from public --to private  │
-└───────────┬───────────────────┘        └───────────┬───────────────────┘
-            │                                        │
-            │   Priority: Project-level > Global     │
-            │   (project skills override global)     │
-            │                                        │
-            ▼                                        ▼
-         Project A                               Project B
-```
+                     Remote Sources (REMOTE)
+                   GitHub / URL / Local Path
+                   skill-hub install <source>
+                            │
+            ┌───────────────┴───────────────┐
+            ▼                               ▼
+┌───────────────────────────┐   ┌───────────────────────────┐
+│       PUBLIC (Global)     │   │   PROJECT-LEVEL (Local)   │
+│                           │   │                           │
+│  ~/.agents/skills/        │   │  .agents/skills/          │
+│  ~/.claude/skills/        │   │  .claude/skills/          │
+│                           │   │  .cursor/skills/          │
+│  skill-hub list --public  │   │  .<tool>/skills/ (auto)   │
+│                           │   │                           │
+│                           │   │  skill-hub list --private │
+└─────────────┬─────────────┘   └─────────────┬─────────────┘
+              │                               │
+              │   Priority: Project > Global  │
+              │   (project skills override)   │
+              └───────────┬───────────────────┘
+                          ▼
+                  Skill Discovery & Resolution
 
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              REMOTE                                            │
-│                           GitHub                                               │
-│  skill-hub install user/repo/skill-name --to public|private                    │
-└───────────────────────────┬──────────────────────────────────┬───────────────┘
-                            │                                  │
-                            ▼                                  ▼
-┌───────────────────────────────┐        ┌───────────────────────────────┐
-│          PUBLIC               │        │          PUBLIC               │
-│   ~/.agents/skills/           │        │   ~/.claude/skills/           │
-│   (Global - shared)           │◄──────►│   (Global - tool-specific)    │
-│                               │        │                               │
-│   skill-hub list --public     │        │   skill-hub list --public     │
-│   skill-hub install ...       │        │   skill-hub install ...       │
-│   --to public                 │        │   --to public                 │
-└───────────┬───────────────────┘        └───────────┬───────────────────┘
-            │                                        │
-            │     Bidirectional Config Sync          │
-            │     (automatic tool detection)         │
-            │                                        │
-            ▼                                        ▼
-┌───────────────────────────────┐        ┌───────────────────────────────┐
-│     PROJECT-LEVEL             │        │     PROJECT-LEVEL             │
-│   .agents/skills/             │        │   .claude/skills/             │
-│   (Project-specific skills)   │        │   (Project-specific skills)   │
-│                               │        │                               │
-│   skill-hub list --private    │        │   skill-hub list --private    │
-│   skill-hub install ...       │        │   skill-hub install ...       │
-│   --to private                │        │   --to private                │
-│                               │        │                               │
-│   skill-hub sync <skill>      │        │   skill-hub sync <skill>      │
-│   --from public --to private  │        │   --from public --to private  │
-└───────────┬───────────────────┘        └───────────┬───────────────────┘
-            │                                        │
-            │   Priority: Project-level > Global     │
-            │   (project skills override global)     │
-            │                                        │
-            ▼                                        ▼
-         Project A                               Project B
+  # List all skills with source indication
+  $ skill-hub list --all
 
-# List all skills with source indication
-$ skill-hub list --all
-
-# Sync with dry-run to preview changes
-$ skill-hub sync my-skill --from public --to private --dry-run
+  # Sync between directories (explicit action required)
+  $ skill-hub sync my-skill --from public --to private
+  $ skill-hub sync my-skill --from private --to public
 ```
 
 ### Directory Types
 
 **Public Directories** (Global):
-- `~/.agents/skills/` - Agent-level public skills
-- `~/.claude/skills/` - Tool-specific public skills
-- `~/.opencode/skills/` - Opencode tool-specific public skills
+- `~/.agents/skills/` - Agent-level public skills (shared across projects)
+- `~/.claude/skills/` - Claude Code tool-specific public skills
 
 **Project-Level Directories** (Project-specific):
-- `./.agents/skills/` - Agent-level project-specific skills
-- `./.claude/skills/` - Tool-specific project-specific skills
-- `./.*/skills/` - Other tool-specific project-level directories
+- `.agents/skills/` - Agent-level project-specific skills
+- `.claude/skills/` - Claude Code project-level skills
+- `.cursor/skills/` - Cursor project-level skills
+- `.<tool>/skills/` - Other tool-specific project-level directories (auto-discovered via `.*/skills/` pattern)
 
 ### Priority System
 
 When the same skill exists in multiple directories:
 
 1. **Project-level > Global** - Project-specific skills override global skills
-2. **First discovered** - When multiple project-level directories exist, the first one found takes precedence
+2. **First discovered** - When multiple directories exist at the same level, the first one found takes precedence
 
 This allows you to:
 - Share public skills across all projects

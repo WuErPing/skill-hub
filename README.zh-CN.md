@@ -20,71 +20,55 @@ pip install git+https://github.com/wuerping/skill-hub.git
 skill-hub 支持分层技能目录结构，包含**全局**（public）和**项目级**（project-level）技能目录：
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              远程（REMOTE）                                     │
-│                           GitHub                                               │
-│  skill-hub install user/repo/skill-name --to public|private                    │
-└───────────────────────────┬──────────────────────────────────┬───────────────┘
-                            │                                  │
-                            ▼                                  ▼
-┌───────────────────────────────┐        ┌───────────────────────────────┐
-│          全局（PUBLIC）        │        │          全局（PUBLIC）        │
-│   ~/.agents/skills/           │        │   ~/.claude/skills/           │
-│   (全局共享)                   │◄──────►│   (全局 - 工具特定)            │
-│                               │        │                               │
-│   skill-hub list --public     │        │   skill-hub list --public     │
-│   skill-hub install ...       │        │   skill-hub install ...       │
-│   --to public                 │        │   --to public                 │
-└───────────┬───────────────────┘        └───────────┬───────────────────┘
-            │                                        │
-            │     双向配置同步                        │
-            │     (自动工具检测)                      │
-            │                                        │
-            ▼                                        ▼
-┌───────────────────────────────┐        ┌───────────────────────────────┐
-│        项目级（PROJECT-LEVEL）│        │        项目级（PROJECT-LEVEL）│
-│   .agents/skills/             │        │   .claude/skills/             │
-│   (项目特定技能)               │        │   (项目特定技能)               │
-│                               │        │                               │
-│   skill-hub list --private    │        │   skill-hub list --private    │
-│   skill-hub install ...       │        │   skill-hub install ...       │
-│   --to private                │        │   --to private                │
-│                               │        │                               │
-│   skill-hub sync <skill>      │        │   skill-hub sync <skill>      │
-│   --from public --to private  │        │   --from public --to private  │
-└───────────┬───────────────────┘        └───────────┬───────────────────┘
-            │                                        │
-            │   优先级：项目级 > 全局                │
-            │   (项目级技能覆盖全局技能)              │
-            │                                        │
-            ▼                                        ▼
-         项目 A                               项目 B
+                      远程来源（REMOTE）
+                   GitHub / URL / 本地路径
+                   skill-hub install <source>
+                            │
+            ┌───────────────┴───────────────┐
+            ▼                               ▼
+┌───────────────────────────┐   ┌───────────────────────────┐
+│      全局（PUBLIC）        │   │   项目级（PROJECT-LEVEL）  │
+│                           │   │                           │
+│  ~/.agents/skills/        │   │  .agents/skills/          │
+│  ~/.claude/skills/        │   │  .claude/skills/          │
+│                           │   │  .cursor/skills/          │
+│  skill-hub list --public  │   │  .<tool>/skills/ (自动发现)│
+│                           │   │                           │
+│                           │   │  skill-hub list --private │
+└─────────────┬─────────────┘   └─────────────┬─────────────┘
+              │                               │
+              │   优先级：项目级 > 全局         │
+              │   (项目级技能覆盖全局技能)      │
+              └───────────┬───────────────────┘
+                          ▼
+                    技能发现与解析
 
-# 列出所有技能并显示来源
-$ skill-hub list --all
+  # 列出所有技能并显示来源
+  $ skill-hub list --all
 
-# 使用 dry-run 预览同步操作
-$ skill-hub sync my-skill --from public --to private --dry-run
+  # 在目录间同步（需要显式操作）
+  $ skill-hub sync my-skill --from public --to private
+  $ skill-hub sync my-skill --from private --to public
 ```
 
 ### 目录类型
 
-**全局目录**（Global）：
-- `~/.agents/skills/` - 代理级全局技能
-- `~/.claude/skills/` - Claude 工具特定全局技能
-- `~/.opencode/skills/` - Opencode 工具特定全局技能
+**全局目录**（Public）：
+- `~/.agents/skills/` - 代理级全局技能（跨项目共享）
+- `~/.claude/skills/` - Claude Code 工具特定全局技能
 
 **项目级目录**（Project-level）：
-- `./.agents/skills/` - 代理级项目特定技能
-- `./.claude/skills/` - Claude 工具特定项目级技能
-- `./.*/skills/` - 其他工具特定项目级目录
+- `.agents/skills/` - 代理级项目特定技能
+- `.claude/skills/` - Claude Code 项目级技能
+- `.cursor/skills/` - Cursor 项目级技能
+- `.<tool>/skills/` - 其他工具特定项目级目录（自动发现所有 `.*/skills/` 模式）
 
 ### 优先级系统
 
 当同名技能存在于多个目录时：
 
 1. **项目级 > 全局** - 项目特定技能覆盖全局技能
-2. **先发现优先** - 当存在多个项目级目录时，先发现的优先
+2. **先发现优先** - 当存在多个同级目录时，先发现的优先
 
 这允许你：
 - 在所有项目中共享全局技能
