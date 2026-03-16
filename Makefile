@@ -14,3 +14,6 @@ clean:
 
 build:
 	python -m build
+
+version-bump:
+	qwen -y -i "execute skill version-bump"
