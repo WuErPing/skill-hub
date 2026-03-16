@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-16
+
+### Added
+- **Private skills support**: Added `.agents/skills/` directory for project-local skills with priority over public skills
+- **`skill-hub-assistant` skill**: Natural language interface for managing skills via AI agents
+- **`version-bump` skill**: Guide for updating project version numbers and CHANGELOG.md
+- **AGENTS.md**: Documentation for AI agents on using skill-hub CLI
+
+### Changed
+- **Makefile targets**: Updated `version-bump` and added `git-commit` targets to use skill execution
+
 ## [0.5.0] - 2026-03-16
 
 ### Added
@@ -118,7 +129,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.6.0
 [0.5.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.5.0
 [0.4.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.4.0
 [0.3.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.3.0

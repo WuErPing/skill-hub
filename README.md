@@ -2,6 +2,28 @@
 
 View, install, and manage skills from `~/.agents/skills`.
 
+## Using with AI Agents (Recommended)
+
+If you're working inside an AI coding assistant (Cursor, Claude, etc.), the fastest way to manage skills is to just describe what you want in natural language. The `skill-hub-assistant` skill handles the translation to CLI commands for you.
+
+**Install the skill once:**
+
+```bash
+skill-hub install https://raw.githubusercontent.com/wuerping/skill-hub/main/.agents/skills/skill-hub-assistant/SKILL.md --to public
+```
+
+**Then just ask your agent:**
+
+> "Show me all my skills"
+> "Install this skill to global"
+> "What does the git-commit-helper skill do?"
+> "Sync my local skill to public"
+> "Check for skill updates"
+
+The agent will run the right `skill-hub` command and explain the result.
+
+---
+
 ## Installation
 
 ```bash

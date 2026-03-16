@@ -2,6 +2,28 @@
 
 查看、安装和管理 `~/.agents/skills` 目录中的技能。
 
+## 推荐：配合 AI Agent 使用
+
+如果你在 Cursor、Claude 等 AI 编程助手中工作，最便捷的方式是直接用自然语言描述需求，`skill-hub-assistant` skill 会自动帮你转换成对应的 CLI 命令。
+
+**安装一次即可：**
+
+```bash
+skill-hub install https://raw.githubusercontent.com/wuerping/skill-hub/main/.agents/skills/skill-hub-assistant/SKILL.md --to public
+```
+
+**之后直接对 agent 说：**
+
+> "列出我所有的技能"
+> "把这个 skill 安装到全局"
+> "git-commit-helper 这个 skill 是干什么的？"
+> "把本地 skill 同步到 public"
+> "检查技能是否有更新"
+
+Agent 会执行对应的 `skill-hub` 命令并解释结果。
+
+---
+
 ## 安装
 
 ```bash

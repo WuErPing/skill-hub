@@ -211,6 +211,8 @@ __marimo__/
 
 .crush/
 .agents/
+!.agents/skills/skill-hub-assistant/SKILL.md
+!.agents/skills/version-bump/SKILL.md
 .opencode/
 .vscode/
 .sisyphus/
