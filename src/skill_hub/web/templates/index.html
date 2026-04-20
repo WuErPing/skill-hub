@@ -1,5 +1,246 @@
 <!DOCTYPE html>
-<html>
-<head><title>skill-hub</title></head>
-<body>Loading...</body>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>skill-hub</title>
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f8f9fa; color: #212529; }
+    .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    h1 { font-size: 24px; font-weight: 700; }
+    .header-actions { display: flex; gap: 8px; }
+
+    .banner { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; display: none; }
+    .banner.show { display: block; }
+    .banner button { margin-left: 12px; }
+
+    .repo-section { margin-bottom: 24px; }
+    .repo-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px 12px; background: #e9ecef; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .repo-header .toggle { font-size: 12px; }
+    .repo-header .delete-repo-btn { margin-left: auto; font-size: 12px; background: none; border: none; cursor: pointer; color: #dc3545; padding: 2px 6px; }
+    .repo-header .delete-repo-btn:hover { text-decoration: underline; }
+
+    .skill-list { list-style: none; padding-left: 24px; }
+    .skill-item { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; }
+    .skill-item:hover { background: #f1f3f5; }
+
+    .skill-name { flex: 1; font-weight: 500; }
+
+    .status-tag {
+      display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;
+    }
+    .status-uninstalled { background: #e9ecef; color: #6c757d; }
+    .status-installed { background: #d1e7dd; color: #0f5132; }
+    .status-inconsistent { background: #fff3cd; color: #664d03; border: 1px solid #ffc107; }
+    .status-partial { background: #cfe2ff; color: #084298; }
+
+    .btn { padding: 4px 12px; border-radius: 4px; border: 1px solid #dee2e6; background: #fff; cursor: pointer; font-size: 13px; }
+    .btn:hover { background: #f8f9fa; }
+    .btn-install { border-color: #198754; color: #198754; }
+    .btn-install:hover { background: #d1e7dd; }
+    .btn-uninstall { border-color: #dc3545; color: #dc3545; }
+    .btn-uninstall:hover { background: #f8d7da; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 16px; border-radius: 6px; font-size: 14px; display: none; z-index: 1000; }
+    .toast-success { background: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb; }
+    .toast-error { background: #f8d7da; color: #842029; border: 1px solid #f1aeb5; }
+    .toast.show { display: block; }
+
+    .add-repo-form { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #dee2e6; display: none; }
+    .add-repo-form.show { display: block; }
+    .add-repo-form input { padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; margin-right: 8px; }
+    #repo-url { width: 300px; }
+    #repo-branch { width: 100px; }
+    .form-actions { margin-top: 12px; display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>skill-hub</h1>
+    <div class="header-actions">
+      <button class="btn" onclick="loadSkills()">刷新</button>
+      <button class="btn" onclick="toggleAddRepo()">添加仓库</button>
+    </div>
+  </header>
+
+  <div id="update-banner" class="banner">
+    检测到更新可用 <button class="btn" onclick="syncAndReload()">刷新</button>
+  </div>
+
+  <div id="add-repo-form" class="add-repo-form">
+    <input type="text" id="repo-url" placeholder="https://github.com/owner/repo">
+    <input type="text" id="repo-branch" placeholder="main" value="main" style="width: 100px;">
+    <div class="form-actions">
+      <button class="btn btn-install" onclick="addRepo()">添加并克隆</button>
+      <button class="btn" onclick="toggleAddRepo()">取消</button>
+    </div>
+  </div>
+
+  <div id="skills-container">加载中...</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast toast-${type} show`;
+    setTimeout(() => t.className = 'toast', 3000);
+  }
+
+  async function checkUpdateStatus() {
+    try {
+      const resp = await fetch('/api/update-status');
+      const data = await resp.json();
+      if (data.hasUpdates) {
+        document.getElementById('update-banner').classList.add('show');
+      }
+    } catch (e) {
+      // Silently ignore network errors for update check
+    }
+  }
+
+  async function syncAndReload() {
+    await fetch('/api/repos/sync', { method: 'POST' });
+    document.getElementById('update-banner').classList.remove('show');
+    await loadSkills();
+    showToast('同步完成');
+  }
+
+  function toggleAddRepo() {
+    document.getElementById('add-repo-form').classList.toggle('show');
+  }
+
+  async function addRepo() {
+    const url = document.getElementById('repo-url').value.trim();
+    const branch = document.getElementById('repo-branch').value.trim() || 'main';
+    if (!url) return;
+    const resp = await fetch('/api/repos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, branch }),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      showToast(data.message || '仓库添加成功');
+      toggleAddRepo();
+      document.getElementById('repo-url').value = '';
+      await loadSkills();
+    } else {
+      showToast(data.error || '添加失败', 'error');
+    }
+  }
+
+  async function loadSkills() {
+    const resp = await fetch('/api/skills');
+    const skills = await resp.json();
+    renderSkills(skills);
+  }
+
+  function statusClass(status) {
+    const map = {
+      '已安装': 'status-installed',
+      '未安装': 'status-uninstalled',
+      '不一致': 'status-inconsistent',
+      '部分安装': 'status-partial',
+    };
+    return map[status] || 'status-uninstalled';
+  }
+
+  function renderSkills(skills) {
+    const container = document.getElementById('skills-container');
+    if (!skills.length) {
+      container.innerHTML = '<p style="color:#6c757d;">暂无 skills。请先添加仓库。</p>';
+      return;
+    }
+
+    const groups = {};
+    for (const s of skills) {
+      if (!groups[s.repoName]) groups[s.repoName] = [];
+      groups[s.repoName].push(s);
+    }
+
+    let html = '';
+    for (const [repoName, items] of Object.entries(groups)) {
+      const escapedRepo = repoName.replace(/'/g, "\\'");
+      html += `<div class="repo-section">
+        <div class="repo-header" onclick="toggleRepo(this)">
+          <span class="toggle">▼</span> 📁 ${repoName}
+          <button class="delete-repo-btn" onclick="event.stopPropagation(); removeRepo('${escapedRepo}')">删除仓库</button>
+        </div>
+        <ul class="skill-list">
+          ${items.map(s => {
+            const isInstalled = s.status === '已安装' || s.status === '不一致' || s.status === '部分安装';
+            const escapedName = s.name.replace(/'/g, "\\'");
+            return `<li class="skill-item">
+              <span class="skill-name">${s.name}</span>
+              <span class="status-tag ${statusClass(s.status)}">${s.status}</span>
+              ${isInstalled
+                ? `<button class="btn btn-uninstall" onclick="uninstallSkill('${escapedName}')">卸载</button>`
+                : `<button class="btn btn-install" onclick="installSkill('${escapedName}')">安装</button>`
+              }
+            </li>`;
+          }).join('')}
+        </ul>
+      </div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  function toggleRepo(el) {
+    const list = el.nextElementSibling;
+    const toggle = el.querySelector('.toggle');
+    if (list.style.display === 'none') {
+      list.style.display = '';
+      toggle.textContent = '▼';
+    } else {
+      list.style.display = 'none';
+      toggle.textContent = '▶';
+    }
+  }
+
+  async function installSkill(name) {
+    const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install`, { method: 'POST' });
+    const data = await resp.json();
+    if (resp.ok) {
+      showToast(data.message);
+      await loadSkills();
+    } else {
+      showToast(data.error || '安装失败', 'error');
+    }
+  }
+
+  async function uninstallSkill(name) {
+    const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/uninstall`, { method: 'POST' });
+    const data = await resp.json();
+    if (resp.ok) {
+      showToast(data.message);
+      await loadSkills();
+    } else {
+      showToast(data.error || '卸载失败', 'error');
+    }
+  }
+
+  async function removeRepo(name) {
+    if (!confirm(`确定要删除仓库 ${name} 吗？`)) return;
+    const resp = await fetch(`/api/repos/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (resp.ok) {
+      showToast(data.message);
+      await loadSkills();
+    } else {
+      showToast(data.error || '删除失败', 'error');
+    }
+  }
+
+  loadSkills();
+  checkUpdateStatus();
+</script>
+</body>
 </html>
