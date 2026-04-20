@@ -437,3 +437,39 @@ def self_update() -> None:
         console.print("[red]✗ Update failed.[/red]")
         console.print("Try manually: pip install --upgrade skill-hub")
         raise click.Abort()
+
+
+@cli.command(name="web")
+@click.option("--port", default=7860, type=int, help="Port to run the web server on")
+@click.option("--host", default="127.0.0.1", help="Host to bind to")
+@click.option("--no-open", is_flag=True, help="Don't open browser automatically")
+def web_command(port: int, host: str, no_open: bool) -> None:
+    """Start the skill-hub web UI.
+
+    Opens a browser interface for managing skills from ~/.skills_repo/.
+
+    Skills are installed to both ~/.claude/skills/ and ~/.agents/skills/.
+
+    Examples:
+
+        skill-hub web
+        skill-hub web --port 9000
+    """
+    import threading
+    import time
+    import webbrowser
+
+    from skill_hub.web.app import create_app
+
+    app = create_app()
+
+    def open_browser():
+        time.sleep(1.2)
+        webbrowser.open(f"http://{host}:{port}")
+
+    if not no_open:
+        threading.Thread(target=open_browser, daemon=True).start()
+
+    console.print(f"[green]Starting skill-hub web UI at http://{host}:{port}[/green]")
+    console.print(f"[dim]Press Ctrl+C to stop[/dim]")
+    app.run(host=host, port=port, debug=False, threaded=True)
