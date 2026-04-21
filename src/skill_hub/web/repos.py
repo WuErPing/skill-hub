@@ -51,6 +51,11 @@ class Repo:
         return expand_home(url).exists()
 
 
+DEFAULT_REPOS = [
+    Repo(url="https://github.com/anthropics/skills", branch="main"),
+]
+
+
 def repo_dir(repo: Repo) -> Path:
     """Return the repo directory. For local repos, returns the local path directly."""
     if repo.is_local:
@@ -64,9 +69,10 @@ def mapping_path(repo: Repo) -> Path:
 
 
 def load_repos_config() -> list[Repo]:
-    """Load repos from repos.yaml. Returns empty list if file doesn't exist."""
+    """Load repos from repos.yaml. Seeds with DEFAULT_REPOS if file doesn't exist."""
     if not REPOS_YAML.exists():
-        return []
+        save_repos_config(DEFAULT_REPOS)
+        return DEFAULT_REPOS
     with open(REPOS_YAML) as f:
         data = yaml.safe_load(f) or {}
     return [Repo(**r) for r in data.get("repos", [])]

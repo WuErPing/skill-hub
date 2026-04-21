@@ -4,144 +4,70 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>skill-hub</title>
-  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f8f9fa; color: #212529; }
-
-    .page-wrapper { max-width: 1100px; margin: 0 auto; padding: 24px; }
-
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    h1 { font-size: 24px; font-weight: 700; }
-    .header-actions { display: flex; gap: 8px; }
-
-    .banner { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; display: none; }
-    .banner.show { display: block; }
-    .banner button { margin-left: 12px; }
-
-    /* --- Layout: sidebar + content --- */
-    .main-layout { display: grid; grid-template-columns: 220px 1fr; gap: 20px; margin-bottom: 16px; }
-
-    /* --- Sidebar --- */
-    .sidebar { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 0; max-height: calc(100vh - 160px); overflow-y: auto; }
-    .sidebar-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #6c757d; padding: 8px 16px 4px; letter-spacing: 0.5px; }
-    .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 7px 16px; cursor: pointer; font-size: 13px; border-left: 3px solid transparent; }
-    .sidebar-item:hover { background: #f1f3f5; }
-    .sidebar-item.active { background: #e7f1ff; border-left-color: #0d6efd; font-weight: 600; }
-    .sidebar-item .repo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .sidebar-item .repo-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sidebar-empty { padding: 16px; color: #6c757d; font-size: 13px; text-align: center; }
-
-    /* --- Content area --- */
-    .content-area { min-width: 0; }
-    .repo-section { margin-bottom: 0; }
-    .repo-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px 12px; background: #e9ecef; border-radius: 6px; font-weight: 600; font-size: 14px; }
-    .repo-header .sync-dot { cursor: pointer; }
-    .repo-header .delete-repo-btn { margin-left: auto; font-size: 12px; background: none; border: none; cursor: pointer; color: #dc3545; padding: 2px 6px; }
-    .repo-header .delete-repo-btn:hover { text-decoration: underline; }
-
-    .skill-list { list-style: none; padding-left: 12px; }
-    .skill-item { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; }
-    .skill-item:hover { background: #f1f3f5; }
-
-    .skill-name { flex: 1; font-weight: 500; cursor: pointer; }
-    .skill-name:hover { text-decoration: underline; color: #0d6efd; }
-
-    .skill-meta-panel {
-      display: none; background: #fff; border: 1px solid #dee2e6; border-radius: 8px;
-      padding: 14px 18px; margin: 4px 12px 8px 12px; font-size: 13px; line-height: 1.6;
-    }
-    .skill-meta-panel.show { display: block; }
-    .skill-meta-panel .meta-label { font-weight: 600; color: #495057; margin-right: 4px; }
-    .skill-meta-panel .meta-value { color: #212529; }
-    .skill-meta-panel .meta-body { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e9ecef; white-space: pre-wrap; color: #6c757d; font-size: 12px; max-height: 200px; overflow-y: auto; }
-    .skill-meta-panel .meta-error { color: #842029; }
-
-    .status-tag {
-      display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;
-    }
-    .status-uninstalled { background: #e9ecef; color: #6c757d; }
-    .status-installed { background: #d1e7dd; color: #0f5132; }
-    .status-inconsistent { background: #fff3cd; color: #664d03; border: 1px solid #ffc107; }
-    .status-partial { background: #cfe2ff; color: #084298; }
-
-    .dir-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 2px; vertical-align: middle; cursor: pointer; }
-    .dir-status-installed { background: #198754; }
-    .dir-status-uninstalled { background: #e9ecef; }
-    .dir-status-outdated { background: #ffc107; cursor: pointer; }
-    .dir-status-outdated:hover { background: #e0a800; }
-    .dir-label { font-size: 11px; color: #6c757d; margin-right: 8px; }
-
-    .btn { padding: 4px 12px; border-radius: 4px; border: 1px solid #dee2e6; background: #fff; cursor: pointer; font-size: 13px; }
-    .btn:hover { background: #f8f9fa; }
-    .btn-install { border-color: #198754; color: #198754; }
-    .btn-install:hover { background: #d1e7dd; }
-    .btn-uninstall { border-color: #dc3545; color: #dc3545; }
-    .btn-uninstall:hover { background: #f8d7da; }
-
-    .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 16px; border-radius: 6px; font-size: 14px; display: none; z-index: 1000; }
-    .toast-success { background: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb; }
-    .toast-error { background: #f8d7da; color: #842029; border: 1px solid #f1aeb5; }
-    .toast.show { display: block; }
-
-    .add-repo-form { background: #fff; border-radius: 8px; padding: 16px; margin-top: 16px; border: 1px solid #dee2e6; display: none; }
-    .add-repo-form.show { display: block; }
-    .add-repo-form input { padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; margin-right: 8px; }
-    #repo-url { width: 300px; }
-    #repo-branch { width: 100px; }
-    .form-actions { margin-top: 12px; display: flex; gap: 8px; }
-
-    .no-repo-selected { color: #6c757d; padding: 40px 20px; text-align: center; font-size: 14px; }
-
-    @media (max-width: 700px) {
-      .main-layout { grid-template-columns: 1fr; }
-      .sidebar { max-height: 200px; }
-    }
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 1000; }
   </style>
 </head>
-<body>
-<div class="page-wrapper">
-  <header>
-    <h1>skill-hub</h1>
-    <div class="header-actions">
-      <button class="btn" onclick="loadSkills()">刷新</button>
-      <button class="btn" onclick="toggleAddRepo()">添加仓库</button>
+<body class="bg-gray-50 text-gray-900 font-sans">
+<div class="max-w-[1100px] mx-auto p-6">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold">skill-hub</h1>
+    <div class="flex gap-2">
+      <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">刷新</button>
+      <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">添加仓库</button>
     </div>
   </header>
 
-  <div id="update-banner" class="banner">
-    检测到更新可用 <button class="btn" onclick="syncAndReload()">刷新</button>
+  <!-- Update banner -->
+  <div id="update-banner" class="hidden bg-yellow-50 border border-yellow-400 rounded-md p-3 mb-4 text-sm">
+    检测到更新可用
+    <button onclick="syncAndReload()" class="ml-3 px-3 py-1 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">刷新</button>
   </div>
 
-  <div class="main-layout">
-    <div id="sidebar" class="sidebar"></div>
-    <div class="content-area">
+  <!-- Main layout: sidebar + content -->
+  <div class="grid grid-cols-[220px_1fr] gap-5 mb-4">
+    <div id="sidebar" class="bg-white border border-gray-300 rounded-lg py-3 max-h-[calc(100vh-160px)] overflow-y-auto"></div>
+    <div class="min-w-0">
       <div id="skills-container"></div>
     </div>
   </div>
 
-  <div id="add-repo-form" class="add-repo-form">
-    <input type="text" id="repo-url" placeholder="https://github.com/owner/repo 或 ~/local/path" oninput="onRepoUrlInput()">
-    <input type="text" id="repo-branch" placeholder="main" value="main" style="width: 100px;">
-    <div class="form-actions">
-      <button class="btn btn-install" onclick="addRepo()">添加</button>
-      <button class="btn" onclick="toggleAddRepo()">取消</button>
+  <!-- Add repo form -->
+  <div id="add-repo-form" class="hidden bg-white rounded-lg p-4 mt-4 border border-gray-300">
+    <div class="flex gap-2 items-center">
+      <input type="text" id="repo-url" placeholder="https://github.com/owner/repo 或 ~/local/path"
+        oninput="onRepoUrlInput()"
+        class="w-[300px] px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <input type="text" id="repo-branch" placeholder="main" value="main"
+        class="w-[100px] px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+    </div>
+    <div class="flex gap-2 mt-3">
+      <button onclick="addRepo()" class="px-3 py-1.5 rounded border border-green-600 text-green-700 text-sm hover:bg-green-50 cursor-pointer">添加</button>
+      <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">取消</button>
     </div>
   </div>
+
 </div>
 
-<div id="toast" class="toast"></div>
+<!-- Toast -->
+<div id="toast" class="toast hidden rounded-md px-4 py-3 text-sm border"></div>
 
 <script>
   let selectedRepo = null;
   let allSkills = [];
-  let repoMeta = {}; // name -> { hasRemoteUpdates, isLocal }
+  let repoMeta = {};
 
   function showToast(msg, type = 'success') {
     const t = document.getElementById('toast');
     t.textContent = msg;
-    t.className = `toast toast-${type} show`;
-    setTimeout(() => t.className = 'toast', 3000);
+    t.className = 'toast rounded-md px-4 py-3 text-sm border ' +
+      (type === 'success'
+        ? 'bg-green-50 text-green-800 border-green-300'
+        : 'bg-red-50 text-red-800 border-red-300');
+    setTimeout(() => t.className = 'toast hidden', 3000);
   }
 
   async function checkUpdateStatus() {
@@ -149,14 +75,14 @@
       const resp = await fetch('/api/update-status');
       const data = await resp.json();
       if (data.hasUpdates) {
-        document.getElementById('update-banner').classList.add('show');
+        document.getElementById('update-banner').classList.remove('hidden');
       }
     } catch (e) {}
   }
 
   async function syncAndReload() {
     await fetch('/api/repos/sync', { method: 'POST' });
-    document.getElementById('update-banner').classList.remove('show');
+    document.getElementById('update-banner').classList.add('hidden');
     await loadSkills();
     showToast('同步完成');
   }
@@ -166,13 +92,13 @@
     if (!info.hasRemoteUpdates) return;
     if (!confirm(`同步 ${repoName} 到最新版本？`)) return;
     await fetch('/api/repos/sync', { method: 'POST' });
-    document.getElementById('update-banner').classList.remove('show');
+    document.getElementById('update-banner').classList.add('hidden');
     await loadSkills();
     showToast(`${repoName} 同步完成`);
   }
 
   function toggleAddRepo() {
-    document.getElementById('add-repo-form').classList.toggle('show');
+    document.getElementById('add-repo-form').classList.toggle('hidden');
   }
 
   function isLocalPath(url) {
@@ -182,11 +108,7 @@
   function onRepoUrlInput() {
     const url = document.getElementById('repo-url').value.trim();
     const branchInput = document.getElementById('repo-branch');
-    if (isLocalPath(url)) {
-      branchInput.style.display = 'none';
-    } else {
-      branchInput.style.display = '';
-    }
+    branchInput.style.display = isLocalPath(url) ? 'none' : '';
   }
 
   async function addRepo() {
@@ -223,14 +145,10 @@
       repoMeta[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates, isLocal: r.isLocal };
     }
 
-    // Determine available repo names from skills
     const repoNames = [...new Set(allSkills.map(s => s.repoName))];
-
-    // If selected repo no longer exists, reset
     if (selectedRepo && !repoNames.includes(selectedRepo)) {
       selectedRepo = null;
     }
-    // Default: select first repo
     if (!selectedRepo && repoNames.length > 0) {
       selectedRepo = repoNames[0];
     }
@@ -241,13 +159,8 @@
 
   function renderSidebar() {
     const sidebar = document.getElementById('sidebar');
-
-    // Separate remote and local repos
     const remoteRepos = [];
     const localRepos = [];
-    const seen = new Set();
-
-    // Collect repos from both skills and repoMeta
     const allRepoNames = new Set([
       ...allSkills.map(s => s.repoName),
       ...Object.keys(repoMeta),
@@ -255,41 +168,46 @@
 
     for (const name of allRepoNames) {
       const meta = repoMeta[name] || {};
-      const hasSkills = allSkills.some(s => s.repoName === name);
       if (meta.isLocal) {
-        localRepos.push({ name, hasSkills });
+        localRepos.push({ name });
       } else {
-        remoteRepos.push({ name, hasSkills });
+        remoteRepos.push({ name });
       }
     }
 
     if (remoteRepos.length === 0 && localRepos.length === 0) {
-      sidebar.innerHTML = '<div class="sidebar-empty">暂无仓库</div>';
+      sidebar.innerHTML = '<div class="px-4 py-6 text-gray-500 text-sm text-center">暂无仓库</div>';
       return;
     }
 
     let html = '';
 
     if (remoteRepos.length > 0) {
-      html += '<div class="sidebar-group-label">远端仓库</div>';
+      html += '<div class="text-[11px] font-bold uppercase text-gray-500 px-4 pt-2 pb-1 tracking-wide">远端仓库</div>';
       for (const r of remoteRepos) {
         const meta = repoMeta[r.name] || {};
-        const dotClass = meta.hasRemoteUpdates ? 'dir-status-outdated' : 'dir-status-installed';
-        const active = r.name === selectedRepo ? ' active' : '';
-        html += `<div class="sidebar-item${active}" onclick="selectRepo('${escAttr(r.name)}')">
-          <span class="repo-dot dir-status ${dotClass}"></span>
-          <span class="repo-label">${escHtml(r.name)}</span>
+        const dotCls = meta.hasRemoteUpdates ? 'bg-yellow-400' : 'bg-green-600';
+        const active = r.name === selectedRepo;
+        const itemCls = active
+          ? 'bg-blue-50 border-l-[3px] border-blue-500 font-semibold'
+          : 'border-l-[3px] border-transparent hover:bg-gray-100';
+        html += `<div class="flex items-center gap-2 px-4 py-[7px] cursor-pointer text-sm ${itemCls}" onclick="selectRepo('${escAttr(r.name)}')">
+          <span class="w-2 h-2 rounded-full ${dotCls} shrink-0"></span>
+          <span class="truncate">${escHtml(r.name)}</span>
         </div>`;
       }
     }
 
     if (localRepos.length > 0) {
-      html += '<div class="sidebar-group-label">本地仓库</div>';
+      html += '<div class="text-[11px] font-bold uppercase text-gray-500 px-4 pt-3 pb-1 tracking-wide">本地仓库</div>';
       for (const r of localRepos) {
-        const active = r.name === selectedRepo ? ' active' : '';
-        html += `<div class="sidebar-item${active}" onclick="selectRepo('${escAttr(r.name)}')">
-          <span class="repo-dot dir-status dir-status-uninstalled"></span>
-          <span class="repo-label">${escHtml(r.name)}</span>
+        const active = r.name === selectedRepo;
+        const itemCls = active
+          ? 'bg-blue-50 border-l-[3px] border-blue-500 font-semibold'
+          : 'border-l-[3px] border-transparent hover:bg-gray-100';
+        html += `<div class="flex items-center gap-2 px-4 py-[7px] cursor-pointer text-sm ${itemCls}" onclick="selectRepo('${escAttr(r.name)}')">
+          <span class="w-2 h-2 rounded-full bg-gray-400 shrink-0"></span>
+          <span class="truncate">${escHtml(r.name)}</span>
         </div>`;
       }
     }
@@ -303,21 +221,21 @@
     renderSkills();
   }
 
-  function statusClass(status) {
+  function statusBadge(status) {
     const map = {
-      '已安装': 'status-installed',
-      '未安装': 'status-uninstalled',
-      '不一致': 'status-inconsistent',
-      '部分安装': 'status-partial',
+      '已安装': 'bg-green-100 text-green-800',
+      '未安装': 'bg-gray-200 text-gray-500',
+      '不一致': 'bg-yellow-100 text-yellow-800 border border-yellow-400',
+      '部分安装': 'bg-blue-100 text-blue-800',
     };
-    return map[status] || 'status-uninstalled';
+    return map[status] || 'bg-gray-200 text-gray-500';
   }
 
   function renderSkills() {
     const container = document.getElementById('skills-container');
 
     if (!selectedRepo) {
-      container.innerHTML = '<div class="no-repo-selected">暂无 skills。请先添加仓库。</div>';
+      container.innerHTML = '<div class="text-gray-500 text-center py-10 text-sm">暂无 skills。请先添加仓库。</div>';
       return;
     }
 
@@ -326,59 +244,55 @@
     const isLocal = repoInfo.isLocal;
     const hasUpdate = repoInfo.hasRemoteUpdates;
 
-    const repoDotClass = hasUpdate ? 'dir-status-outdated' : 'dir-status-installed';
-    const repoTooltip = hasUpdate ? '有远端更新可用，点击同步' : (isLocal ? '本地路径' : '已与远端同步');
+    const dotCls = hasUpdate ? 'bg-yellow-400' : 'bg-green-600';
+    const dotTitle = hasUpdate ? '有远端更新可用，点击同步' : (isLocal ? '本地路径' : '已与远端同步');
     const escapedRepo = selectedRepo.replace(/'/g, "\\'");
-    const repoDotClick = hasUpdate ? `onclick="event.stopPropagation(); syncOneRepo('${escapedRepo}')" class="sync-dot"` : '';
+    const dotClick = hasUpdate ? `onclick="event.stopPropagation(); syncOneRepo('${escapedRepo}')" class="cursor-pointer"` : '';
 
-    let html = `<div class="repo-section">
-      <div class="repo-header">
-        <span class="dir-status ${repoDotClass}" title="${repoTooltip}" ${repoDotClick}></span>
-        ${escHtml(selectedRepo)}
-        <button class="delete-repo-btn" onclick="removeRepo('${escapedRepo}')">删除仓库</button>
+    let html = `<div>
+      <div class="flex items-center gap-2 px-3 py-2 bg-gray-200 rounded-md text-sm font-semibold mb-2">
+        <span class="w-2.5 h-2.5 rounded-full ${dotCls}" title="${dotTitle}" ${dotClick}></span>
+        <span class="truncate">${escHtml(selectedRepo)}</span>
+        <button onclick="removeRepo('${escapedRepo}')" class="ml-auto text-xs text-red-600 hover:underline cursor-pointer bg-transparent border-0 p-0.5">删除仓库</button>
       </div>`;
 
     if (items.length === 0) {
-      html += '<p style="color:#6c757d; padding: 8px 12px;">此仓库中暂无 skills。</p>';
+      html += '<p class="text-gray-500 text-sm px-3 py-2">此仓库中暂无 skills。</p>';
     } else {
-      html += '<ul class="skill-list">';
+      html += '<ul class="list-none pl-0">';
       for (const s of items) {
         const isInstalled = s.status === '已安装' || s.status === '不一致';
         const escapedName = s.name.replace(/'/g, "\\'");
 
-        const claudeClass = s.inClaude
-          ? (s.claudeMatchesSource ? 'dir-status-installed' : 'dir-status-outdated')
-          : 'dir-status-uninstalled';
-        const agentsClass = s.inAgents
-          ? (s.agentsMatchesSource ? 'dir-status-installed' : 'dir-status-outdated')
-          : 'dir-status-uninstalled';
+        const claudeDot = s.inClaude
+          ? (s.claudeMatchesSource ? 'bg-green-600' : 'bg-yellow-400 cursor-pointer')
+          : 'bg-gray-300';
+        const agentsDot = s.inAgents
+          ? (s.agentsMatchesSource ? 'bg-green-600' : 'bg-yellow-400 cursor-pointer')
+          : 'bg-gray-300';
 
         const claudeClick = s.inClaude && !s.claudeMatchesSource
           ? `onclick="installTo('${escapedName}', 'claude')" title="与源不同，点击更新"`
-          : s.inClaude
-            ? `title="已安装 (最新)"`
-            : `title="未安装"`;
+          : s.inClaude ? 'title="已安装 (最新)"' : 'title="未安装"';
         const agentsClick = s.inAgents && !s.agentsMatchesSource
           ? `onclick="installTo('${escapedName}', 'agents')" title="与源不同，点击更新"`
-          : s.inAgents
-            ? `title="已安装 (最新)"`
-            : `title="未安装"`;
+          : s.inAgents ? 'title="已安装 (最新)"' : 'title="未安装"';
 
-        const statusLabel = s.status === '不一致'
-          ? '部分已安装（有目录与源不同）'
-          : s.status;
+        const statusLabel = s.status === '不一致' ? '部分已安装（有目录与源不同）' : s.status;
 
-        html += `<li class="skill-item">
-          <span class="skill-name" onclick="toggleMeta('${escapedName}', this)">${escHtml(s.name)}</span>
-          <span class="dir-status ${claudeClass}" ${claudeClick}></span><span class="dir-label">claude</span>
-          <span class="dir-status ${agentsClass}" ${agentsClick}></span><span class="dir-label">agents</span>
-          <span class="status-tag ${statusClass(s.status)}">${statusLabel}</span>
+        html += `<li class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 mb-1">
+          <span class="flex-1 font-medium cursor-pointer hover:underline hover:text-blue-600" onclick="toggleMeta('${escapedName}', this)">${escHtml(s.name)}</span>
+          <span class="w-2.5 h-2.5 rounded-full ${claudeDot}" ${claudeClick}></span>
+          <span class="text-[11px] text-gray-500 mr-2">claude</span>
+          <span class="w-2.5 h-2.5 rounded-full ${agentsDot}" ${agentsClick}></span>
+          <span class="text-[11px] text-gray-500 mr-2">agents</span>
+          <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(s.status)}">${statusLabel}</span>
           ${isInstalled
-            ? `<button class="btn btn-uninstall" onclick="uninstallSkill('${escapedName}')">卸载</button>`
-            : `<button class="btn btn-install" onclick="installSkill('${escapedName}')">安装</button>`
+            ? `<button onclick="uninstallSkill('${escapedName}')" class="px-3 py-1 rounded border border-red-500 text-red-600 text-xs hover:bg-red-50 cursor-pointer">卸载</button>`
+            : `<button onclick="installSkill('${escapedName}')" class="px-3 py-1 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer">安装</button>`
           }
         </li>
-        <div class="skill-meta-panel" id="meta-${escapedName}"></div>`;
+        <div id="meta-${escapedName}" class="hidden bg-white border border-gray-300 rounded-lg p-4 mx-3 mb-2 text-sm leading-relaxed"></div>`;
       }
       html += '</ul>';
     }
@@ -390,12 +304,8 @@
   async function installSkill(name) {
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install`, { method: 'POST' });
     const data = await resp.json();
-    if (resp.ok) {
-      showToast(data.message);
-      await loadSkills();
-    } else {
-      showToast(data.error || '安装失败', 'error');
-    }
+    if (resp.ok) { showToast(data.message); await loadSkills(); }
+    else { showToast(data.error || '安装失败', 'error'); }
   }
 
   async function installTo(name, target) {
@@ -407,74 +317,51 @@
       body: JSON.stringify({ target }),
     });
     const data = await resp.json();
-    if (resp.ok) {
-      showToast(data.message);
-      await loadSkills();
-    } else {
-      showToast(data.error || '安装失败', 'error');
-    }
+    if (resp.ok) { showToast(data.message); await loadSkills(); }
+    else { showToast(data.error || '安装失败', 'error'); }
   }
 
   async function uninstallSkill(name) {
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/uninstall`, { method: 'POST' });
     const data = await resp.json();
-    if (resp.ok) {
-      showToast(data.message);
-      await loadSkills();
-    } else {
-      showToast(data.error || '卸载失败', 'error');
-    }
+    if (resp.ok) { showToast(data.message); await loadSkills(); }
+    else { showToast(data.error || '卸载失败', 'error'); }
   }
 
   async function toggleMeta(name, el) {
     const panel = document.getElementById(`meta-${name}`);
     if (!panel) return;
-
-    if (panel.classList.contains('show') && panel.innerHTML) {
-      panel.classList.remove('show');
+    if (!panel.classList.contains('hidden') && panel.innerHTML) {
+      panel.classList.add('hidden');
       return;
     }
-
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/meta`);
     const data = await resp.json();
-
     if (!resp.ok) {
-      panel.innerHTML = `<div class="meta-error">${data.error || '加载失败'}</div>`;
-      panel.classList.add('show');
+      panel.innerHTML = `<div class="text-red-700">${data.error || '加载失败'}</div>`;
+      panel.classList.remove('hidden');
       return;
     }
-
     const meta = data.meta;
     let html = '';
-    const fields = [
-      ['description', '描述'],
-      ['license', '协议'],
-      ['compatibility', '兼容性'],
-    ];
-
+    const fields = [['description', '描述'], ['license', '协议'], ['compatibility', '兼容性']];
     for (const [key, label] of fields) {
       if (meta[key]) {
-        html += `<div><span class="meta-label">${label}:</span> <span class="meta-value">${escHtml(meta[key])}</span></div>`;
+        html += `<div><span class="font-semibold text-gray-600">${label}:</span> ${escHtml(meta[key])}</div>`;
       }
     }
-
     const knownKeys = new Set(['name', 'description', 'license', 'compatibility']);
     for (const [key, val] of Object.entries(meta)) {
       if (!knownKeys.has(key) && val) {
-        html += `<div><span class="meta-label">${key}:</span> <span class="meta-value">${escHtml(String(val))}</span></div>`;
+        html += `<div><span class="font-semibold text-gray-600">${key}:</span> ${escHtml(String(val))}</div>`;
       }
     }
-
     if (data.body) {
-      html += `<div class="meta-body">${escHtml(data.body)}</div>`;
+      html += `<div class="mt-2 pt-2 border-t border-gray-200 whitespace-pre-wrap text-gray-500 text-xs max-h-48 overflow-y-auto">${escHtml(data.body)}</div>`;
     }
-
-    if (!html) {
-      html = '<div class="meta-error">无元数据</div>';
-    }
-
+    if (!html) html = '<div class="text-red-700">无元数据</div>';
     panel.innerHTML = html;
-    panel.classList.add('show');
+    panel.classList.remove('hidden');
   }
 
   function escHtml(str) {
