@@ -1,5 +1,7 @@
 # skill-hub
 
+<p align="center"><img src="docs/assets/icon.svg" width="120" alt="skill-hub logo"></p>
+
 **[English](./README.md)** | **[中文](./README.zh-CN.md)**
 
 基于 Web UI 的 GitHub 仓库和本地目录技能管理工具 — 核心目标是**减少不必要的 Token 开销**。

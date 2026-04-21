@@ -1,5 +1,7 @@
 # skill-hub
 
+<p align="center"><img src="docs/assets/icon.svg" width="120" alt="skill-hub logo"></p>
+
 **[English](./README.md)** | **[中文](./README.zh-CN.md)**
 
 Web UI for managing skills from GitHub repositories and local directories — with a focus on **reducing unnecessary token overhead**.
