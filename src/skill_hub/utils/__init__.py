@@ -1,11 +1,9 @@
 """Utility modules for skill-hub."""
 
 from .path_utils import expand_home
-from .yaml_parser import SkillParseError, parse_skill_file, parse_skill_file_from_path
+from .yaml_parser import parse_skill_file
 
 __all__ = [
     "expand_home",
-    "SkillParseError",
     "parse_skill_file",
-    "parse_skill_file_from_path",
 ]

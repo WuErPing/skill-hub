@@ -1,8 +1,7 @@
 """YAML frontmatter parser for SKILL.md files."""
 
 import re
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
 import yaml
 
@@ -76,20 +75,3 @@ def parse_skill_file(content: str) -> Tuple[SkillMetadata, str]:
     )
 
     return skill_metadata, body
-
-
-def parse_skill_file_from_path(path: Path) -> Optional[Tuple[SkillMetadata, str]]:
-    """
-    Parse SKILL.md file from filesystem path.
-
-    Args:
-        path: Path to SKILL.md file
-
-    Returns:
-        Tuple of (SkillMetadata, content) or None if parsing fails
-    """
-    try:
-        content = path.read_text(encoding="utf-8")
-        return parse_skill_file(content)
-    except (OSError, SkillParseError):
-        return None

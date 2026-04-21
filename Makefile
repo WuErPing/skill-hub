@@ -14,9 +14,3 @@ clean:
 
 build:
 	python -m build
-
-version-bump:
-	qwen -y -i "execute skill .agents/skills/version-bump"
-
-git-commit:
-	qwen -y -i "execute skill git-commit-helper"

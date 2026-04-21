@@ -1,3 +1,1 @@
-"""skill-hub: View skills from ~/.agents/skills."""
-
-__version__ = "0.6.0"
+"""skill-hub: manage skills from ~/.skills_repo/."""
