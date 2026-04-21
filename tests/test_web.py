@@ -96,14 +96,19 @@ def test_get_repos(client, temp_home):
     assert "example/repo" in data[0]["name"]
 
 
-def test_add_repo_returns_409_if_exists(client, temp_home):
+def test_add_existing_repo_does_not_error(client, temp_home):
+    """Adding a repo URL that already exists should re-sync, not reject."""
     resp = client.post("/api/repos",
         json={"url": "https://github.com/example/repo", "branch": "main"},
         content_type="application/json",
     )
-    assert resp.status_code == 409
+    assert resp.status_code == 201
     data = resp.get_json()
-    assert "already exists" in data["error"]
+    assert data["ok"] is True
+    # Repos should still list only one entry
+    repos_resp = client.get("/api/repos")
+    repos = repos_resp.get_json()
+    assert len(repos) == 1
 
 
 def test_update_status_returns_boolean(client, temp_home):

@@ -86,12 +86,16 @@ def add_repo():
         return jsonify({"error": "url is required"}), 400
 
     repos = load_repos_config()
-    if any(r.url == url for r in repos):
-        return jsonify({"error": "Repo already exists"}), 409
+    existing = next((r for r in repos if r.url == url), None)
 
-    repo = Repo(url=url, branch=branch)
-    repos.append(repo)
-    save_repos_config(repos)
+    if existing is None:
+        # New repo: add to config
+        repo = Repo(url=url, branch=branch)
+        repos.append(repo)
+        save_repos_config(repos)
+    else:
+        # Existing repo: use existing config entry (sync will rebuild mapping)
+        repo = existing
 
     # Clone and build skill mapping immediately
     success, msg = sync_mapping(repo)
