@@ -1,6 +1,18 @@
 # skill-hub
 
-Web UI for managing skills from GitHub repositories and local directories.
+**[English](./README.md)** | **[中文](./README.zh-CN.md)**
+
+Web UI for managing skills from GitHub repositories and local directories — with a focus on **reducing unnecessary token overhead**.
+
+## Why skill-hub?
+
+Managing agent skills shouldn't waste tokens. skill-hub centralizes skill discovery, installation, and versioning so you spend less time describing what skills do and more time using them.
+
+- **One source of truth** — skills live in `~/.skills_repo/`, not scattered across chat histories
+- **Visual discovery** — browse skill metadata in the Web UI instead of reading full SKILL.md files through your agent
+- **Sync-once, use-everywhere** — install to `~/.claude/skills/` and `~/.agents/skills/` in one click, avoiding repeated "please install this skill" conversations
+- **Version awareness** — yellow dots tell you when a skill is outdated, preventing stale instructions from silently consuming tokens
+- **Install only what you need** — keep your global skill space lean. Install project-specific skills to `.agents/skills/` (private) and only widely-used skills to `~/.agents/skills/` (global). The fewer irrelevant skills in scope, the less token waste on false-positive matches
 
 ## Installation
 
