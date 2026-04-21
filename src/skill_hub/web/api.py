@@ -28,6 +28,10 @@ def get_skills():
             "repoName": s.repo_name,
             "repoUrl": s.repo_url,
             "status": s.status,
+            "inClaude": s.in_claude,
+            "inAgents": s.in_agents,
+            "md5Claude": s.md5_claude,
+            "md5Agents": s.md5_agents,
             "path": str(s.path),
         }
         for s in skills

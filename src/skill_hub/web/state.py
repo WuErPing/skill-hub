@@ -17,7 +17,21 @@ class SkillEntry:
     repo_name: str
     repo_url: str
     path: Path  # absolute path in the cloned repo
-    status: str  # "未安装" | "已安装" | "不一致" | "部分安装"
+    in_claude: bool   # installed to ~/.claude/skills
+    in_agents: bool   # installed to ~/.agents/skills
+    md5_claude: str   # MD5 of installed version in ~/.claude/skills (empty if not installed)
+    md5_agents: str   # MD5 of installed version in ~/.agents/skills (empty if not installed)
+
+    @property
+    def status(self) -> str:
+        if self.in_claude and self.in_agents:
+            if self.md5_claude == self.md5_agents:
+                return "已安装"
+            else:
+                return "不一致"
+        elif self.in_claude or self.in_agents:
+            return "部分安装"
+        return "未安装"
 
 
 def _md5_of_dir(path: Path) -> str:
@@ -64,25 +78,18 @@ def list_skills() -> list[SkillEntry]:
             if not skill_path.exists():
                 continue
 
-            in_claude = skill_name in claude_skills
-            in_agents = skill_name in agents_skills
-
-            if in_claude and in_agents:
-                if claude_skills[skill_name] == agents_skills[skill_name]:
-                    status = "已安装"
-                else:
-                    status = "不一致"
-            elif in_claude or in_agents:
-                status = "部分安装"
-            else:
-                status = "未安装"
+            in_c = skill_name in claude_skills
+            in_a = skill_name in agents_skills
 
             skills.append(SkillEntry(
                 name=skill_name,
                 repo_name=repo.name,
                 repo_url=repo.url,
                 path=skill_path,
-                status=status,
+                in_claude=in_c,
+                in_agents=in_a,
+                md5_claude=claude_skills.get(skill_name, ""),
+                md5_agents=agents_skills.get(skill_name, ""),
             ))
 
     return sorted(skills, key=lambda s: (s.repo_name, s.name))

@@ -38,6 +38,12 @@
     .status-inconsistent { background: #fff3cd; color: #664d03; border: 1px solid #ffc107; }
     .status-partial { background: #cfe2ff; color: #084298; }
 
+    .dir-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 2px; vertical-align: middle; }
+    .dir-status-installed { background: #198754; }
+    .dir-status-uninstalled { background: #e9ecef; }
+    .dir-status-mismatch { background: #ffc107; }
+    .dir-label { font-size: 11px; color: #6c757d; margin-right: 8px; }
+
     .btn { padding: 4px 12px; border-radius: 4px; border: 1px solid #dee2e6; background: #fff; cursor: pointer; font-size: 13px; }
     .btn:hover { background: #f8f9fa; }
     .btn-install { border-color: #198754; color: #198754; }
@@ -178,9 +184,24 @@
           ${items.map(s => {
             const isInstalled = s.status === '已安装' || s.status === '不一致' || s.status === '部分安装';
             const escapedName = s.name.replace(/'/g, "\\'");
+
+            // Per-directory status dots
+            const claudeStatus = s.inClaude
+              ? (s.md5Claude === s.md5Agents ? 'dir-status-installed' : 'dir-status-mismatch')
+              : 'dir-status-uninstalled';
+            const agentsStatus = s.inAgents
+              ? (s.md5Claude === s.md5Agents ? 'dir-status-installed' : 'dir-status-mismatch')
+              : 'dir-status-uninstalled';
+
+            const statusLabel = s.status === '不一致'
+              ? '不一致（两目录内容不同）'
+              : s.status;
+
             return `<li class="skill-item">
               <span class="skill-name">${s.name}</span>
-              <span class="status-tag ${statusClass(s.status)}">${s.status}</span>
+              <span class="dir-status ${claudeStatus}" title="~/.claude/skills"></span><span class="dir-label">claude</span>
+              <span class="dir-status ${agentsStatus}" title="~/.agents/skills"></span><span class="dir-label">agents</span>
+              <span class="status-tag ${statusClass(s.status)}">${statusLabel}</span>
               ${isInstalled
                 ? `<button class="btn btn-uninstall" onclick="uninstallSkill('${escapedName}')">卸载</button>`
                 : `<button class="btn btn-install" onclick="installSkill('${escapedName}')">安装</button>`
