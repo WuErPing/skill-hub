@@ -20,35 +20,7 @@ Managing agent skills shouldn't waste tokens. skill-hub centralizes skill discov
 
 ### Data Flow
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                        SOURCE LAYER                           │
-│                    GitHub / Local Path                        │
-│                      (URL or directory)                       │
-└──────────────────────────────┬───────────────────────────────┘
-                               │
-                               │ git clone (remote)
-                               │ scan in place (local)
-                               ▼
-┌──────────────────────────────────────────────────────────────┐
-│                        CACHE LAYER                            │
-│                      ~/.skills_repo/                          │
-│  ┌─────────────────────┐      ┌─────────────────────┐        │
-│  │      repos/         │      │      mappings/      │        │
-│  │    (source code)    │─────►│    (skill index)    │        │
-│  └─────────────────────┘      └──────────┬──────────┘        │
-└──────────────────────────────────────────┼───────────────────┘
-                                           │
-                                           │ copy / install
-                                           ▼
-┌──────────────────────────────────────────────────────────────┐
-│                       TARGET LAYER                            │
-│  ┌─────────────────────┐      ┌─────────────────────┐        │
-│  │  ~/.claude/skills/  │      │  ~/.agents/skills/  │        │
-│  │     (Target A)      │      │     (Target B)      │        │
-│  └─────────────────────┘      └─────────────────────┘        │
-└──────────────────────────────────────────────────────────────┘
-```
+<p align="center"><img src="docs/assets/data-flow.svg" width="720" alt="skill-hub data flow"></p>
 
 ### Module Structure
 
