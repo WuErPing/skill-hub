@@ -38,10 +38,11 @@
     .status-inconsistent { background: #fff3cd; color: #664d03; border: 1px solid #ffc107; }
     .status-partial { background: #cfe2ff; color: #084298; }
 
-    .dir-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 2px; vertical-align: middle; }
+    .dir-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 2px; vertical-align: middle; cursor: pointer; }
     .dir-status-installed { background: #198754; }
     .dir-status-uninstalled { background: #e9ecef; }
-    .dir-status-mismatch { background: #ffc107; }
+    .dir-status-outdated { background: #ffc107; cursor: pointer; }
+    .dir-status-outdated:hover { background: #e0a800; }
     .dir-label { font-size: 11px; color: #6c757d; margin-right: 8px; }
 
     .btn { padding: 4px 12px; border-radius: 4px; border: 1px solid #dee2e6; background: #fff; cursor: pointer; font-size: 13px; }
@@ -182,25 +183,37 @@
         </div>
         <ul class="skill-list">
           ${items.map(s => {
-            const isInstalled = s.status === '已安装' || s.status === '不一致' || s.status === '部分安装';
+            const isInstalled = s.status === '已安装' || s.status === '不一致';
             const escapedName = s.name.replace(/'/g, "\\'");
 
-            // Per-directory status dots
-            const claudeStatus = s.inClaude
-              ? (s.md5Claude === s.md5Agents ? 'dir-status-installed' : 'dir-status-mismatch')
+            // Per-directory status: green if matches source, yellow if outdated, gray if not installed
+            const claudeClass = s.inClaude
+              ? (s.claudeMatchesSource ? 'dir-status-installed' : 'dir-status-outdated')
               : 'dir-status-uninstalled';
-            const agentsStatus = s.inAgents
-              ? (s.md5Claude === s.md5Agents ? 'dir-status-installed' : 'dir-status-mismatch')
+            const agentsClass = s.inAgents
+              ? (s.agentsMatchesSource ? 'dir-status-installed' : 'dir-status-outdated')
               : 'dir-status-uninstalled';
 
+            // Clickable: only outdated dots can trigger single-dir reinstall
+            const claudeClick = s.inClaude && !s.claudeMatchesSource
+              ? `onclick="installTo('${escapedName}', 'claude')" title="与源不同，点击更新"`
+              : s.inClaude
+                ? `title="已安装 (最新)"`
+                : `title="未安装"`;
+            const agentsClick = s.inAgents && !s.agentsMatchesSource
+              ? `onclick="installTo('${escapedName}', 'agents')" title="与源不同，点击更新"`
+              : s.inAgents
+                ? `title="已安装 (最新)"`
+                : `title="未安装"`;
+
             const statusLabel = s.status === '不一致'
-              ? '不一致（两目录内容不同）'
+              ? '部分已安装（有目录与源不同）'
               : s.status;
 
             return `<li class="skill-item">
               <span class="skill-name">${s.name}</span>
-              <span class="dir-status ${claudeStatus}" title="~/.claude/skills"></span><span class="dir-label">claude</span>
-              <span class="dir-status ${agentsStatus}" title="~/.agents/skills"></span><span class="dir-label">agents</span>
+              <span class="dir-status ${claudeClass}" ${claudeClick}></span><span class="dir-label">claude</span>
+              <span class="dir-status ${agentsClass}" ${agentsClick}></span><span class="dir-label">agents</span>
               <span class="status-tag ${statusClass(s.status)}">${statusLabel}</span>
               ${isInstalled
                 ? `<button class="btn btn-uninstall" onclick="uninstallSkill('${escapedName}')">卸载</button>`
@@ -228,6 +241,23 @@
 
   async function installSkill(name) {
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install`, { method: 'POST' });
+    const data = await resp.json();
+    if (resp.ok) {
+      showToast(data.message);
+      await loadSkills();
+    } else {
+      showToast(data.error || '安装失败', 'error');
+    }
+  }
+
+  async function installTo(name, target) {
+    const targetLabel = target === 'claude' ? '~/.claude/skills' : '~/.agents/skills';
+    if (!confirm(`从源更新 ${name} 到 ${targetLabel}？`)) return;
+    const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install-to`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target }),
+    });
     const data = await resp.json();
     if (resp.ok) {
       showToast(data.message);

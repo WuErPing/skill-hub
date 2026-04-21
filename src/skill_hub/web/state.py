@@ -19,18 +19,26 @@ class SkillEntry:
     path: Path  # absolute path in the cloned repo
     in_claude: bool   # installed to ~/.claude/skills
     in_agents: bool   # installed to ~/.agents/skills
+    md5_source: str   # MD5 of source skill in repo
     md5_claude: str   # MD5 of installed version in ~/.claude/skills (empty if not installed)
     md5_agents: str   # MD5 of installed version in ~/.agents/skills (empty if not installed)
 
     @property
+    def claude_matches_source(self) -> bool:
+        return self.in_claude and self.md5_claude == self.md5_source
+
+    @property
+    def agents_matches_source(self) -> bool:
+        return self.in_agents and self.md5_agents == self.md5_source
+
+    @property
     def status(self) -> str:
-        if self.in_claude and self.in_agents:
-            if self.md5_claude == self.md5_agents:
-                return "已安装"
-            else:
-                return "不一致"
+        c_ok = self.claude_matches_source
+        a_ok = self.agents_matches_source
+        if c_ok and a_ok:
+            return "已安装"
         elif self.in_claude or self.in_agents:
-            return "部分安装"
+            return "不一致"
         return "未安装"
 
 
@@ -80,6 +88,7 @@ def list_skills() -> list[SkillEntry]:
 
             in_c = skill_name in claude_skills
             in_a = skill_name in agents_skills
+            source_md5 = _md5_of_dir(skill_path)
 
             skills.append(SkillEntry(
                 name=skill_name,
@@ -88,6 +97,7 @@ def list_skills() -> list[SkillEntry]:
                 path=skill_path,
                 in_claude=in_c,
                 in_agents=in_a,
+                md5_source=source_md5,
                 md5_claude=claude_skills.get(skill_name, ""),
                 md5_agents=agents_skills.get(skill_name, ""),
             ))
@@ -112,6 +122,26 @@ def install_skill(name: str, source_path: Path) -> tuple[bool, str]:
         shutil.copytree(source_path, dest_a)
         shutil.copytree(source_path, dest_b)
         return True, f"Installed {name} to both directories"
+    except Exception as e:
+        return False, str(e)
+
+
+def install_to_one(name: str, source_path: Path, target: str) -> tuple[bool, str]:
+    """Copy skill from source_path to a single directory ('claude' or 'agents')."""
+    try:
+        if target == "claude":
+            dest_dir = CLAUDE_SKILLS
+        elif target == "agents":
+            dest_dir = AGENTS_SKILLS
+        else:
+            return False, f"Unknown target: {target}"
+
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / name
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(source_path, dest)
+        return True, f"Installed {name} to {target}"
     except Exception as e:
         return False, str(e)
 

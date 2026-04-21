@@ -13,7 +13,7 @@ from skill_hub.web.repos import (
     save_repos_config,
     sync_mapping,
 )
-from skill_hub.web.state import install_skill, list_skills, uninstall_skill
+from skill_hub.web.state import install_skill, install_to_one, list_skills, uninstall_skill
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -30,6 +30,9 @@ def get_skills():
             "status": s.status,
             "inClaude": s.in_claude,
             "inAgents": s.in_agents,
+            "claudeMatchesSource": s.claude_matches_source,
+            "agentsMatchesSource": s.agents_matches_source,
+            "md5Source": s.md5_source,
             "md5Claude": s.md5_claude,
             "md5Agents": s.md5_agents,
             "path": str(s.path),
@@ -51,6 +54,29 @@ def api_install(name: str):
         return jsonify({"error": f"Source path not found: {source_path}"}), 400
 
     success, msg = install_skill(name, source_path)
+    if success:
+        return jsonify({"ok": True, "message": msg})
+    return jsonify({"error": msg}), 500
+
+
+@api_bp.route("/skills/<name>/install-to", methods=["POST"])
+def api_install_to(name: str):
+    """Install a skill to a single directory ('claude' or 'agents')."""
+    body = request.get_json() or {}
+    target = body.get("target", "").strip()
+    if target not in ("claude", "agents"):
+        return jsonify({"error": "target must be 'claude' or 'agents'"}), 400
+
+    skills = list_skills()
+    skill = next((s for s in skills if s.name == name), None)
+    if not skill:
+        return jsonify({"error": f"Skill '{name}' not found"}), 404
+
+    source_path = skill.path
+    if not source_path.exists():
+        return jsonify({"error": f"Source path not found: {source_path}"}), 400
+
+    success, msg = install_to_one(name, source_path, target)
     if success:
         return jsonify({"ok": True, "message": msg})
     return jsonify({"error": msg}), 500
