@@ -1,6 +1,6 @@
 # skill-hub
 
-Web UI for managing skills from GitHub repositories.
+Web UI for managing skills from GitHub repositories and local directories.
 
 ## Installation
 
@@ -20,7 +20,7 @@ pip install -e .
 skill-hub web
 ```
 
-Opens a browser UI at `http://127.0.0.1:7860` where you can add GitHub repos, browse skills, and install them to `~/.claude/skills/` and `~/.agents/skills/`.
+Opens a browser UI at `http://127.0.0.1:7860` where you can add GitHub repos or local directories, browse skills, and install them to `~/.claude/skills/` and `~/.agents/skills/`.
 
 ```bash
 # Custom port
@@ -38,9 +38,9 @@ skill-hub web --no-open
 4. **Sync status** — green dots mean installed version matches source, yellow means outdated
 5. **Repo sync** — detect and pull remote updates, with a sync status indicator per repo (local paths skip cloning)
 
-## Web UI Features
+## Features
 
-- Skills grouped by repository (remote 📁 and local 📂)
+- Skills grouped by repository (remote and local)
 - Per-directory install status (green = up-to-date, yellow = outdated vs source)
 - Install to both `~/.claude/skills` and `~/.agents/skills` simultaneously
 - Click yellow dots to reinstall a single directory from source
@@ -68,77 +68,52 @@ Your skill instructions here...
 
 ## Architecture
 
-### Module Architecture
+### Module Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   skill-hub CLI (cli.py)                    │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ click
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Flask App Factory (web/app.py)                 │
-│                   ┌───────────────┐                         │
-│                   │  HTML Template│                         │
-│                   └───────────────┘                         │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ api_bp
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                REST API Routes (web/api.py)                 │
-│    /skills    /repos    /install    /sync    /meta          │
-└──────┬────────────────────┬────────────────────┬────────────┘
-       │                    │                    │
-       ▼                    ▼                    ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────────┐
-│   Repos     │     │    State    │     │  YAML Parser    │
-│(web/repos.  │     │(web/state.  │     │(utils/yaml_     │
-│    py)      │     │    py)      │     │  parser.py)     │
-└──────┬──────┘     └──────┬──────┘     └────────┬────────┘
-       │                   │                     │
-       │                   │                     ▼
-       │                   │            ┌─────────────────┐
-       │                   │            │     Models      │
-       │                   │            │  (models.py)    │
-       │                   │            └─────────────────┘
-       │                   │
-       │                   └──────────► Git + Filesystem
-       │
-       ▼
-┌─────────────────┐
-│   Path Utils    │
-│(utils/path_     │
-│  utils.py)      │
-└─────────────────┘
+src/skill_hub/
+├── cli.py              # Click CLI entrypoint (web command only)
+├── models.py           # SkillMetadata dataclass
+├── utils/
+│   ├── __init__.py     # Path helpers (expand_path, derive_name)
+│   └── yaml_parser.py  # SKILL.md YAML frontmatter parser
+└── web/
+    ├── app.py          # Flask app factory
+    ├── api.py          # REST API routes
+    ├── repos.py        # Repo management (clone, scan, install)
+    ├── state.py        # Installed skills state tracking
+    └── templates/
+        └── index.html  # Single-page web UI
 ```
 
 ### Data Flow
 
 ```
-       GitHub                    ~/.skills_repo/               Targets
-       (Remote)                  (Local Cache)                 (Installed)
-                                    
-         │                             │                            │
-         │  git clone / pull           │                            │
-         ▼                             ▼                            ▼
-   ┌───────────┐              ┌─────────────────┐        ┌─────────────────┐
-   │   Repo    │─────────────►│   repos/        │        │ ~/.claude/      │
-   │   URL     │              │   (source code) │        │   skills/       │
-   └───────────┘              └─────────────────┘        └─────────────────┘
-         │                            │                           ▲
-         │                            │  scan SKILL.md            │
-         │                            ▼                           │
-         │                   ┌─────────────────┐                  │
-         └──────────────────►│   mappings/     │──────────────────┘
-                             │   (skill index) │
-                             └─────────────────┘
-                                        │
-                                        │  copy / install
-                                        ▼
-                             ┌─────────────────┐
-                             │ ~/.agents/      │
-                             │   skills/       │
-                             └─────────────────┘
+  GitHub / Local Path                ~/.skills_repo/               Targets
+                                     (Local Cache)                 (Installed)
+
+       │                                  │                            │
+       │  git clone (remote)              │                            │
+       │  scan in place (local)           │                            │
+       ▼                                  ▼                            ▼
+ ┌───────────┐                  ┌─────────────────┐         ┌─────────────────┐
+ │  Source   │─────────────────►│   repos/        │         │ ~/.claude/      │
+ │  (URL or  │                  │   (source code) │         │   skills/       │
+ │   path)   │                  └─────────────────┘         └─────────────────┘
+ └───────────┘                          │                            ▲
+                                        │  scan SKILL.md             │
+                                        ▼                            │
+                               ┌─────────────────┐                   │
+                               │   mappings/     │───────────────────┘
+                               │   (skill index) │
+                               └─────────────────┘
+                                          │
+                                          │  copy / install
+                                          ▼
+                               ┌─────────────────┐
+                               │ ~/.agents/      │
+                               │   skills/       │
+                               └─────────────────┘
 ```
 
 ## Directory Structure
