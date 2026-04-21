@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from skill_hub.web.app import create_app
+from skill_hub.web.repos import Repo
 
 
 @pytest.fixture
@@ -138,9 +139,95 @@ def test_install_nonexistent_skill_returns_404(client, temp_home):
     assert resp.status_code == 404
 
 
+class TestRepoLocalDetection:
+    """Unit tests for Repo.is_local property."""
+
+    def test_https_url_is_not_local(self):
+        repo = Repo(url="https://github.com/user/repo")
+        assert repo.is_local is False
+
+    def test_git_at_url_is_not_local(self):
+        repo = Repo(url="git@github.com:user/repo.git")
+        assert repo.is_local is False
+
+    def test_absolute_path_is_local(self):
+        repo = Repo(url="/home/user/my-skills")
+        assert repo.is_local is True
+
+    def test_tilde_path_is_local(self):
+        repo = Repo(url="~/code/skills")
+        assert repo.is_local is True
+
+    def test_relative_path_is_local(self):
+        repo = Repo(url="./my-skills")
+        assert repo.is_local is True
+
+    def test_name_derivation_for_short_path(self):
+        repo = Repo(url="my-skill")
+        assert repo.name == "my-skill"
+
+
 def test_sync_repos_returns_results(client, temp_home):
     resp = client.post("/api/repos/sync")
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["ok"] is True
     assert "results" in data
+
+
+def test_add_local_repo_path(client, temp_home):
+    """Adding a local directory as repo source should scan skills without cloning."""
+    tmp_path, claude, agents = temp_home
+    local_repo = tmp_path / "local_skills"
+    local_repo.mkdir()
+    (local_repo / "my-skill").mkdir()
+    (local_repo / "my-skill" / "SKILL.md").write_text("---\nname: my-skill\ndescription: Local\n---\n")
+
+    resp = client.post("/api/repos",
+        json={"url": str(local_repo)},
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
+    data = resp.get_json()
+    assert data["ok"] is True
+    assert "Scanned" in data["message"]
+
+    # Should appear in repos list with isLocal=true
+    repos_resp = client.get("/api/repos")
+    repos = repos_resp.get_json()
+    local_repos = [r for r in repos if r.get("isLocal")]
+    assert len(local_repos) >= 1
+    assert str(local_repo) in local_repos[0]["localPath"]
+
+    # Skill should be listed
+    skills_resp = client.get("/api/skills")
+    skills = skills_resp.get_json()
+    skill_names = [s["name"] for s in skills]
+    assert "my-skill" in skill_names
+
+
+def test_delete_local_repo_does_not_remove_source(client, temp_home):
+    """Deleting a local repo should only remove the mapping, not the source directory."""
+    tmp_path, claude, agents = temp_home
+    local_repo = tmp_path / "local_skills"
+    local_repo.mkdir()
+    (local_repo / "my-skill").mkdir()
+    (local_repo / "my-skill" / "SKILL.md").write_text("---\nname: my-skill\ndescription: Local\n---\n")
+
+    client.post("/api/repos", json={"url": str(local_repo)}, content_type="application/json")
+
+    # Find the repo name
+    repos = client.get("/api/repos").get_json()
+    local_repo_entry = next(r for r in repos if r.get("isLocal"))
+    repo_name = local_repo_entry["name"]
+
+    resp = client.delete(f"/api/repos/{repo_name}")
+    assert resp.status_code == 200
+
+    # Source directory must still exist
+    assert local_repo.exists()
+    # Mapping file should be gone
+    import skill_hub.web.repos as repos_module
+    from skill_hub.web.repos import Repo
+    repo = Repo(url=str(local_repo))
+    assert not repos_module.mapping_path(repo).exists()

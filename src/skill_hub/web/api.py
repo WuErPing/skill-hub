@@ -135,6 +135,7 @@ def get_repos():
             "name": r.name,
             "localPath": str(repo_dir(r)),
             "hasRemoteUpdates": has_remote_updates(r),
+            "isLocal": r.is_local,
         }
         for r in repos
     ])
@@ -142,7 +143,7 @@ def get_repos():
 
 @api_bp.route("/repos", methods=["POST"])
 def add_repo():
-    """Add a new repo URL to repos.yaml and clone it."""
+    """Add a new repo URL or local path to repos.yaml and sync it."""
     body = request.get_json() or {}
     url = body.get("url", "").strip()
     branch = body.get("branch", "main").strip()
@@ -161,7 +162,7 @@ def add_repo():
         # Existing repo: use existing config entry (sync will rebuild mapping)
         repo = existing
 
-    # Clone and build skill mapping immediately
+    # Sync and build skill mapping immediately
     success, msg = sync_mapping(repo)
     if success:
         return jsonify({"ok": True, "message": msg}), 201

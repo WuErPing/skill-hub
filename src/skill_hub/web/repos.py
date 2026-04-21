@@ -28,16 +28,33 @@ class Repo:
             if m:
                 self.name = f"{m.group(1)}/{m.group(2)}"
             else:
-                self.name = self.url.rstrip("/").split("/")[-2] + "/" + self.url.rstrip("/").split("/")[-1]
+                parts = self.url.rstrip("/").split("/")
+                if len(parts) >= 2:
+                    self.name = f"{parts[-2]}/{parts[-1]}"
+                else:
+                    self.name = parts[-1] if parts else self.url
 
     @property
     def dir_name(self) -> str:
         """Safe directory name for this repo (replacing / with __)."""
         return self.name.replace("/", "__") if self.name else ""
 
+    @property
+    def is_local(self) -> bool:
+        """Return True if this repo points to a local filesystem path."""
+        url = self.url.strip()
+        if url.startswith(("~", "/", ".")):
+            return True
+        if url.startswith(("http://", "https://", "git@")):
+            return False
+        # Fallback: if it resolves to an existing path, treat as local
+        return expand_home(url).exists()
+
 
 def repo_dir(repo: Repo) -> Path:
-    """Return the full git clone directory for a repo."""
+    """Return the repo directory. For local repos, returns the local path directly."""
+    if repo.is_local:
+        return expand_home(repo.url).resolve()
     return REPOS_DIR / repo.dir_name
 
 
@@ -102,26 +119,47 @@ def sync_mapping(repo: Repo) -> tuple[bool, str]:
     """Clone or update a repo and rebuild its skill mapping. Returns (success, message)."""
     target = repo_dir(repo)
 
-    if not target.exists():
-        try:
-            subprocess.run(
-                ["git", "clone", "--branch", repo.branch, repo.url, str(target)],
-                check=True, capture_output=True, text=True, timeout=120,
-            )
-        except subprocess.CalledProcessError as e:
-            return False, f"Clone failed: {e.stderr}"
-        except subprocess.TimeoutExpired:
-            return False, "Clone timed out"
+    if repo.is_local:
+        if not target.exists():
+            return False, f"Local path not found: {target}"
+        action = "Scanned"
+    else:
+        if not target.exists():
+            try:
+                subprocess.run(
+                    ["git", "clone", "--branch", repo.branch, repo.url, str(target)],
+                    check=True, capture_output=True, text=True, timeout=120,
+                )
+            except subprocess.CalledProcessError as e:
+                return False, f"Clone failed: {e.stderr}"
+            except subprocess.TimeoutExpired:
+                return False, "Clone timed out"
+            action = "Cloned"
+        else:
+            action = "Synced"
 
     mapping = _find_skills_in_repo(target)
     save_skill_mapping(repo, mapping)
     count = len(mapping)
-    return True, f"{'Cloned' if count else 'Synced'} {repo.url} — found {count} skill(s)"
+    return True, f"{action} {repo.url} — found {count} skill(s)"
 
 
 def clone_or_pull(repo: Repo) -> tuple[bool, str]:
     """Clone repo if not present, otherwise fetch. Does NOT rebuild mapping."""
     target = repo_dir(repo)
+    if repo.is_local:
+        if not target.exists():
+            return False, f"Local path not found: {target}"
+        if (target / ".git").exists():
+            try:
+                subprocess.run(
+                    ["git", "fetch", "origin"],
+                    cwd=target, check=True, capture_output=True, text=True, timeout=30,
+                )
+                return True, "fetched"
+            except subprocess.CalledProcessError as e:
+                return False, f"Fetch failed: {e.stderr}"
+        return True, "local directory"
     if not target.exists():
         try:
             subprocess.run(
@@ -148,14 +186,26 @@ def pull_latest(repo: Repo) -> tuple[bool, str]:
     """Git pull the repo and rebuild skill mapping. Returns (success, message)."""
     target = repo_dir(repo)
     if not target.exists():
+        if repo.is_local:
+            return False, f"Local path not found: {target}"
         return sync_mapping(repo)
-    try:
-        subprocess.run(
-            ["git", "pull", "origin", repo.branch],
-            cwd=target, check=True, capture_output=True, text=True, timeout=30,
-        )
-    except subprocess.CalledProcessError as e:
-        return False, f"Pull failed: {e.stderr}"
+    if repo.is_local:
+        if (target / ".git").exists():
+            try:
+                subprocess.run(
+                    ["git", "pull"],
+                    cwd=target, check=True, capture_output=True, text=True, timeout=30,
+                )
+            except subprocess.CalledProcessError as e:
+                return False, f"Pull failed: {e.stderr}"
+    else:
+        try:
+            subprocess.run(
+                ["git", "pull", "origin", repo.branch],
+                cwd=target, check=True, capture_output=True, text=True, timeout=30,
+            )
+        except subprocess.CalledProcessError as e:
+            return False, f"Pull failed: {e.stderr}"
     # Rebuild mapping after pull to catch added/removed skills
     mapping = _find_skills_in_repo(target)
     save_skill_mapping(repo, mapping)
@@ -165,9 +215,10 @@ def pull_latest(repo: Repo) -> tuple[bool, str]:
 
 def delete_repo(repo: Repo) -> tuple[bool, str]:
     """Delete a repo's local directory, mapping, and remove from repos.yaml."""
-    target = repo_dir(repo)
-    if target.exists():
-        shutil.rmtree(target)
+    if not repo.is_local:
+        target = repo_dir(repo)
+        if target.exists():
+            shutil.rmtree(target)
     mp = mapping_path(repo)
     if mp.exists():
         mp.unlink()
@@ -179,6 +230,8 @@ def delete_repo(repo: Repo) -> tuple[bool, str]:
 
 def has_remote_updates(repo: Repo) -> bool:
     """Check if remote has commits ahead of local HEAD."""
+    if repo.is_local:
+        return False
     target = repo_dir(repo)
     if not target.exists():
         return False

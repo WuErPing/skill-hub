@@ -1,28 +1,6 @@
 # skill-hub
 
-查看、安装和管理 `~/.agents/skills` 目录中的技能。
-
-## 推荐：配合 AI Agent 使用
-
-如果你在 Cursor、Claude 等 AI 编程助手中工作，最便捷的方式是直接用自然语言描述需求，`skill-hub-assistant` skill 会自动帮你转换成对应的 CLI 命令。
-
-**安装一次即可：**
-
-```bash
-skill-hub install https://raw.githubusercontent.com/wuerping/skill-hub/main/.agents/skills/skill-hub-assistant/SKILL.md --to public
-```
-
-**之后直接对 agent 说：**
-
-> "列出我所有的技能"
-> "把这个 skill 安装到全局"
-> "git-commit-helper 这个 skill 是干什么的？"
-> "把本地 skill 同步到 public"
-> "检查技能是否有更新"
-
-Agent 会执行对应的 `skill-hub` 命令并解释结果。
-
----
+基于 Web UI 的 GitHub 仓库技能管理工具。
 
 ## 安装
 
@@ -36,153 +14,39 @@ pip install git+https://github.com/wuerping/skill-hub.git
 pip install -e .
 ```
 
-## 多层技能目录架构
-
-skill-hub 支持**全局**（public）和**项目级**（private）技能目录：
-
-```
-                      远程来源
-                  GitHub / URL / 本地路径
-                  skill-hub install <source>
-                           │
-           ┌───────────────┴───────────────┐
-           ▼                               ▼
-┌───────────────────────┐   ┌───────────────────────┐
-│    全局（PUBLIC）      │   │   项目级（PRIVATE）    │
-│                       │   │                       │
-│  ~/.agents/skills/    │   │  .agents/skills/      │
-│  ~/.claude/skills/    │   │  .claude/skills/      │
-│                       │   │  .<tool>/skills/      │
-└──────────┬────────────┘   └──────────┬────────────┘
-           │                           │
-           │   优先级：项目级 > 全局
-           └──────────┬────────────────┘
-                      ▼
-                  技能发现
-
-  # 在目录间同步
-  $ skill-hub sync my-skill private public
-  $ skill-hub sync my-skill public private
-```
-
-**优先级**：当同名技能同时存在于两个目录时，项目级（private）版本优先。
-
-## 命令
-
-### `list` — 列出技能
+## 快速开始
 
 ```bash
-# 列出所有技能（全局 + 项目级），默认
-skill-hub list
-
-# 按范围过滤
-skill-hub list --public
-skill-hub list --private
-
-# 详细输出
-skill-hub list --verbose
-
-# 显示项目级与全局的差异
-skill-hub list --diff
+skill-hub web
 ```
 
-### `view` — 查看技能
+浏览器自动打开 `http://127.0.0.1:7860`，你可以在界面上添加 GitHub 仓库、浏览技能并安装到 `~/.claude/skills/` 和 `~/.agents/skills/`。
 
 ```bash
-skill-hub view <技能名称>
+# 自定义端口
+skill-hub web --port 8080
+
+# 不自动打开浏览器
+skill-hub web --no-open
 ```
 
-### `install` — 安装技能
+## 工作原理
 
-从本地路径、GitHub 仓库或 URL 安装技能。
-默认安装到项目级（`./.agents/skills`）。
+1. **添加 GitHub 仓库或本地目录** — 通过 UI 添加，远程仓库自动克隆到 `~/.skills_repo/repos/`，本地路径原地扫描
+2. **自动发现技能** — 扫描仓库中的 `SKILL.md` 文件
+3. **一键安装** — 将技能安装到 `~/.claude/skills/` 和 `~/.agents/skills/`
+4. **同步状态** — 绿色圆点表示安装版本与源一致，黄色表示过期
+5. **仓库同步** — 检测并拉取远端更新，每个仓库有同步状态指示（本地路径跳过克隆）
 
-```bash
-# 从本地路径安装（到项目级，默认）
-skill-hub install /path/to/my-skill
+## Web UI 功能
 
-# 安装到全局（~/.agents/skills）
-skill-hub install /path/to/my-skill --to public
-
-# 从 GitHub 安装
-skill-hub install user/repo/skill-name
-
-# 从 URL 安装
-skill-hub install https://example.com/SKILL.md
-
-# 使用自定义名称安装
-skill-hub install /path/to/my-skill --as custom-name
-```
-
-### `sync` — 在目录间同步技能
-
-FROM 和 TO 是位置参数：`public` 或 `private`。
-
-```bash
-# 项目级 → 全局
-skill-hub sync my-skill private public
-
-# 全局 → 项目级
-skill-hub sync my-skill public private
-
-# 也可以使用路径作为技能参数
-skill-hub sync .agents/skills/my-skill private public
-
-# 预览（不实际执行）
-skill-hub sync my-skill private public --dry-run
-
-# 强制覆盖
-skill-hub sync my-skill private public --force
-```
-
-### `update` — 检查技能更新
-
-```bash
-# 检查 ~/.agents/skills 中的所有技能
-skill-hub update
-
-# 检查特定技能
-skill-hub update my-skill
-```
-
-### `path` — 显示全局技能目录
-
-```bash
-skill-hub path
-```
-
-### `version` / `self-update`
-
-```bash
-skill-hub version
-skill-hub version --check
-skill-hub self-update
-```
-
-## 命令参考
-
-| 命令 | 描述 |
-|------|------|
-| `skill-hub list` | 列出所有技能（全局 + 项目级） |
-| `skill-hub list --public` | 仅列出全局技能 |
-| `skill-hub list --private` | 仅列出项目级技能 |
-| `skill-hub list --verbose` | 显示详细信息 |
-| `skill-hub list --diff` | 显示项目级与全局的差异 |
-| `skill-hub view <名称>` | 查看特定技能 |
-| `skill-hub path` | 显示全局技能目录路径 |
-| `skill-hub install <来源>` | 安装到项目级（默认） |
-| `skill-hub install <来源> --to public` | 安装到全局 |
-| `skill-hub install <来源> --to private` | 安装到项目级 |
-| `skill-hub install <来源> --as <名称>` | 使用自定义名称安装 |
-| `skill-hub sync <名称> private public` | 从项目级同步到全局 |
-| `skill-hub sync <名称> public private` | 从全局同步到项目级 |
-| `skill-hub sync <名称> <from> <to> --dry-run` | 预览同步 |
-| `skill-hub sync <名称> <from> <to> --force` | 强制覆盖 |
-| `skill-hub update` | 检查所有技能的更新 |
-| `skill-hub update <名称>` | 检查特定技能的更新 |
-| `skill-hub version` | 显示当前版本 |
-| `skill-hub version --check` | 检查可用更新 |
-| `skill-hub self-update` | 更新 skill-hub 到最新版本 |
+- 技能按仓库分组展示（远程 📁 和本地 📂）
+- 每目录安装状态一目了然（绿色 = 与源一致，黄色 = 与源不同）
+- 同时安装到 `~/.claude/skills` 和 `~/.agents/skills`
+- 点击黄色圆点从源重新安装到对应目录
+- 点击技能名称查看 `SKILL.md` frontmatter 元数据
+- 添加/删除仓库，支持远端更新检测
+- **本地目录支持** — 可将任意本地路径（如 `~/code/my-skills`）添加为技能源
 
 ## SKILL.md 格式
 
@@ -202,53 +66,94 @@ metadata:
 你的技能说明在这里...
 ```
 
+## 架构设计
+
+### 模块架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   skill-hub CLI (cli.py)                    │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ click
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Flask App Factory (web/app.py)                 │
+│                   ┌───────────────┐                         │
+│                   │  HTML Template│                         │
+│                   └───────────────┘                         │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ api_bp
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                REST API Routes (web/api.py)                 │
+│    /skills    /repos    /install    /sync    /meta          │
+└──────┬────────────────────┬────────────────────┬────────────┘
+       │                    │                    │
+       ▼                    ▼                    ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────────┐
+│   Repos     │     │    State    │     │  YAML Parser    │
+│(web/repos.  │     │(web/state.  │     │(utils/yaml_     │
+│    py)      │     │    py)      │     │  parser.py)     │
+└──────┬──────┘     └──────┬──────┘     └────────┬────────┘
+       │                   │                     │
+       │                   │                     ▼
+       │                   │            ┌─────────────────┐
+       │                   │            │     Models      │
+       │                   │            │  (models.py)    │
+       │                   │            └─────────────────┘
+       │                   │
+       │                   └──────────► Git + Filesystem
+       │
+       ▼
+┌─────────────────┐
+│   Path Utils    │
+│(utils/path_     │
+│  utils.py)      │
+└─────────────────┘
+```
+
+### 数据流向
+
+```
+       GitHub                    ~/.skills_repo/               Targets
+       (Remote)                  (Local Cache)                 (Installed)
+                                    
+         │                             │                            │
+         │  git clone / pull           │                            │
+         ▼                             ▼                            ▼
+   ┌───────────┐              ┌─────────────────┐        ┌─────────────────┐
+   │   Repo    │─────────────►│   repos/        │        │ ~/.claude/      │
+   │   URL     │              │   (source code) │        │   skills/       │
+   └───────────┘              └─────────────────┘        └─────────────────┘
+         │                            │                           ▲
+         │                            │  scan SKILL.md            │
+         │                            ▼                           │
+         │                   ┌─────────────────┐                  │
+         └──────────────────►│   mappings/     │──────────────────┘
+                             │   (skill index) │
+                             └─────────────────┘
+                                        │
+                                        │  copy / install
+                                        ▼
+                             ┌─────────────────┐
+                             │ ~/.agents/      │
+                             │   skills/       │
+                             └─────────────────┘
+```
+
 ## 目录结构
 
 ```
-~/.agents/skills/          # 全局（public）
-├── skill-name-1/
-│   └── SKILL.md
-└── skill-name-2/
-    └── SKILL.md
+~/.skills_repo/
+├── repos.yaml             # 仓库列表配置
+├── repos/                 # 克隆的 git 仓库
+│   └── owner__repo/
+│       └── ...
+└── mappings/              # 技能位置映射（YAML）
+    └── owner__repo.yaml
 
-.agents/skills/            # 项目级（private）
-├── custom-skill/
-│   └── SKILL.md
-└── ...
-```
-
-## 示例
-
-### 用项目特定版本覆盖全局技能
-
-```bash
-# 将全局技能同步到项目级进行自定义
-skill-hub sync public-skill public private
-
-# 编辑 .agents/skills/public-skill/SKILL.md
-# 项目级版本自动优先
-skill-hub list
-```
-
-### 在项目间共享技能
-
-```bash
-# 先在项目中开发和测试
-skill-hub install /path/to/new-skill
-
-# 准备好后推广到全局
-skill-hub sync new-skill private public
-```
-
-### 团队协作
-
-```bash
-# 将团队技能安装到项目目录
-skill-hub install company/team-skill --to private
-
-# 提交到仓库
-git add .agents/skills/
-git commit -m "添加团队技能"
+~/.claude/skills/          # 已安装技能（目标 A）
+~/.agents/skills/          # 已安装技能（目标 B）
 ```
 
 ## 许可证

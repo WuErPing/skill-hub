@@ -91,10 +91,10 @@
   </div>
 
   <div id="add-repo-form" class="add-repo-form">
-    <input type="text" id="repo-url" placeholder="https://github.com/owner/repo">
+    <input type="text" id="repo-url" placeholder="https://github.com/owner/repo 或 ~/local/path" oninput="onRepoUrlInput()">
     <input type="text" id="repo-branch" placeholder="main" value="main" style="width: 100px;">
     <div class="form-actions">
-      <button class="btn btn-install" onclick="addRepo()">添加并克隆</button>
+      <button class="btn btn-install" onclick="addRepo()">添加</button>
       <button class="btn" onclick="toggleAddRepo()">取消</button>
     </div>
   </div>
@@ -145,20 +145,36 @@
     document.getElementById('add-repo-form').classList.toggle('show');
   }
 
+  function isLocalPath(url) {
+    return url.startsWith('~') || url.startsWith('/') || url.startsWith('.');
+  }
+
+  function onRepoUrlInput() {
+    const url = document.getElementById('repo-url').value.trim();
+    const branchInput = document.getElementById('repo-branch');
+    if (isLocalPath(url)) {
+      branchInput.style.display = 'none';
+    } else {
+      branchInput.style.display = '';
+    }
+  }
+
   async function addRepo() {
     const url = document.getElementById('repo-url').value.trim();
     const branch = document.getElementById('repo-branch').value.trim() || 'main';
     if (!url) return;
+    const payload = isLocalPath(url) ? { url } : { url, branch };
     const resp = await fetch('/api/repos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, branch }),
+      body: JSON.stringify(payload),
     });
     const data = await resp.json();
     if (resp.ok) {
       showToast(data.message || '仓库添加成功');
       toggleAddRepo();
       document.getElementById('repo-url').value = '';
+      onRepoUrlInput();
       await loadSkills();
     } else {
       showToast(data.error || '添加失败', 'error');
@@ -209,14 +225,16 @@
       const escapedRepo = repoName.replace(/'/g, "\\'");
       const repoInfo = repoStatusMap[repoName] || {};
       const hasUpdate = repoInfo.hasRemoteUpdates;
-      const repoDotClass = hasUpdate ? 'dir-status-outdated' : 'dir-status-installed';
-      const repoTooltip = hasUpdate ? '有远端更新可用，点击同步' : '已与远端同步';
+      const isLocal = repoInfo.isLocal;
+      const repoDotClass = hasUpdate ? 'dir-status-outdated' : (isLocal ? 'dir-status-uninstalled' : 'dir-status-installed');
+      const repoTooltip = hasUpdate ? '有远端更新可用，点击同步' : (isLocal ? '本地路径' : '已与远端同步');
+      const repoDotClick = hasUpdate ? `onclick="event.stopPropagation(); syncOneRepo('${escapedRepo}')"` : '';
 
       html += `<div class="repo-section">
         <div class="repo-header" onclick="toggleRepo(this)">
           <span class="toggle">▼</span>
-          <span class="dir-status ${repoDotClass}" title="${repoTooltip}" onclick="event.stopPropagation(); syncOneRepo('${escapedRepo}')"></span>
-          📁 ${repoName}
+          <span class="dir-status ${repoDotClass}" title="${repoTooltip}" ${repoDotClick}></span>
+          ${isLocal ? '📂' : '📁'} ${repoName}
           <button class="delete-repo-btn" onclick="event.stopPropagation(); removeRepo('${escapedRepo}')">删除仓库</button>
         </div>
         <ul class="skill-list">
