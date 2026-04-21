@@ -17,10 +17,17 @@ pip install -e .
 ## Quick Start
 
 ```bash
+# Start the web UI
 skill-hub web
+
+# Check version
+skill-hub version
+
+# Update to the latest version
+skill-hub self-update
 ```
 
-Opens a browser UI at `http://127.0.0.1:7860` where you can add GitHub repos or local directories, browse skills, and install them to `~/.claude/skills/` and `~/.agents/skills/`.
+The web UI opens at `http://127.0.0.1:7860` where you can add GitHub repos or local directories, browse skills, and install them to `~/.claude/skills/` and `~/.agents/skills/`.
 
 ```bash
 # Custom port
@@ -28,7 +35,19 @@ skill-hub web --port 8080
 
 # Don't auto-open browser
 skill-hub web --no-open
+
+# Check for updates without installing
+skill-hub version --check
 ```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `skill-hub web` | Start the web UI |
+| `skill-hub version` | Show current version |
+| `skill-hub version --check` | Check if a newer version is available |
+| `skill-hub self-update` | Upgrade skill-hub via pip |
 
 ## How It Works
 
@@ -47,6 +66,7 @@ skill-hub web --no-open
 - Click skill names to view metadata from `SKILL.md` frontmatter
 - Add/remove repos, with remote update detection
 - **Local directory support** — add any local path (e.g. `~/code/my-skills`) as a skill source
+- **Default repository** — `anthropics/skills` is automatically added on first run
 
 ## SKILL.md Format
 
@@ -72,8 +92,9 @@ Your skill instructions here...
 
 ```
 src/skill_hub/
-├── cli.py              # Click CLI entrypoint (web command only)
+├── cli.py              # Click CLI entrypoint (web, version, self-update)
 ├── models.py           # SkillMetadata dataclass
+├── version.py          # Version parsing and GitHub release checking
 ├── utils/
 │   ├── __init__.py     # Path helpers (expand_path, derive_name)
 │   └── yaml_parser.py  # SKILL.md YAML frontmatter parser

@@ -213,6 +213,7 @@ __marimo__/
 .agents/
 !.agents/skills/skill-hub-assistant/SKILL.md
 !.agents/skills/version-bump/SKILL.md
+!.agents/skills/project-version-update/SKILL.md
 .opencode/
 .vscode/
 .sisyphus/

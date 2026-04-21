@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-21
+
+### Added
+- **`version` CLI command**: Show current version and check for updates via GitHub API
+- **`self-update` CLI command**: Upgrade skill-hub to the latest version from PyPI via `pip install --upgrade`
+- **`version.py` module**: Semantic version parsing and comparison utilities (`compare_versions`, `get_latest_version`)
+
+### Changed
+- **Web UI styling**: Migrated from custom CSS to Tailwind CSS CDN
+- **Sidebar navigation**: Skills are now grouped by remote repositories and local directories
+- **Default repo seeding**: Fresh installs automatically seed `anthropics/skills` as the default repository
+
 ## [0.6.0] - 2026-03-16
 
 ### Added
@@ -129,7 +141,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.7.0
 [0.6.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.6.0
 [0.5.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.5.0
 [0.4.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.4.0

@@ -17,7 +17,14 @@ pip install -e .
 ## 快速开始
 
 ```bash
+# 启动 Web UI
 skill-hub web
+
+# 查看版本
+skill-hub version
+
+# 更新到最新版本
+skill-hub self-update
 ```
 
 浏览器自动打开 `http://127.0.0.1:7860`，你可以在界面上添加 GitHub 仓库或本地目录、浏览技能并安装到 `~/.claude/skills/` 和 `~/.agents/skills/`。
@@ -28,7 +35,19 @@ skill-hub web --port 8080
 
 # 不自动打开浏览器
 skill-hub web --no-open
+
+# 检查更新但不安装
+skill-hub version --check
 ```
+
+## CLI 命令
+
+| 命令 | 说明 |
+|---------|-------------|
+| `skill-hub web` | 启动 Web UI |
+| `skill-hub version` | 显示当前版本 |
+| `skill-hub version --check` | 检查是否有新版本可用 |
+| `skill-hub self-update` | 通过 pip 升级 skill-hub |
 
 ## 工作原理
 
@@ -47,6 +66,7 @@ skill-hub web --no-open
 - 点击技能名称查看 `SKILL.md` frontmatter 元数据
 - 添加/删除仓库，支持远端更新检测
 - **本地目录支持** — 可将任意本地路径（如 `~/code/my-skills`）添加为技能源
+- **默认仓库** — 首次运行时自动添加 `anthropics/skills` 作为默认仓库
 
 ## SKILL.md 格式
 
@@ -72,8 +92,9 @@ metadata:
 
 ```
 src/skill_hub/
-├── cli.py              # Click CLI 入口（仅 web 命令）
+├── cli.py              # Click CLI 入口（web、version、self-update）
 ├── models.py           # SkillMetadata 数据类
+├── version.py          # 版本解析与 GitHub 发行版检查
 ├── utils/
 │   ├── __init__.py     # 路径工具（expand_path, derive_name）
 │   └── yaml_parser.py  # SKILL.md YAML frontmatter 解析器
