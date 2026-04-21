@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,29 +39,29 @@
       <h1 class="text-2xl font-bold">skill-hub</h1>
     </div>
     <div class="flex gap-2">
-      <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">刷新</button>
-      <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">添加仓库</button>
+      <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-refresh"></button>
+      <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-add-repo"></button>
     </div>
   </header>
 
   <!-- Update banner -->
   <div id="update-banner" class="hidden bg-yellow-50 border border-yellow-400 rounded-md p-3 mb-4 text-sm">
-    检测到更新可用
-    <button onclick="syncAndReload()" class="ml-3 px-3 py-1 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">刷新</button>
+    <span id="update-banner-text"></span>
+    <button onclick="syncAndReload()" class="ml-3 px-3 py-1 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-sync"></button>
   </div>
 
   <!-- Add repo form -->
   <div id="add-repo-form" class="hidden bg-white rounded-lg p-4 mb-4 border border-gray-300">
     <div class="flex gap-2 items-center">
-      <input type="text" id="repo-url" placeholder="https://github.com/owner/repo 或 ~/local/path"
+      <input type="text" id="repo-url"
         oninput="onRepoUrlInput()"
         class="w-[300px] px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
       <input type="text" id="repo-branch" placeholder="main" value="main"
         class="w-[100px] px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
     </div>
     <div class="flex gap-2 mt-3">
-      <button onclick="addRepo()" class="px-3 py-1.5 rounded border border-green-600 text-green-700 text-sm hover:bg-green-50 cursor-pointer">添加</button>
-      <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">取消</button>
+      <button onclick="addRepo()" class="px-3 py-1.5 rounded border border-green-600 text-green-700 text-sm hover:bg-green-50 cursor-pointer" id="btn-add"></button>
+      <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-cancel"></button>
     </div>
   </div>
 
@@ -79,18 +79,130 @@
 <div id="toast" class="toast hidden rounded-md px-4 py-3 text-sm border"></div>
 
 <script>
+  const i18n = {
+    zh: {
+      refresh: '刷新',
+      addRepo: '添加仓库',
+      updatesAvailable: '检测到更新可用',
+      sync: '刷新',
+      repoUrlPlaceholder: 'https://github.com/owner/repo 或 ~/local/path',
+      branchPlaceholder: 'main',
+      add: '添加',
+      cancel: '取消',
+      noRepos: '暂无仓库',
+      remoteRepos: '远端仓库',
+      localRepos: '本地仓库',
+      noSkills: '暂无 skills。请先添加仓库。',
+      noSkillsInRepo: '此仓库中暂无 skills。',
+      deleteRepo: '删除仓库',
+      installed: '已安装',
+      notInstalled: '未安装',
+      outdated: '不一致',
+      partial: '部分已安装（有目录与源不同）',
+      claude: 'claude',
+      agents: 'agents',
+      remoteUpdateAvailable: '有远端更新可用，点击同步',
+      localPath: '本地路径',
+      syncedWithRemote: '已与远端同步',
+      clickToUpdate: '与源不同，点击更新',
+      installedLatest: '已安装 (最新)',
+      notInstalledTitle: '未安装',
+      uninstall: '卸载',
+      install: '安装',
+      description: '描述',
+      license: '协议',
+      compatibility: '兼容性',
+      noMetadata: '无元数据',
+      installFailed: '安装失败',
+      uninstallFailed: '卸载失败',
+      deleteFailed: '删除失败',
+      loadFailed: '加载失败',
+      confirmSyncRepo: (name) => `同步 ${name} 到最新版本？`,
+      confirmUpdateTo: (name, target) => `从源更新 ${name} 到 ${target}？`,
+      confirmDeleteRepo: (name) => `确定要删除仓库 ${name} 吗？`,
+      syncComplete: '同步完成',
+      repoSyncComplete: (name) => `${name} 同步完成`,
+      repoAdded: '仓库添加成功',
+      addFailed: '添加失败',
+    },
+    en: {
+      refresh: 'Refresh',
+      addRepo: 'Add Repo',
+      updatesAvailable: 'Updates available',
+      sync: 'Sync',
+      repoUrlPlaceholder: 'https://github.com/owner/repo or ~/local/path',
+      branchPlaceholder: 'main',
+      add: 'Add',
+      cancel: 'Cancel',
+      noRepos: 'No repos yet',
+      remoteRepos: 'Remote Repos',
+      localRepos: 'Local Repos',
+      noSkills: 'No skills yet. Add a repo first.',
+      noSkillsInRepo: 'No skills in this repo.',
+      deleteRepo: 'Delete Repo',
+      installed: 'Installed',
+      notInstalled: 'Not installed',
+      outdated: 'Outdated',
+      partial: 'Partially installed (differs from source)',
+      claude: 'claude',
+      agents: 'agents',
+      remoteUpdateAvailable: 'Remote update available, click to sync',
+      localPath: 'Local path',
+      syncedWithRemote: 'Synced with remote',
+      clickToUpdate: 'Differs from source, click to update',
+      installedLatest: 'Installed (latest)',
+      notInstalledTitle: 'Not installed',
+      uninstall: 'Uninstall',
+      install: 'Install',
+      description: 'Description',
+      license: 'License',
+      compatibility: 'Compatibility',
+      noMetadata: 'No metadata',
+      installFailed: 'Install failed',
+      uninstallFailed: 'Uninstall failed',
+      deleteFailed: 'Delete failed',
+      loadFailed: 'Load failed',
+      confirmSyncRepo: (name) => `Sync ${name} to latest?`,
+      confirmUpdateTo: (name, target) => `Update ${name} to ${target}?`,
+      confirmDeleteRepo: (name) => `Delete repo ${name}?`,
+      syncComplete: 'Sync complete',
+      repoSyncComplete: (name) => `${name} synced`,
+      repoAdded: 'Repo added',
+      addFailed: 'Add failed',
+    }
+  };
+
+  const lang = navigator.language.startsWith('zh') ? 'zh' : 'en';
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+
+  const t = (key, ...args) => {
+    const val = (i18n[lang] && i18n[lang][key]) || key;
+    if (typeof val === 'function') return val(...args);
+    return val;
+  };
+
+  // Bind static button labels
+  document.getElementById('btn-refresh').textContent = t('refresh');
+  document.getElementById('btn-add-repo').textContent = t('addRepo');
+  document.getElementById('update-banner-text').textContent = t('updatesAvailable');
+  document.getElementById('btn-sync').textContent = t('sync');
+  document.getElementById('repo-url').placeholder = t('repoUrlPlaceholder');
+  document.getElementById('repo-branch').placeholder = t('branchPlaceholder');
+  document.getElementById('btn-add').textContent = t('add');
+  document.getElementById('btn-cancel').textContent = t('cancel');
+
   let selectedRepo = null;
   let allSkills = [];
   let repoMeta = {};
 
   function showToast(msg, type = 'success') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'toast rounded-md px-4 py-3 text-sm border ' +
+    const toastEl = document.getElementById('toast');
+    toastEl.textContent = msg;
+    toastEl.className = 'toast rounded-md px-4 py-3 text-sm border ' +
       (type === 'success'
         ? 'bg-green-50 text-green-800 border-green-300'
         : 'bg-red-50 text-red-800 border-red-300');
-    setTimeout(() => t.className = 'toast hidden', 3000);
+    setTimeout(() => toastEl.className = 'toast hidden', 3000);
   }
 
   async function checkUpdateStatus() {
@@ -107,17 +219,17 @@
     await fetch('/api/repos/sync', { method: 'POST' });
     document.getElementById('update-banner').classList.add('hidden');
     await loadSkills();
-    showToast('同步完成');
+    showToast(t('syncComplete'));
   }
 
   async function syncOneRepo(repoName) {
     const info = repoMeta[repoName] || {};
     if (!info.hasRemoteUpdates) return;
-    if (!confirm(`同步 ${repoName} 到最新版本？`)) return;
+    if (!confirm(t('confirmSyncRepo', repoName))) return;
     await fetch('/api/repos/sync', { method: 'POST' });
     document.getElementById('update-banner').classList.add('hidden');
     await loadSkills();
-    showToast(`${repoName} 同步完成`);
+    showToast(t('repoSyncComplete', repoName));
   }
 
   function toggleAddRepo() {
@@ -146,13 +258,13 @@
     });
     const data = await resp.json();
     if (resp.ok) {
-      showToast(data.message || '仓库添加成功');
+      showToast(data.message || t('repoAdded'));
       toggleAddRepo();
       document.getElementById('repo-url').value = '';
       onRepoUrlInput();
       await loadSkills();
     } else {
-      showToast(data.error || '添加失败', 'error');
+      showToast(data.error || t('addFailed'), 'error');
     }
   }
 
@@ -199,14 +311,14 @@
     }
 
     if (remoteRepos.length === 0 && localRepos.length === 0) {
-      sidebar.innerHTML = '<div class="px-4 py-6 text-gray-500 text-sm text-center">暂无仓库</div>';
+      sidebar.innerHTML = `<div class="px-4 py-6 text-gray-500 text-sm text-center">${t('noRepos')}</div>`;
       return;
     }
 
     let html = '';
 
     if (remoteRepos.length > 0) {
-      html += '<div class="text-[11px] font-bold uppercase text-gray-500 px-4 pt-2 pb-1 tracking-wide">远端仓库</div>';
+      html += `<div class="text-[11px] font-bold uppercase text-gray-500 px-4 pt-2 pb-1 tracking-wide">${t('remoteRepos')}</div>`;
       for (const r of remoteRepos) {
         const meta = repoMeta[r.name] || {};
         const dotCls = meta.hasRemoteUpdates ? 'bg-yellow-400' : 'bg-green-600';
@@ -222,7 +334,7 @@
     }
 
     if (localRepos.length > 0) {
-      html += '<div class="text-[11px] font-bold uppercase text-gray-500 px-4 pt-3 pb-1 tracking-wide">本地仓库</div>';
+      html += `<div class="text-[11px] font-bold uppercase text-gray-500 px-4 pt-3 pb-1 tracking-wide">${t('localRepos')}</div>`;
       for (const r of localRepos) {
         const active = r.name === selectedRepo;
         const itemCls = active
@@ -246,10 +358,9 @@
 
   function statusBadge(status) {
     const map = {
-      '已安装': 'bg-green-100 text-green-800',
-      '未安装': 'bg-gray-200 text-gray-500',
-      '不一致': 'bg-yellow-100 text-yellow-800 border border-yellow-400',
-      '部分安装': 'bg-blue-100 text-blue-800',
+      'installed': 'bg-green-100 text-green-800',
+      'not_installed': 'bg-gray-200 text-gray-500',
+      'outdated': 'bg-yellow-100 text-yellow-800 border border-yellow-400',
     };
     return map[status] || 'bg-gray-200 text-gray-500';
   }
@@ -258,7 +369,7 @@
     const container = document.getElementById('skills-container');
 
     if (!selectedRepo) {
-      container.innerHTML = '<div class="text-gray-500 text-center py-10 text-sm">暂无 skills。请先添加仓库。</div>';
+      container.innerHTML = `<div class="text-gray-500 text-center py-10 text-sm">${t('noSkills')}</div>`;
       return;
     }
 
@@ -268,7 +379,7 @@
     const hasUpdate = repoInfo.hasRemoteUpdates;
 
     const dotCls = hasUpdate ? 'bg-yellow-400' : 'bg-green-600';
-    const dotTitle = hasUpdate ? '有远端更新可用，点击同步' : (isLocal ? '本地路径' : '已与远端同步');
+    const dotTitle = hasUpdate ? t('remoteUpdateAvailable') : (isLocal ? t('localPath') : t('syncedWithRemote'));
     const escapedRepo = selectedRepo.replace(/'/g, "\\'");
     const dotClick = hasUpdate ? `onclick="event.stopPropagation(); syncOneRepo('${escapedRepo}')" class="cursor-pointer"` : '';
 
@@ -276,15 +387,15 @@
       <div class="flex items-center gap-2 px-3 py-2 bg-gray-200 rounded-md text-sm font-semibold mb-2">
         <span class="w-2.5 h-2.5 rounded-full ${dotCls}" title="${dotTitle}" ${dotClick}></span>
         <span class="truncate">${escHtml(selectedRepo)}</span>
-        <button onclick="removeRepo('${escapedRepo}')" class="ml-auto text-xs text-red-600 hover:underline cursor-pointer bg-transparent border-0 p-0.5">删除仓库</button>
+        <button onclick="removeRepo('${escapedRepo}')" class="ml-auto text-xs text-red-600 hover:underline cursor-pointer bg-transparent border-0 p-0.5">${t('deleteRepo')}</button>
       </div>`;
 
     if (items.length === 0) {
-      html += '<p class="text-gray-500 text-sm px-3 py-2">此仓库中暂无 skills。</p>';
+      html += `<p class="text-gray-500 text-sm px-3 py-2">${t('noSkillsInRepo')}</p>`;
     } else {
       html += '<ul class="list-none pl-0">';
       for (const s of items) {
-        const isInstalled = s.status === '已安装' || s.status === '不一致';
+        const isInstalled = s.status === 'installed' || s.status === 'outdated';
         const escapedName = s.name.replace(/'/g, "\\'");
 
         const claudeDot = s.inClaude
@@ -295,24 +406,24 @@
           : 'bg-gray-300';
 
         const claudeClick = s.inClaude && !s.claudeMatchesSource
-          ? `onclick="installTo('${escapedName}', 'claude')" title="与源不同，点击更新"`
-          : s.inClaude ? 'title="已安装 (最新)"' : 'title="未安装"';
+          ? `onclick="installTo('${escapedName}', 'claude')" title="${t('clickToUpdate')}"`
+          : s.inClaude ? `title="${t('installedLatest')}"` : `title="${t('notInstalledTitle')}"`;
         const agentsClick = s.inAgents && !s.agentsMatchesSource
-          ? `onclick="installTo('${escapedName}', 'agents')" title="与源不同，点击更新"`
-          : s.inAgents ? 'title="已安装 (最新)"' : 'title="未安装"';
+          ? `onclick="installTo('${escapedName}', 'agents')" title="${t('clickToUpdate')}"`
+          : s.inAgents ? `title="${t('installedLatest')}"` : `title="${t('notInstalledTitle')}"`;
 
-        const statusLabel = s.status === '不一致' ? '部分已安装（有目录与源不同）' : s.status;
+        const statusLabel = s.status === 'outdated' ? t('partial') : t(s.status);
 
         html += `<li class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 mb-1">
           <span class="flex-1 font-medium cursor-pointer hover:underline hover:text-blue-600" onclick="toggleMeta('${escapedName}', this)">${escHtml(s.name)}</span>
           <span class="w-2.5 h-2.5 rounded-full ${claudeDot}" ${claudeClick}></span>
-          <span class="text-[11px] text-gray-500 mr-2">claude</span>
+          <span class="text-[11px] text-gray-500 mr-2">${t('claude')}</span>
           <span class="w-2.5 h-2.5 rounded-full ${agentsDot}" ${agentsClick}></span>
-          <span class="text-[11px] text-gray-500 mr-2">agents</span>
+          <span class="text-[11px] text-gray-500 mr-2">${t('agents')}</span>
           <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(s.status)}">${statusLabel}</span>
           ${isInstalled
-            ? `<button onclick="uninstallSkill('${escapedName}')" class="px-3 py-1 rounded border border-red-500 text-red-600 text-xs hover:bg-red-50 cursor-pointer">卸载</button>`
-            : `<button onclick="installSkill('${escapedName}')" class="px-3 py-1 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer">安装</button>`
+            ? `<button onclick="uninstallSkill('${escapedName}')" class="px-3 py-1 rounded border border-red-500 text-red-600 text-xs hover:bg-red-50 cursor-pointer">${t('uninstall')}</button>`
+            : `<button onclick="installSkill('${escapedName}')" class="px-3 py-1 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer">${t('install')}</button>`
           }
         </li>
         <div id="meta-${escapedName}" class="hidden bg-white border border-gray-300 rounded-lg p-4 mx-3 mb-2 text-sm leading-relaxed"></div>`;
@@ -328,12 +439,12 @@
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install`, { method: 'POST' });
     const data = await resp.json();
     if (resp.ok) { showToast(data.message); await loadSkills(); }
-    else { showToast(data.error || '安装失败', 'error'); }
+    else { showToast(data.error || t('installFailed'), 'error'); }
   }
 
   async function installTo(name, target) {
     const targetLabel = target === 'claude' ? '~/.claude/skills' : '~/.agents/skills';
-    if (!confirm(`从源更新 ${name} 到 ${targetLabel}？`)) return;
+    if (!confirm(t('confirmUpdateTo', name, targetLabel))) return;
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install-to`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -341,14 +452,14 @@
     });
     const data = await resp.json();
     if (resp.ok) { showToast(data.message); await loadSkills(); }
-    else { showToast(data.error || '安装失败', 'error'); }
+    else { showToast(data.error || t('installFailed'), 'error'); }
   }
 
   async function uninstallSkill(name) {
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/uninstall`, { method: 'POST' });
     const data = await resp.json();
     if (resp.ok) { showToast(data.message); await loadSkills(); }
-    else { showToast(data.error || '卸载失败', 'error'); }
+    else { showToast(data.error || t('uninstallFailed'), 'error'); }
   }
 
   async function toggleMeta(name, el) {
@@ -361,13 +472,13 @@
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/meta`);
     const data = await resp.json();
     if (!resp.ok) {
-      panel.innerHTML = `<div class="text-red-700">${data.error || '加载失败'}</div>`;
+      panel.innerHTML = `<div class="text-red-700">${data.error || t('loadFailed')}</div>`;
       panel.classList.remove('hidden');
       return;
     }
     const meta = data.meta;
     let html = '';
-    const fields = [['description', '描述'], ['license', '协议'], ['compatibility', '兼容性']];
+    const fields = [['description', t('description')], ['license', t('license')], ['compatibility', t('compatibility')]];
     for (const [key, label] of fields) {
       if (meta[key]) {
         html += `<div><span class="font-semibold text-gray-600">${label}:</span> ${escHtml(meta[key])}</div>`;
@@ -382,7 +493,7 @@
     if (data.body) {
       html += `<div class="mt-2 pt-2 border-t border-gray-200 whitespace-pre-wrap text-gray-500 text-xs max-h-48 overflow-y-auto">${escHtml(data.body)}</div>`;
     }
-    if (!html) html = '<div class="text-red-700">无元数据</div>';
+    if (!html) html = `<div class="text-red-700">${t('noMetadata')}</div>`;
     panel.innerHTML = html;
     panel.classList.remove('hidden');
   }
@@ -398,7 +509,7 @@
   }
 
   async function removeRepo(name) {
-    if (!confirm(`确定要删除仓库 ${name} 吗？`)) return;
+    if (!confirm(t('confirmDeleteRepo', name))) return;
     const resp = await fetch(`/api/repos/${encodeURIComponent(name)}`, { method: 'DELETE' });
     const data = await resp.json();
     if (resp.ok) {
@@ -406,7 +517,7 @@
       selectedRepo = null;
       await loadSkills();
     } else {
-      showToast(data.error || '删除失败', 'error');
+      showToast(data.error || t('deleteFailed'), 'error');
     }
   }
 

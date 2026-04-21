@@ -36,10 +36,10 @@ class SkillEntry:
         c_ok = self.claude_matches_source
         a_ok = self.agents_matches_source
         if c_ok and a_ok:
-            return "已安装"
+            return "installed"
         elif self.in_claude or self.in_agents:
-            return "不一致"
-        return "未安装"
+            return "outdated"
+        return "not_installed"
 
 
 def _md5_of_dir(path: Path) -> str:

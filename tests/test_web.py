@@ -67,7 +67,7 @@ def test_get_skills_returns_list(client, temp_home):
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["name"] == "test-skill"
-    assert data[0]["status"] == "未安装"
+    assert data[0]["status"] == "not_installed"
 
 
 def test_install_skill(client, temp_home):
@@ -126,7 +126,7 @@ def test_install_then_status_shows_installed(client, temp_home):
     resp = client.get("/api/skills")
     data = resp.get_json()
     skill = next(s for s in data if s["name"] == name)
-    assert skill["status"] == "已安装"
+    assert skill["status"] == "installed"
 
 
 def test_delete_nonexistent_repo_returns_404(client, temp_home):
