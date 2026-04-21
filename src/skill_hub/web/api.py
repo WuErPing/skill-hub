@@ -93,7 +93,7 @@ def api_uninstall(name: str):
 
 @api_bp.route("/repos", methods=["GET"])
 def get_repos():
-    """List all repos from repos.yaml."""
+    """List all repos from repos.yaml with sync status."""
     repos = load_repos_config()
     return jsonify([
         {
@@ -101,6 +101,7 @@ def get_repos():
             "branch": r.branch,
             "name": r.name,
             "localPath": str(repo_dir(r)),
+            "hasRemoteUpdates": has_remote_updates(r),
         }
         for r in repos
     ])

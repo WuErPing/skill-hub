@@ -120,6 +120,16 @@
     showToast('同步完成');
   }
 
+  async function syncOneRepo(repoName) {
+    const info = repoStatusMap[repoName] || {};
+    if (!info.hasRemoteUpdates) return;
+    if (!confirm(`同步 ${repoName} 到最新版本？`)) return;
+    await fetch('/api/repos/sync', { method: 'POST' });
+    document.getElementById('update-banner').classList.remove('show');
+    await loadSkills();
+    showToast(`${repoName} 同步完成`);
+  }
+
   function toggleAddRepo() {
     document.getElementById('add-repo-form').classList.toggle('show');
   }
@@ -144,9 +154,19 @@
     }
   }
 
+  let repoStatusMap = {}; // name -> { hasRemoteUpdates }
+
   async function loadSkills() {
-    const resp = await fetch('/api/skills');
-    const skills = await resp.json();
+    const [skillsResp, reposResp] = await Promise.all([
+      fetch('/api/skills'),
+      fetch('/api/repos'),
+    ]);
+    const skills = await skillsResp.json();
+    const repos = await reposResp.json();
+    repoStatusMap = {};
+    for (const r of repos) {
+      repoStatusMap[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates };
+    }
     renderSkills(skills);
   }
 
@@ -176,9 +196,16 @@
     let html = '';
     for (const [repoName, items] of Object.entries(groups)) {
       const escapedRepo = repoName.replace(/'/g, "\\'");
+      const repoInfo = repoStatusMap[repoName] || {};
+      const hasUpdate = repoInfo.hasRemoteUpdates;
+      const repoDotClass = hasUpdate ? 'dir-status-outdated' : 'dir-status-installed';
+      const repoTooltip = hasUpdate ? '有远端更新可用，点击同步' : '已与远端同步';
+
       html += `<div class="repo-section">
         <div class="repo-header" onclick="toggleRepo(this)">
-          <span class="toggle">▼</span> 📁 ${repoName}
+          <span class="toggle">▼</span>
+          <span class="dir-status ${repoDotClass}" title="${repoTooltip}" onclick="event.stopPropagation(); syncOneRepo('${escapedRepo}')"></span>
+          📁 ${repoName}
           <button class="delete-repo-btn" onclick="event.stopPropagation(); removeRepo('${escapedRepo}')">删除仓库</button>
         </div>
         <ul class="skill-list">
