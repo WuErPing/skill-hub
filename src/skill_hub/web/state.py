@@ -5,7 +5,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from skill_hub.web.repos import REPOS_YAML, SKILLS_DIR, load_repos_config
+from skill_hub.web.repos import REPOS_DIR, load_repos_config, load_skill_mapping, repo_dir
 
 CLAUDE_SKILLS = Path.home() / ".claude" / "skills"
 AGENTS_SKILLS = Path.home() / ".agents" / "skills"
@@ -16,7 +16,7 @@ class SkillEntry:
     name: str
     repo_name: str
     repo_url: str
-    path: Path
+    path: Path  # absolute path in the cloned repo
     status: str  # "未安装" | "已安装" | "不一致" | "部分安装"
 
 
@@ -36,7 +36,7 @@ def _is_skill_dir(path: Path) -> bool:
 
 
 def list_skills() -> list[SkillEntry]:
-    """Scan ~/.skills_repo/skills/ and both install directories, return all skills with status."""
+    """Scan repos via skill mappings and both install directories, return all skills with status."""
     repos = load_repos_config()
     repo_url_map = {r.name: r.url for r in repos}
 
@@ -53,23 +53,22 @@ def list_skills() -> list[SkillEntry]:
                 agents_skills[d.name] = _md5_of_dir(d)
 
     skills: list[SkillEntry] = []
-    if not SKILLS_DIR.exists():
-        return skills
 
-    for repo_subdir in SKILLS_DIR.iterdir():
-        if not repo_subdir.is_dir():
+    for repo in repos:
+        mapping = load_skill_mapping(repo)
+        if not mapping:
             continue
-        repo_name = repo_subdir.name.replace("__", "/")
-
-        for skill_dir in repo_subdir.iterdir():
-            if not _is_skill_dir(skill_dir):
+        repo_root = repo_dir(repo)
+        for skill_name, rel_path in mapping.items():
+            skill_path = repo_root / rel_path
+            if not skill_path.exists():
                 continue
-            name = skill_dir.name
-            in_claude = name in claude_skills
-            in_agents = name in agents_skills
+
+            in_claude = skill_name in claude_skills
+            in_agents = skill_name in agents_skills
 
             if in_claude and in_agents:
-                if claude_skills[name] == agents_skills[name]:
+                if claude_skills[skill_name] == agents_skills[skill_name]:
                     status = "已安装"
                 else:
                     status = "不一致"
@@ -79,10 +78,10 @@ def list_skills() -> list[SkillEntry]:
                 status = "未安装"
 
             skills.append(SkillEntry(
-                name=name,
-                repo_name=repo_name,
-                repo_url=repo_url_map.get(repo_name, ""),
-                path=skill_dir,
+                name=skill_name,
+                repo_name=repo.name,
+                repo_url=repo.url,
+                path=skill_path,
                 status=status,
             ))
 

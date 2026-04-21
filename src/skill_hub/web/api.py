@@ -11,6 +11,7 @@ from skill_hub.web.repos import (
     pull_latest,
     repo_dir,
     save_repos_config,
+    sync_mapping,
 )
 from skill_hub.web.state import install_skill, list_skills, uninstall_skill
 
@@ -92,10 +93,11 @@ def add_repo():
     repos.append(repo)
     save_repos_config(repos)
 
-    success, msg = clone_or_pull(repo)
+    # Clone and build skill mapping immediately
+    success, msg = sync_mapping(repo)
     if success:
         return jsonify({"ok": True, "message": msg}), 201
-    return jsonify({"ok": True, "message": f"Added but clone failed: {msg}"}), 201
+    return jsonify({"ok": True, "message": f"Added but sync failed: {msg}"}), 201
 
 
 @api_bp.route("/repos/<path:name>", methods=["DELETE"])

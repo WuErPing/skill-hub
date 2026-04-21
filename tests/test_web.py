@@ -12,10 +12,15 @@ from skill_hub.web.app import create_app
 @pytest.fixture
 def temp_home(tmp_path):
     """Create a temp home directory with fake skills dirs."""
-    skills_src = tmp_path / "skills_repo" / "skills" / "example__repo"
-    skills_src.mkdir(parents=True)
-    (skills_src / "test-skill").mkdir()
-    (skills_src / "test-skill" / "SKILL.md").write_text("---\nname: test-skill\ndescription: Test\n---\n\nTest body")
+    # New structure: repos/ is the full git clone, mappings/ tracks skill locations
+    repo_clone = tmp_path / "skills_repo" / "repos" / "example__repo"
+    repo_clone.mkdir(parents=True)
+    (repo_clone / "test-skill").mkdir()
+    (repo_clone / "test-skill" / "SKILL.md").write_text("---\nname: test-skill\ndescription: Test\n---\n\nTest body")
+
+    mapping_file = tmp_path / "skills_repo" / "mappings" / "example__repo.yaml"
+    mapping_file.parent.mkdir(parents=True, exist_ok=True)
+    mapping_file.write_text("test-skill: test-skill\n")
 
     claude = tmp_path / ".claude" / "skills"
     agents = tmp_path / ".agents" / "skills"
@@ -29,10 +34,10 @@ def temp_home(tmp_path):
     import skill_hub.web.state
     skill_hub.web.repos.SKILLS_REPO_ROOT = tmp_path / "skills_repo"
     skill_hub.web.repos.REPOS_YAML = repos_yaml
-    skill_hub.web.repos.SKILLS_DIR = tmp_path / "skills_repo" / "skills"
-    # state.py imports SKILLS_DIR directly, so patch its local binding too
+    skill_hub.web.repos.REPOS_DIR = tmp_path / "skills_repo" / "repos"
+    skill_hub.web.repos.MAPPINGS_DIR = tmp_path / "skills_repo" / "mappings"
     import skill_hub.web.state as state_module
-    state_module.SKILLS_DIR = tmp_path / "skills_repo" / "skills"
+    state_module.REPOS_DIR = tmp_path / "skills_repo" / "repos"
     skill_hub.web.state.CLAUDE_SKILLS = claude
     skill_hub.web.state.AGENTS_SKILLS = agents
 
@@ -41,8 +46,9 @@ def temp_home(tmp_path):
     # Reset module state
     skill_hub.web.repos.SKILLS_REPO_ROOT = skill_hub.web.repos.SKILLS_REPO_ROOT
     skill_hub.web.repos.REPOS_YAML = skill_hub.web.repos.REPOS_YAML
-    skill_hub.web.repos.SKILLS_DIR = skill_hub.web.repos.SKILLS_DIR
-    state_module.SKILLS_DIR = skill_hub.web.repos.SKILLS_DIR
+    skill_hub.web.repos.REPOS_DIR = skill_hub.web.repos.REPOS_DIR
+    skill_hub.web.repos.MAPPINGS_DIR = skill_hub.web.repos.MAPPINGS_DIR
+    state_module.REPOS_DIR = skill_hub.web.repos.REPOS_DIR
 
 
 @pytest.fixture
