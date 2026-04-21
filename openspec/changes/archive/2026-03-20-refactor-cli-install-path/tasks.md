@@ -35,13 +35,13 @@
 
 ## 6. Testing
 
-- [ ] 6.1 Test directory discovery with public and private directories
-- [ ] 6.2 Test install to public directory (backward compatibility)
-- [ ] 6.3 Test install to private directory
-- [ ] 6.4 Test sync command (public to private, private to public)
-- [ ] 6.5 Test priority resolution when same skill exists in multiple directories
-- [ ] 6.6 Test dry-run mode for sync
-- [ ] 6.7 Test overwrite protection
+- [x] 6.1 Test directory discovery with public and private directories
+- [x] 6.2 Test install to public directory (backward compatibility)
+- [x] 6.3 Test install to private directory
+- [x] 6.4 Test sync command (public to private, private to public)
+- [x] 6.5 Test priority resolution when same skill exists in multiple directories
+- [x] 6.6 Test dry-run mode for sync
+- [x] 6.7 Test overwrite protection
 
 ## 7. Documentation
 
