@@ -59,6 +59,39 @@ def api_install(name: str):
     return jsonify({"error": msg}), 500
 
 
+@api_bp.route("/skills/<name>/meta", methods=["GET"])
+def api_skill_meta(name: str):
+    """Get skill metadata from SKILL.md frontmatter."""
+    from skill_hub.utils.yaml_parser import parse_skill_file
+
+    skills = list_skills()
+    skill = next((s for s in skills if s.name == name), None)
+    if not skill:
+        return jsonify({"error": f"Skill '{name}' not found"}), 404
+
+    skill_md = skill.path / "SKILL.md"
+    if not skill_md.exists():
+        return jsonify({"error": "SKILL.md not found"}), 404
+
+    try:
+        content = skill_md.read_text(encoding="utf-8")
+        parsed = parse_skill_file(content)
+        if parsed is None:
+            return jsonify({"error": "Could not parse SKILL.md"}), 422
+        metadata, body = parsed
+        meta_dict = {
+            "name": metadata.name,
+            "description": metadata.description,
+            "license": metadata.license,
+            "compatibility": metadata.compatibility,
+        }
+        if metadata.metadata:
+            meta_dict.update(metadata.metadata)
+        return jsonify({"ok": True, "meta": meta_dict, "body": body[:2000]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 422
+
+
 @api_bp.route("/skills/<name>/install-to", methods=["POST"])
 def api_install_to(name: str):
     """Install a skill to a single directory ('claude' or 'agents')."""

@@ -28,7 +28,18 @@
     .skill-item { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; }
     .skill-item:hover { background: #f1f3f5; }
 
-    .skill-name { flex: 1; font-weight: 500; }
+    .skill-name { flex: 1; font-weight: 500; cursor: pointer; }
+    .skill-name:hover { text-decoration: underline; color: #0d6efd; }
+
+    .skill-meta-panel {
+      display: none; background: #fff; border: 1px solid #dee2e6; border-radius: 8px;
+      padding: 14px 18px; margin: 4px 12px 8px 12px; font-size: 13px; line-height: 1.6;
+    }
+    .skill-meta-panel.show { display: block; }
+    .skill-meta-panel .meta-label { font-weight: 600; color: #495057; margin-right: 4px; }
+    .skill-meta-panel .meta-value { color: #212529; }
+    .skill-meta-panel .meta-body { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e9ecef; white-space: pre-wrap; color: #6c757d; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    .skill-meta-panel .meta-error { color: #842029; }
 
     .status-tag {
       display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;
@@ -238,7 +249,7 @@
               : s.status;
 
             return `<li class="skill-item">
-              <span class="skill-name">${s.name}</span>
+              <span class="skill-name" onclick="toggleMeta('${escapedName}', this)">${s.name}</span>
               <span class="dir-status ${claudeClass}" ${claudeClick}></span><span class="dir-label">claude</span>
               <span class="dir-status ${agentsClass}" ${agentsClick}></span><span class="dir-label">agents</span>
               <span class="status-tag ${statusClass(s.status)}">${statusLabel}</span>
@@ -246,7 +257,8 @@
                 ? `<button class="btn btn-uninstall" onclick="uninstallSkill('${escapedName}')">卸载</button>`
                 : `<button class="btn btn-install" onclick="installSkill('${escapedName}')">安装</button>`
               }
-            </li>`;
+            </li>
+            <div class="skill-meta-panel" id="meta-${escapedName}"></div>`;
           }).join('')}
         </ul>
       </div>`;
@@ -303,6 +315,67 @@
     } else {
       showToast(data.error || '卸载失败', 'error');
     }
+  }
+
+  async function toggleMeta(name, el) {
+    const panel = document.getElementById(`meta-${name}`);
+    if (!panel) return;
+
+    // Toggle: if already loaded, just show/hide
+    if (panel.classList.contains('show') && panel.innerHTML) {
+      panel.classList.remove('show');
+      return;
+    }
+
+    // Fetch metadata
+    const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/meta`);
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      panel.innerHTML = `<div class="meta-error">${data.error || '加载失败'}</div>`;
+      panel.classList.add('show');
+      return;
+    }
+
+    const meta = data.meta;
+    let html = '';
+    const fields = [
+      ['description', '描述'],
+      ['license', '协议'],
+      ['compatibility', '兼容性'],
+    ];
+
+    // Show known fields first, then any extra fields from metadata dict
+    for (const [key, label] of fields) {
+      if (meta[key]) {
+        html += `<div><span class="meta-label">${label}:</span> <span class="meta-value">${escHtml(meta[key])}</span></div>`;
+      }
+    }
+
+    // Show extra metadata keys (version, updateUrl, etc.)
+    const knownKeys = new Set(['name', 'description', 'license', 'compatibility']);
+    for (const [key, val] of Object.entries(meta)) {
+      if (!knownKeys.has(key) && val) {
+        html += `<div><span class="meta-label">${key}:</span> <span class="meta-value">${escHtml(String(val))}</span></div>`;
+      }
+    }
+
+    if (data.body) {
+      html += `<div class="meta-body">${escHtml(data.body)}</div>`;
+    }
+
+    if (!html) {
+      html = '<div class="meta-error">无元数据</div>';
+    }
+
+    panel.innerHTML = html;
+    panel.classList.add('show');
+  }
+
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
   }
 
   async function removeRepo(name) {
