@@ -1,0 +1,36 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#f8fafc" stroke="#e2e8f0" stroke-width="4"/>
+
+  <!-- Center hub: hexagon -->
+  <polygon points="256,110 336,156 336,248 256,294 176,248 176,156" fill="#2563eb" rx="12"/>
+
+  <!-- Inner hub symbol -->
+  <circle cx="256" cy="202" r="28" fill="white"/>
+  <circle cx="256" cy="202" r="14" fill="#2563eb"/>
+
+  <!-- Selected connections (solid) -->
+  <line x1="256" y1="110" x2="256" y2="64" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+  <line x1="336" y1="156" x2="384" y2="128" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+  <line x1="336" y1="248" x2="384" y2="276" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Selected skill nodes (solid blue) -->
+  <circle cx="256" cy="64" r="18" fill="#2563eb"/>
+  <circle cx="384" cy="128" r="18" fill="#2563eb"/>
+  <circle cx="384" cy="276" r="18" fill="#2563eb"/>
+
+  <!-- Unselected connections (dashed gray) -->
+  <line x1="256" y1="294" x2="256" y2="340" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
+  <line x1="176" y1="248" x2="128" y2="276" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
+  <line x1="176" y1="156" x2="128" y2="128" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
+
+  <!-- Unselected skill nodes (hollow gray) -->
+  <circle cx="256" cy="340" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
+  <circle cx="128" cy="276" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
+  <circle cx="128" cy="128" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
+
+  <!-- Small inner dots on selected nodes for detail -->
+  <circle cx="256" cy="64" r="6" fill="white"/>
+  <circle cx="384" cy="128" r="6" fill="white"/>
+  <circle cx="384" cy="276" r="6" fill="white"/>
+</svg>

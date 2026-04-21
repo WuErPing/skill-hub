@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>skill-hub</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpolygon points='256,110 336,156 336,248 256,294 176,248 176,156' fill='%232563eb'/%3E%3Ccircle cx='256' cy='202' r='28' fill='white'/%3E%3Ccircle cx='256' cy='202' r='14' fill='%232563eb'/%3E%3Cline x1='256' y1='110' x2='256' y2='64' stroke='%232563eb' stroke-width='8' stroke-linecap='round'/%3E%3Cline x1='336' y1='156' x2='384' y2='128' stroke='%232563eb' stroke-width='8' stroke-linecap='round'/%3E%3Cline x1='336' y1='248' x2='384' y2='276' stroke='%232563eb' stroke-width='8' stroke-linecap='round'/%3E%3Ccircle cx='256' cy='64' r='18' fill='%232563eb'/%3E%3Ccircle cx='384' cy='128' r='18' fill='%232563eb'/%3E%3Ccircle cx='384' cy='276' r='18' fill='%232563eb'/%3E%3Cline x1='256' y1='294' x2='256' y2='340' stroke='%23cbd5e1' stroke-width='6' stroke-linecap='round' stroke-dasharray='10,6'/%3E%3Cline x1='176' y1='248' x2='128' y2='276' stroke='%23cbd5e1' stroke-width='6' stroke-linecap='round' stroke-dasharray='10,6'/%3E%3Cline x1='176' y1='156' x2='128' y2='128' stroke='%23cbd5e1' stroke-width='6' stroke-linecap='round' stroke-dasharray='10,6'/%3E%3Ccircle cx='256' cy='340' r='14' fill='none' stroke='%23cbd5e1' stroke-width='5'/%3E%3Ccircle cx='128' cy='276' r='14' fill='none' stroke='%23cbd5e1' stroke-width='5'/%3E%3Ccircle cx='128' cy='128' r='14' fill='none' stroke='%23cbd5e1' stroke-width='5'/%3E%3Ccircle cx='256' cy='64' r='6' fill='white'/%3E%3Ccircle cx='384' cy='128' r='6' fill='white'/%3E%3Ccircle cx='384' cy='276' r='6' fill='white'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .toast { position: fixed; bottom: 24px; right: 24px; z-index: 1000; }
@@ -14,7 +15,29 @@
 
   <!-- Header -->
   <header class="flex items-center justify-between mb-4">
-    <h1 class="text-2xl font-bold">skill-hub</h1>
+    <div class="flex items-center gap-2">
+      <svg width="28" height="28" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
+        <polygon points="256,110 336,156 336,248 256,294 176,248 176,156" fill="#2563eb"/>
+        <circle cx="256" cy="202" r="28" fill="white"/>
+        <circle cx="256" cy="202" r="14" fill="#2563eb"/>
+        <line x1="256" y1="110" x2="256" y2="64" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+        <line x1="336" y1="156" x2="384" y2="128" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+        <line x1="336" y1="248" x2="384" y2="276" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+        <circle cx="256" cy="64" r="18" fill="#2563eb"/>
+        <circle cx="384" cy="128" r="18" fill="#2563eb"/>
+        <circle cx="384" cy="276" r="18" fill="#2563eb"/>
+        <line x1="256" y1="294" x2="256" y2="340" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
+        <line x1="176" y1="248" x2="128" y2="276" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
+        <line x1="176" y1="156" x2="128" y2="128" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
+        <circle cx="256" cy="340" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
+        <circle cx="128" cy="276" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
+        <circle cx="128" cy="128" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
+        <circle cx="256" cy="64" r="6" fill="white"/>
+        <circle cx="384" cy="128" r="6" fill="white"/>
+        <circle cx="384" cy="276" r="6" fill="white"/>
+      </svg>
+      <h1 class="text-2xl font-bold">skill-hub</h1>
+    </div>
     <div class="flex gap-2">
       <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">刷新</button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">添加仓库</button>
@@ -27,16 +50,8 @@
     <button onclick="syncAndReload()" class="ml-3 px-3 py-1 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">刷新</button>
   </div>
 
-  <!-- Main layout: sidebar + content -->
-  <div class="grid grid-cols-[220px_1fr] gap-5 mb-4">
-    <div id="sidebar" class="bg-white border border-gray-300 rounded-lg py-3 max-h-[calc(100vh-160px)] overflow-y-auto"></div>
-    <div class="min-w-0">
-      <div id="skills-container"></div>
-    </div>
-  </div>
-
   <!-- Add repo form -->
-  <div id="add-repo-form" class="hidden bg-white rounded-lg p-4 mt-4 border border-gray-300">
+  <div id="add-repo-form" class="hidden bg-white rounded-lg p-4 mb-4 border border-gray-300">
     <div class="flex gap-2 items-center">
       <input type="text" id="repo-url" placeholder="https://github.com/owner/repo 或 ~/local/path"
         oninput="onRepoUrlInput()"
@@ -47,6 +62,14 @@
     <div class="flex gap-2 mt-3">
       <button onclick="addRepo()" class="px-3 py-1.5 rounded border border-green-600 text-green-700 text-sm hover:bg-green-50 cursor-pointer">添加</button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer">取消</button>
+    </div>
+  </div>
+
+  <!-- Main layout: sidebar + content -->
+  <div class="grid grid-cols-[220px_1fr] gap-5 mb-4">
+    <div id="sidebar" class="bg-white border border-gray-300 rounded-lg py-3 max-h-[calc(100vh-160px)] overflow-y-auto"></div>
+    <div class="min-w-0">
+      <div id="skills-container"></div>
     </div>
   </div>
 
