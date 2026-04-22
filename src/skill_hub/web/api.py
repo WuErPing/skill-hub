@@ -1,5 +1,8 @@
 """All /api/* endpoints for the skill-hub web UI."""
 
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 from flask import Blueprint, jsonify, request
 
 from skill_hub.web.repos import (
@@ -16,6 +19,18 @@ from skill_hub.web.repos import (
 from skill_hub.web.state import install_skill, install_to_one, list_skills, uninstall_skill
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+
+
+@api_bp.before_request
+def _api_before_request():
+    request._start_time = time.time()  # type: ignore[attr-defined]
+
+
+@api_bp.after_request
+def _api_after_request(response):
+    duration = (time.time() - request._start_time) * 1000  # type: ignore[attr-defined]
+    print(f"  -> {request.method} {request.path} {response.status_code} in {duration:.1f}ms")
+    return response
 
 
 @api_bp.route("/skills", methods=["GET"])
@@ -138,17 +153,21 @@ def api_uninstall(name: str):
 def get_repos():
     """List all repos from repos.yaml with sync status."""
     repos = load_repos_config()
-    return jsonify([
-        {
-            "url": r.url,
-            "branch": r.branch,
-            "name": r.name,
-            "localPath": str(repo_dir(r)),
-            "hasRemoteUpdates": has_remote_updates(r),
-            "isLocal": r.is_local,
-        }
-        for r in repos
-    ])
+    # Parallelize remote-update checks to avoid serial git fetch latency
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {id(r): pool.submit(has_remote_updates, r) for r in repos}
+        results = [
+            {
+                "url": r.url,
+                "branch": r.branch,
+                "name": r.name,
+                "localPath": str(repo_dir(r)),
+                "hasRemoteUpdates": futures[id(r)].result(),
+                "isLocal": r.is_local,
+            }
+            for r in repos
+        ]
+    return jsonify(results)
 
 
 @api_bp.route("/repos", methods=["POST"])
@@ -208,8 +227,11 @@ def sync_repos():
 def update_status():
     """Check if any repos have remote updates available."""
     repos = load_repos_config()
-    updates = []
-    for repo in repos:
-        if has_remote_updates(repo):
-            updates.append({"url": repo.url, "name": repo.name})
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {id(r): pool.submit(has_remote_updates, r) for r in repos}
+    updates = [
+        {"url": r.url, "name": r.name}
+        for r in repos
+        if futures[id(r)].result()
+    ]
     return jsonify({"hasUpdates": len(updates) > 0, "repos": updates})

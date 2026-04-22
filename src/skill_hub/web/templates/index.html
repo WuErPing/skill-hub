@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>skill-hub</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpolygon points='256,110 336,156 336,248 256,294 176,248 176,156' fill='%232563eb'/%3E%3Ccircle cx='256' cy='202' r='28' fill='white'/%3E%3Ccircle cx='256' cy='202' r='14' fill='%232563eb'/%3E%3Cline x1='256' y1='110' x2='256' y2='64' stroke='%232563eb' stroke-width='8' stroke-linecap='round'/%3E%3Cline x1='336' y1='156' x2='384' y2='128' stroke='%232563eb' stroke-width='8' stroke-linecap='round'/%3E%3Cline x1='336' y1='248' x2='384' y2='276' stroke='%232563eb' stroke-width='8' stroke-linecap='round'/%3E%3Ccircle cx='256' cy='64' r='18' fill='%232563eb'/%3E%3Ccircle cx='384' cy='128' r='18' fill='%232563eb'/%3E%3Ccircle cx='384' cy='276' r='18' fill='%232563eb'/%3E%3Cline x1='256' y1='294' x2='256' y2='340' stroke='%23cbd5e1' stroke-width='6' stroke-linecap='round' stroke-dasharray='10,6'/%3E%3Cline x1='176' y1='248' x2='128' y2='276' stroke='%23cbd5e1' stroke-width='6' stroke-linecap='round' stroke-dasharray='10,6'/%3E%3Cline x1='176' y1='156' x2='128' y2='128' stroke='%23cbd5e1' stroke-width='6' stroke-linecap='round' stroke-dasharray='10,6'/%3E%3Ccircle cx='256' cy='340' r='14' fill='none' stroke='%23cbd5e1' stroke-width='5'/%3E%3Ccircle cx='128' cy='276' r='14' fill='none' stroke='%23cbd5e1' stroke-width='5'/%3E%3Ccircle cx='128' cy='128' r='14' fill='none' stroke='%23cbd5e1' stroke-width='5'/%3E%3Ccircle cx='256' cy='64' r='6' fill='white'/%3E%3Ccircle cx='384' cy='128' r='6' fill='white'/%3E%3Ccircle cx='384' cy='276' r='6' fill='white'/%3E%3C/svg%3E">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
     .toast { position: fixed; bottom: 24px; right: 24px; z-index: 1000; }
   </style>
@@ -83,6 +83,8 @@
 <div id="toast" class="toast hidden rounded-md px-4 py-3 text-sm border"></div>
 
 <script>
+  const __INITIAL_DATA__ = {{ initial_data | tojson }};
+
   const i18n = {
     zh: {
       refresh: '刷新',
@@ -540,6 +542,20 @@
     }
   }
 
+  // Instant first paint from server-injected data
+  if (__INITIAL_DATA__) {
+    allSkills = __INITIAL_DATA__.skills;
+    for (const r of __INITIAL_DATA__.repos) {
+      repoMeta[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates, isLocal: r.isLocal };
+    }
+    const repoNames = [...new Set(allSkills.map(s => s.repoName))];
+    if (selectedRepo && !repoNames.includes(selectedRepo)) selectedRepo = null;
+    if (!selectedRepo && repoNames.length > 0) selectedRepo = repoNames[0];
+    renderSidebar();
+    renderSkills();
+  }
+
+  // Background refresh to get latest state (hasRemoteUpdates etc.)
   loadSkills();
   checkUpdateStatus();
 </script>

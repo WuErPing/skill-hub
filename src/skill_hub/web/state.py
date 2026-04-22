@@ -1,12 +1,57 @@
 """Skills state tracking — listing, status computation, install/uninstall."""
 
 import hashlib
+import json
 import os
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
 from skill_hub.web.repos import REPOS_DIR, load_repos_config, load_skill_mapping, repo_dir
+
+MD5_CACHE_FILE = Path.home() / ".skills_repo" / "md5_cache.json"
+_md5_cache: dict[str, tuple[float, str]] = {}
+
+
+def _load_md5_cache() -> None:
+    """Load persisted MD5 cache from disk."""
+    global _md5_cache
+    if MD5_CACHE_FILE.exists():
+        try:
+            with open(MD5_CACHE_FILE, encoding="utf-8") as f:
+                raw = json.load(f)
+                _md5_cache = {k: (v[0], v[1]) for k, v in raw.items()}
+        except Exception:
+            _md5_cache = {}
+
+
+def _save_md5_cache() -> None:
+    """Persist current MD5 cache to disk."""
+    try:
+        MD5_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(MD5_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(_md5_cache, f)
+    except Exception:
+        pass
+
+
+def _dir_mtime(path: Path) -> float:
+    """Return the latest mtime of any file under path (recursive)."""
+    latest = 0.0
+    try:
+        latest = path.stat().st_mtime
+        for root, _dirs, files in os.walk(path):
+            for f in files:
+                try:
+                    mtime = os.stat(os.path.join(root, f)).st_mtime
+                    if mtime > latest:
+                        latest = mtime
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    return latest
 
 CLAUDE_SKILLS = Path.home() / ".claude" / "skills"
 AGENTS_SKILLS = Path.home() / ".agents" / "skills"
@@ -46,13 +91,26 @@ class SkillEntry:
 
 
 def _md5_of_dir(path: Path) -> str:
-    """Return a combined MD5 of all files in a directory (sorted by path)."""
+    """Return a combined MD5 of all files in a directory (sorted by path).
+    Results are cached keyed by the directory's latest mtime.
+    """
+    global _md5_cache
+    if not path.exists():
+        return ""
+    cache_key = str(path.resolve())
+    mtime = _dir_mtime(path)
+    cached = _md5_cache.get(cache_key)
+    if cached and cached[0] >= mtime:
+        return cached[1]
     h = hashlib.md5()
     for f in sorted(path.rglob("*")):
         if f.is_file():
             h.update(f.name.encode())
             h.update(f.read_bytes())
-    return h.hexdigest()
+    result = h.hexdigest()
+    _md5_cache[cache_key] = (mtime, result)
+    _save_md5_cache()
+    return result
 
 
 def _is_skill_dir(path: Path) -> bool:
@@ -73,13 +131,12 @@ def _scan_install_dir(install_dir: Path) -> dict[str, tuple[str, bool]]:
 def list_skills() -> list[SkillEntry]:
     """Scan repos via skill mappings and both install directories, return all skills with status."""
     repos = load_repos_config()
-    repo_url_map = {r.name: r.url for r in repos}
 
     claude_skills = _scan_install_dir(CLAUDE_SKILLS)
     agents_skills = _scan_install_dir(AGENTS_SKILLS)
 
-    skills: list[SkillEntry] = []
-
+    # Gather all skill paths first
+    entries: list[tuple[Repo, str, Path]] = []
     for repo in repos:
         mapping = load_skill_mapping(repo)
         if not mapping:
@@ -87,29 +144,38 @@ def list_skills() -> list[SkillEntry]:
         repo_root = repo_dir(repo)
         for skill_name, rel_path in mapping.items():
             skill_path = repo_root / rel_path
-            if not skill_path.exists():
-                continue
+            if skill_path.exists():
+                entries.append((repo, skill_name, skill_path))
 
-            in_c = skill_name in claude_skills
-            in_a = skill_name in agents_skills
-            source_md5 = _md5_of_dir(skill_path)
+    # Parallel MD5 for source skills (the dominant cost)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        md5_futures = {
+            (repo.name, skill_name): pool.submit(_md5_of_dir, skill_path)
+            for repo, skill_name, skill_path in entries
+        }
 
-            c_md5, c_link = claude_skills.get(skill_name, ("", False))
-            a_md5, a_link = agents_skills.get(skill_name, ("", False))
+    skills: list[SkillEntry] = []
+    for repo, skill_name, skill_path in entries:
+        in_c = skill_name in claude_skills
+        in_a = skill_name in agents_skills
+        source_md5 = md5_futures[(repo.name, skill_name)].result()
 
-            skills.append(SkillEntry(
-                name=skill_name,
-                repo_name=repo.name,
-                repo_url=repo.url,
-                path=skill_path,
-                in_claude=in_c,
-                in_agents=in_a,
-                md5_source=source_md5,
-                md5_claude=c_md5,
-                md5_agents=a_md5,
-                link_claude=c_link,
-                link_agents=a_link,
-            ))
+        c_md5, c_link = claude_skills.get(skill_name, ("", False))
+        a_md5, a_link = agents_skills.get(skill_name, ("", False))
+
+        skills.append(SkillEntry(
+            name=skill_name,
+            repo_name=repo.name,
+            repo_url=repo.url,
+            path=skill_path,
+            in_claude=in_c,
+            in_agents=in_a,
+            md5_source=source_md5,
+            md5_claude=c_md5,
+            md5_agents=a_md5,
+            link_claude=c_link,
+            link_agents=a_link,
+        ))
 
     return sorted(skills, key=lambda s: (s.repo_name, s.name))
 
@@ -189,6 +255,10 @@ def install_to_one(name: str, source_path: Path, target: str, method: str = "cop
         return True, f"Installed {name} to {target}"
     except Exception as e:
         return False, str(e)
+
+
+# Load persisted cache on module import
+_load_md5_cache()
 
 
 def uninstall_skill(name: str) -> tuple[bool, str]:

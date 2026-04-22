@@ -244,7 +244,7 @@ def has_remote_updates(repo: Repo) -> bool:
     try:
         subprocess.run(
             ["git", "fetch", "origin", repo.branch],
-            cwd=target, capture_output=True, timeout=15,
+            cwd=target, capture_output=True, timeout=5,
         )
         behind_result = subprocess.run(
             ["git", "rev-list", f"HEAD..origin/{repo.branch}", "--count"],

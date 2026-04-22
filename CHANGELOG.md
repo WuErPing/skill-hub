@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-04-23
+
+### Added
+
+- **Request duration logging**: Werkzeug access logs now include response time `(X.Xms)` for every request
+- **Server-side initial data injection**: Home page now pre-renders skills and repos data into HTML, eliminating frontend AJAX wait on first paint
+- **MD5 cache persistence**: Skill directory MD5 checksums are cached to `~/.skills_repo/md5_cache.json` and survive process restarts
+- **Parallel MD5 computation**: `list_skills()` now computes source skill MD5s across multiple threads
+
+### Changed
+
+- **Web UI CSS**: Replaced `cdn.tailwindcss.com` (~300KB+ external JS) with a precompiled 12KB local CSS file, eliminating network dependency on first paint
+- **Parallel repo update checks**: `get_repos()` and `update_status()` now check `has_remote_updates` in parallel via thread pool instead of serial git fetch
+- **Git fetch timeout**: Reduced from 15s to 5s to prevent slow networks from blocking API responses
+
+### Fixed
+
+- **First-screen loading speed (LCP)**: Reduced from ~1.01s to ~150ms by combining local CSS, MD5 caching, and server-injected initial data
+
 ## [0.7.0] - 2026-04-21
 
 ### Added
@@ -141,7 +160,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.8.0
 [0.7.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.7.0
 [0.6.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.6.0
 [0.5.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.5.0
