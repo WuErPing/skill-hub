@@ -38,7 +38,11 @@
       </svg>
       <h1 class="text-2xl font-bold">skill-hub</h1>
     </div>
-    <div class="flex gap-2">
+    <div class="flex gap-2 items-center">
+      <label class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-300 bg-white text-sm cursor-pointer hover:bg-gray-50 select-none" title="Symlink: edits in repo reflect immediately; no copy needed on update">
+        <input type="checkbox" id="use-symlink" class="w-3.5 h-3.5 accent-blue-600 cursor-pointer">
+        <span id="symlink-label"></span>
+      </label>
       <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-refresh"></button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-add-repo"></button>
     </div>
@@ -109,6 +113,7 @@
       notInstalledTitle: '未安装',
       uninstall: '卸载',
       install: '安装',
+      useSymlink: '使用软链接',
       description: '描述',
       license: '协议',
       compatibility: '兼容性',
@@ -154,6 +159,7 @@
       notInstalledTitle: 'Not installed',
       uninstall: 'Uninstall',
       install: 'Install',
+      useSymlink: 'Use symlinks',
       description: 'Description',
       license: 'License',
       compatibility: 'Compatibility',
@@ -190,6 +196,7 @@
   document.getElementById('repo-branch').placeholder = t('branchPlaceholder');
   document.getElementById('btn-add').textContent = t('add');
   document.getElementById('btn-cancel').textContent = t('cancel');
+  document.getElementById('symlink-label').textContent = t('useSymlink');
 
   let selectedRepo = null;
   let allSkills = [];
@@ -405,21 +412,27 @@
           ? (s.agentsMatchesSource ? 'bg-green-600' : 'bg-yellow-400 cursor-pointer')
           : 'bg-gray-300';
 
+        const claudeTitle = s.inClaude
+          ? (s.linkClaude ? `${t('installedLatest')} (symlink)` : t('installedLatest'))
+          : t('notInstalledTitle');
+        const agentsTitle = s.inAgents
+          ? (s.linkAgents ? `${t('installedLatest')} (symlink)` : t('installedLatest'))
+          : t('notInstalledTitle');
         const claudeClick = s.inClaude && !s.claudeMatchesSource
           ? `onclick="installTo('${escapedName}', 'claude')" title="${t('clickToUpdate')}"`
-          : s.inClaude ? `title="${t('installedLatest')}"` : `title="${t('notInstalledTitle')}"`;
+          : `title="${claudeTitle}"`;
         const agentsClick = s.inAgents && !s.agentsMatchesSource
           ? `onclick="installTo('${escapedName}', 'agents')" title="${t('clickToUpdate')}"`
-          : s.inAgents ? `title="${t('installedLatest')}"` : `title="${t('notInstalledTitle')}"`;
+          : `title="${agentsTitle}"`;
 
         const statusLabel = s.status === 'outdated' ? t('partial') : t(s.status);
 
         html += `<li class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 mb-1">
           <span class="flex-1 font-medium cursor-pointer hover:underline hover:text-blue-600" onclick="toggleMeta('${escapedName}', this)">${escHtml(s.name)}</span>
           <span class="w-2.5 h-2.5 rounded-full ${claudeDot}" ${claudeClick}></span>
-          <span class="text-[11px] text-gray-500 mr-2">${t('claude')}</span>
+          <span class="text-[11px] text-gray-500 mr-2">${t('claude')}${s.linkClaude ? ' <span class="text-blue-500">🔗</span>' : ''}</span>
           <span class="w-2.5 h-2.5 rounded-full ${agentsDot}" ${agentsClick}></span>
-          <span class="text-[11px] text-gray-500 mr-2">${t('agents')}</span>
+          <span class="text-[11px] text-gray-500 mr-2">${t('agents')}${s.linkAgents ? ' <span class="text-blue-500">🔗</span>' : ''}</span>
           <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(s.status)}">${statusLabel}</span>
           ${isInstalled
             ? `<button onclick="uninstallSkill('${escapedName}')" class="px-3 py-1 rounded border border-red-500 text-red-600 text-xs hover:bg-red-50 cursor-pointer">${t('uninstall')}</button>`
@@ -436,7 +449,12 @@
   }
 
   async function installSkill(name) {
-    const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install`, { method: 'POST' });
+    const useSymlink = document.getElementById('use-symlink').checked;
+    const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method: useSymlink ? 'symlink' : 'copy' }),
+    });
     const data = await resp.json();
     if (resp.ok) { showToast(data.message); await loadSkills(); }
     else { showToast(data.error || t('installFailed'), 'error'); }
@@ -445,10 +463,11 @@
   async function installTo(name, target) {
     const targetLabel = target === 'claude' ? '~/.claude/skills' : '~/.agents/skills';
     if (!confirm(t('confirmUpdateTo', name, targetLabel))) return;
+    const useSymlink = document.getElementById('use-symlink').checked;
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install-to`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target }),
+      body: JSON.stringify({ target, method: useSymlink ? 'symlink' : 'copy' }),
     });
     const data = await resp.json();
     if (resp.ok) { showToast(data.message); await loadSkills(); }

@@ -1,6 +1,7 @@
 """Skills state tracking — listing, status computation, install/uninstall."""
 
 import hashlib
+import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +23,8 @@ class SkillEntry:
     md5_source: str   # MD5 of source skill in repo
     md5_claude: str   # MD5 of installed version in ~/.claude/skills (empty if not installed)
     md5_agents: str   # MD5 of installed version in ~/.agents/skills (empty if not installed)
+    link_claude: bool = False  # True if installed via symlink
+    link_agents: bool = False  # True if installed via symlink
 
     @property
     def claude_matches_source(self) -> bool:
@@ -57,22 +60,23 @@ def _is_skill_dir(path: Path) -> bool:
     return path.is_dir() and not path.name.startswith(".")
 
 
+def _scan_install_dir(install_dir: Path) -> dict[str, tuple[str, bool]]:
+    """Scan an install directory and return {name: (md5, is_symlink)}."""
+    result: dict[str, tuple[str, bool]] = {}
+    if install_dir.exists():
+        for entry in install_dir.iterdir():
+            if _is_skill_dir(entry):
+                result[entry.name] = (_md5_of_dir(entry), entry.is_symlink())
+    return result
+
+
 def list_skills() -> list[SkillEntry]:
     """Scan repos via skill mappings and both install directories, return all skills with status."""
     repos = load_repos_config()
     repo_url_map = {r.name: r.url for r in repos}
 
-    claude_skills: dict[str, str] = {}
-    agents_skills: dict[str, str] = {}
-
-    if CLAUDE_SKILLS.exists():
-        for d in CLAUDE_SKILLS.iterdir():
-            if _is_skill_dir(d):
-                claude_skills[d.name] = _md5_of_dir(d)
-    if AGENTS_SKILLS.exists():
-        for d in AGENTS_SKILLS.iterdir():
-            if _is_skill_dir(d):
-                agents_skills[d.name] = _md5_of_dir(d)
+    claude_skills = _scan_install_dir(CLAUDE_SKILLS)
+    agents_skills = _scan_install_dir(AGENTS_SKILLS)
 
     skills: list[SkillEntry] = []
 
@@ -90,6 +94,9 @@ def list_skills() -> list[SkillEntry]:
             in_a = skill_name in agents_skills
             source_md5 = _md5_of_dir(skill_path)
 
+            c_md5, c_link = claude_skills.get(skill_name, ("", False))
+            a_md5, a_link = agents_skills.get(skill_name, ("", False))
+
             skills.append(SkillEntry(
                 name=skill_name,
                 repo_name=repo.name,
@@ -98,15 +105,36 @@ def list_skills() -> list[SkillEntry]:
                 in_claude=in_c,
                 in_agents=in_a,
                 md5_source=source_md5,
-                md5_claude=claude_skills.get(skill_name, ""),
-                md5_agents=agents_skills.get(skill_name, ""),
+                md5_claude=c_md5,
+                md5_agents=a_md5,
+                link_claude=c_link,
+                link_agents=a_link,
             ))
 
     return sorted(skills, key=lambda s: (s.repo_name, s.name))
 
 
-def install_skill(name: str, source_path: Path) -> tuple[bool, str]:
-    """Copy skill from source_path to both ~/.claude/skills/ and ~/.agents/skills/."""
+def _remove_destination(dest: Path) -> None:
+    """Safely remove an existing installation destination."""
+    if not dest.exists() and not dest.is_symlink():
+        return
+    if dest.is_symlink():
+        dest.unlink()
+    elif dest.is_dir():
+        shutil.rmtree(dest)
+
+
+def _try_symlink(source: Path, dest: Path) -> bool:
+    """Try to create a directory symlink. Returns True on success."""
+    try:
+        os.symlink(source, dest, target_is_directory=True)
+        return True
+    except OSError:
+        return False
+
+
+def install_skill(name: str, source_path: Path, method: str = "copy") -> tuple[bool, str]:
+    """Install skill from source_path to both ~/.claude/skills/ and ~/.agents/skills/."""
     try:
         CLAUDE_SKILLS.mkdir(parents=True, exist_ok=True)
         AGENTS_SKILLS.mkdir(parents=True, exist_ok=True)
@@ -114,10 +142,20 @@ def install_skill(name: str, source_path: Path) -> tuple[bool, str]:
         dest_a = CLAUDE_SKILLS / name
         dest_b = AGENTS_SKILLS / name
 
-        if dest_a.exists():
-            shutil.rmtree(dest_a)
-        if dest_b.exists():
-            shutil.rmtree(dest_b)
+        _remove_destination(dest_a)
+        _remove_destination(dest_b)
+
+        if method == "symlink":
+            ok_a = _try_symlink(source_path, dest_a)
+            ok_b = _try_symlink(source_path, dest_b)
+            if ok_a and ok_b:
+                return True, f"Installed {name} to both directories (symlink)"
+            # Fallback to copy if symlink failed on either side
+            _remove_destination(dest_a)
+            _remove_destination(dest_b)
+            shutil.copytree(source_path, dest_a)
+            shutil.copytree(source_path, dest_b)
+            return True, f"Installed {name} to both directories (copy fallback — symlink not supported)"
 
         shutil.copytree(source_path, dest_a)
         shutil.copytree(source_path, dest_b)
@@ -126,8 +164,8 @@ def install_skill(name: str, source_path: Path) -> tuple[bool, str]:
         return False, str(e)
 
 
-def install_to_one(name: str, source_path: Path, target: str) -> tuple[bool, str]:
-    """Copy skill from source_path to a single directory ('claude' or 'agents')."""
+def install_to_one(name: str, source_path: Path, target: str, method: str = "copy") -> tuple[bool, str]:
+    """Install skill from source_path to a single directory ('claude' or 'agents')."""
     try:
         if target == "claude":
             dest_dir = CLAUDE_SKILLS
@@ -138,8 +176,15 @@ def install_to_one(name: str, source_path: Path, target: str) -> tuple[bool, str
 
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest = dest_dir / name
-        if dest.exists():
-            shutil.rmtree(dest)
+        _remove_destination(dest)
+
+        if method == "symlink":
+            if _try_symlink(source_path, dest):
+                return True, f"Installed {name} to {target} (symlink)"
+            _remove_destination(dest)
+            shutil.copytree(source_path, dest)
+            return True, f"Installed {name} to {target} (copy fallback — symlink not supported)"
+
         shutil.copytree(source_path, dest)
         return True, f"Installed {name} to {target}"
     except Exception as e:
@@ -152,11 +197,16 @@ def uninstall_skill(name: str) -> tuple[bool, str]:
         dest_a = CLAUDE_SKILLS / name
         dest_b = AGENTS_SKILLS / name
 
-        if dest_a.exists():
-            shutil.rmtree(dest_a)
-        if dest_b.exists():
-            shutil.rmtree(dest_b)
+        removed: list[str] = []
+        if dest_a.exists() or dest_a.is_symlink():
+            _remove_destination(dest_a)
+            removed.append("~/.claude/skills")
+        if dest_b.exists() or dest_b.is_symlink():
+            _remove_destination(dest_b)
+            removed.append("~/.agents/skills")
 
-        return True, f"Uninstalled {name} from both directories"
+        if not removed:
+            return True, f"{name} was not installed"
+        return True, f"Uninstalled {name} from {', '.join(removed)}"
     except Exception as e:
         return False, str(e)

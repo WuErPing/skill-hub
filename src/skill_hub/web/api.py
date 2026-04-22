@@ -35,6 +35,8 @@ def get_skills():
             "md5Source": s.md5_source,
             "md5Claude": s.md5_claude,
             "md5Agents": s.md5_agents,
+            "linkClaude": s.link_claude,
+            "linkAgents": s.link_agents,
             "path": str(s.path),
         }
         for s in skills
@@ -44,6 +46,11 @@ def get_skills():
 @api_bp.route("/skills/<name>/install", methods=["POST"])
 def api_install(name: str):
     """Install a skill to both ~/.claude/skills and ~/.agents/skills."""
+    body = request.get_json(silent=True) or {}
+    method = body.get("method", "copy")
+    if method not in ("copy", "symlink"):
+        return jsonify({"error": "method must be 'copy' or 'symlink'"}), 400
+
     skills = list_skills()
     skill = next((s for s in skills if s.name == name), None)
     if not skill:
@@ -53,7 +60,7 @@ def api_install(name: str):
     if not source_path.exists():
         return jsonify({"error": f"Source path not found: {source_path}"}), 400
 
-    success, msg = install_skill(name, source_path)
+    success, msg = install_skill(name, source_path, method=method)
     if success:
         return jsonify({"ok": True, "message": msg})
     return jsonify({"error": msg}), 500
@@ -95,10 +102,13 @@ def api_skill_meta(name: str):
 @api_bp.route("/skills/<name>/install-to", methods=["POST"])
 def api_install_to(name: str):
     """Install a skill to a single directory ('claude' or 'agents')."""
-    body = request.get_json() or {}
+    body = request.get_json(silent=True) or {}
     target = body.get("target", "").strip()
+    method = body.get("method", "copy")
     if target not in ("claude", "agents"):
         return jsonify({"error": "target must be 'claude' or 'agents'"}), 400
+    if method not in ("copy", "symlink"):
+        return jsonify({"error": "method must be 'copy' or 'symlink'"}), 400
 
     skills = list_skills()
     skill = next((s for s in skills if s.name == name), None)
@@ -109,7 +119,7 @@ def api_install_to(name: str):
     if not source_path.exists():
         return jsonify({"error": f"Source path not found: {source_path}"}), 400
 
-    success, msg = install_to_one(name, source_path, target)
+    success, msg = install_to_one(name, source_path, target, method=method)
     if success:
         return jsonify({"ok": True, "message": msg})
     return jsonify({"error": msg}), 500

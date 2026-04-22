@@ -231,3 +231,148 @@ def test_delete_local_repo_does_not_remove_source(client, temp_home):
     from skill_hub.web.repos import Repo
     repo = Repo(url=str(local_repo))
     assert not repos_module.mapping_path(repo).exists()
+
+
+class TestSymlinkInstall:
+    """Tests for symlink-based skill installation."""
+
+    def test_install_skill_symlink(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        name = "test-skill"
+        resp = client.post(
+            f"/api/skills/{name}/install",
+            json={"method": "symlink"},
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "symlink" in data["message"]
+        assert (claude / name).is_symlink()
+        assert (agents / name).is_symlink()
+        # Source must still exist
+        source = tmp_path / "skills_repo" / "repos" / "example__repo" / name
+        assert source.exists()
+
+    def test_install_to_one_symlink(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        name = "test-skill"
+        resp = client.post(
+            f"/api/skills/{name}/install-to",
+            json={"target": "claude", "method": "symlink"},
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "symlink" in data["message"]
+        assert (claude / name).is_symlink()
+        assert not (agents / name).exists()
+
+    def test_uninstall_symlink_does_not_remove_source(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        name = "test-skill"
+        client.post(
+            f"/api/skills/{name}/install",
+            json={"method": "symlink"},
+            content_type="application/json",
+        )
+        source = tmp_path / "skills_repo" / "repos" / "example__repo" / name
+        assert source.exists()
+
+        resp = client.post(f"/api/skills/{name}/uninstall")
+        assert resp.status_code == 200
+        assert not (claude / name).exists()
+        assert not (agents / name).exists()
+        # Source directory must survive uninstall
+        assert source.exists()
+
+    def test_symlink_status_detected(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        name = "test-skill"
+        client.post(
+            f"/api/skills/{name}/install",
+            json={"method": "symlink"},
+            content_type="application/json",
+        )
+        resp = client.get("/api/skills")
+        data = resp.get_json()
+        skill = next(s for s in data if s["name"] == name)
+        assert skill["status"] == "installed"
+        assert skill["linkClaude"] is True
+        assert skill["linkAgents"] is True
+
+    def test_mixed_install_methods(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        name = "test-skill"
+        # Install claude as symlink, agents as copy
+        client.post(
+            f"/api/skills/{name}/install-to",
+            json={"target": "claude", "method": "symlink"},
+            content_type="application/json",
+        )
+        client.post(
+            f"/api/skills/{name}/install-to",
+            json={"target": "agents", "method": "copy"},
+            content_type="application/json",
+        )
+        resp = client.get("/api/skills")
+        data = resp.get_json()
+        skill = next(s for s in data if s["name"] == name)
+        assert skill["status"] == "installed"
+        assert skill["linkClaude"] is True
+        assert skill["linkAgents"] is False
+        assert (claude / name).is_symlink()
+        assert not (agents / name).is_symlink()
+
+    def test_install_symlink_fallback_to_copy(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        name = "test-skill"
+        with patch("skill_hub.web.state._try_symlink", return_value=False):
+            resp = client.post(
+                f"/api/skills/{name}/install",
+                json={"method": "symlink"},
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "copy fallback" in data["message"]
+        assert (claude / name).exists()
+        assert not (claude / name).is_symlink()
+        assert (agents / name).exists()
+        assert not (agents / name).is_symlink()
+
+    def test_reinstall_copy_over_symlink(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        name = "test-skill"
+        # First install as symlink
+        client.post(
+            f"/api/skills/{name}/install",
+            json={"method": "symlink"},
+            content_type="application/json",
+        )
+        assert (claude / name).is_symlink()
+        # Then reinstall as copy
+        client.post(
+            f"/api/skills/{name}/install",
+            json={"method": "copy"},
+            content_type="application/json",
+        )
+        assert (claude / name).exists()
+        assert not (claude / name).is_symlink()
+        assert (agents / name).exists()
+        assert not (agents / name).is_symlink()
+
+    def test_reinstall_symlink_over_copy(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        name = "test-skill"
+        # First install as copy
+        client.post(f"/api/skills/{name}/install")
+        assert (claude / name).exists()
+        assert not (claude / name).is_symlink()
+        # Then reinstall as symlink
+        client.post(
+            f"/api/skills/{name}/install",
+            json={"method": "symlink"},
+            content_type="application/json",
+        )
+        assert (claude / name).is_symlink()
+        assert (agents / name).is_symlink()
