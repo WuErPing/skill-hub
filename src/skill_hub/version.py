@@ -30,11 +30,11 @@ def compare_versions(v1: str, v2: str) -> int:
     return 0
 
 
-def get_latest_version(repo_path: str) -> Optional[str]:
+def get_latest_version(repo_path: str, timeout: float = 10) -> Optional[str]:
     """Get the latest version from a GitHub repository."""
     try:
         url = f"https://api.github.com/repos/{repo_path}/tags"
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=timeout)
         if response.status_code == 200:
             tags = response.json()
             if tags:
@@ -42,7 +42,7 @@ def get_latest_version(repo_path: str) -> Optional[str]:
                 return tag_name.lstrip("v")
 
         url = f"https://api.github.com/repos/{repo_path}/releases/latest"
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=timeout)
         if response.status_code == 200:
             release = response.json()
             tag_name = release.get("tag_name", "")
