@@ -91,7 +91,45 @@ python -m pytest tests/ -v
 python -c "from skill_hub import __version__; print(__version__)"
 ```
 
-### 7. Capture the Workflow as a Skill
+### 7. Git Commit
+
+Invoke the `git-commit-helper` skill to generate a proper Conventional Commits message for the version bump:
+
+```
+Use skill: git-commit-helper
+```
+
+If the skill is not available, use this format manually:
+
+```bash
+git commit -m "chore(release): bump version to X.Y.Z
+
+- Update __version__ in src/skill_hub/__init__.py
+- Update version in pyproject.toml
+- Add CHANGELOG entry for X.Y.Z
+- Update README and README.zh-CN.md"
+```
+
+### 8. Git Push
+
+Push the commit to the remote repository:
+
+```bash
+git push
+```
+
+### 9. Tag and Push to Remote
+
+Create a version tag and push it to the remote:
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+> Ensure the tag points to the release commit (the one that bumped the version).
+
+### 10. Capture the Workflow as a Skill
 
 After completing the version bump, persist the workflow in `.agents/skills/project-version-update/SKILL.md` so future agents can reuse it.
 
@@ -118,4 +156,7 @@ Bumping from `0.6.0` to `0.7.0`:
 4. Update `README.md` command table and feature list
 5. Translate changes to `README.zh-CN.md`
 6. Run tests
-7. Update `.agents/skills/project-version-update/SKILL.md` if the workflow evolved
+7. Invoke skill `git-commit-helper` to stage and commit changes
+8. `git push`
+9. `git tag v0.7.0 && git push origin v0.7.0`
+10. Update `.agents/skills/project-version-update/SKILL.md` if the workflow evolved

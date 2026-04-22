@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-23
+
+### Added
+
+- **Web UI version badge**: Header now displays current version number with async update checking
+- **Update notification dot**: Red dot appears next to version when a new release is available on GitHub
+- **Version dropdown menu**: Click version badge to see "Update now" or "Skip this version" options
+- **Skip version API**: `POST /api/version/skip` persists skipped versions to avoid repeated prompts
+- **Version info API**: `GET /api/version` returns current, latest, hasUpdate, and skipped status
+
+### Changed
+
+- **Async update checks**: Moved version update detection from CLI blocking prompt to web UI async fetch
+- **Removed CLI update prompt**: `skill-hub web` no longer blocks on startup for version checks; `--no-check-update` flag removed
+- **`get_latest_version` timeout**: Added configurable `timeout` parameter for GitHub API calls
+
 ## [0.8.0] - 2026-04-23
 
 ### Added
@@ -160,7 +176,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.9.0
 [0.8.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.8.0
 [0.7.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.7.0
 [0.6.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.6.0

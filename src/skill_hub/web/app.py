@@ -5,6 +5,7 @@ from pathlib import Path
 from flask import Flask, render_template
 from werkzeug.serving import WSGIRequestHandler
 
+from skill_hub import __version__
 from skill_hub.web.api import api_bp
 from skill_hub.web.repos import load_repos_config, repo_dir
 from skill_hub.web.state import list_skills
@@ -82,6 +83,10 @@ def create_app() -> Flask:
                 for r in repos
             ],
         }
-        return render_template("index.html", initial_data=initial_data)
+        return render_template(
+            "index.html",
+            initial_data=initial_data,
+            current_version=__version__,
+        )
 
     return app

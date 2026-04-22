@@ -45,6 +45,17 @@
       </label>
       <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-refresh"></button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-add-repo"></button>
+      <div class="relative" id="version-wrap">
+        <button onclick="toggleVersionMenu()" class="flex items-center gap-1 px-2 py-1.5 rounded border border-gray-300 bg-white text-xs hover:bg-gray-50 cursor-pointer">
+          <span id="version-text">v{{ current_version }}</span>
+          <span id="version-dot" class="hidden w-2 h-2 rounded-full bg-red-500"></span>
+        </button>
+        <div id="version-menu" class="hidden absolute right-0 mt-1 w-56 bg-white border border-gray-300 rounded-lg shadow-lg z-50 text-sm">
+          <div class="px-3 py-2 border-b border-gray-200 text-gray-500 text-xs" id="version-menu-title"></div>
+          <button onclick="doAppUpdate()" class="w-full text-left px-3 py-2 hover:bg-gray-50 cursor-pointer text-green-700 text-xs" id="btn-version-update"></button>
+          <button onclick="doSkipVersion()" class="w-full text-left px-3 py-2 hover:bg-gray-50 cursor-pointer text-gray-600 text-xs border-t border-gray-200" id="btn-version-skip"></button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -131,6 +142,11 @@
       repoSyncComplete: (name) => `${name} 同步完成`,
       repoAdded: '仓库添加成功',
       addFailed: '添加失败',
+      version: '版本',
+      updateAvailable: '发现新版本',
+      updateNow: '立即更新',
+      skipUpdate: '跳过此版本',
+      updateCommand: '在终端运行：pip install --upgrade skill-hub',
     },
     en: {
       refresh: 'Refresh',
@@ -177,6 +193,11 @@
       repoSyncComplete: (name) => `${name} synced`,
       repoAdded: 'Repo added',
       addFailed: 'Add failed',
+      version: 'Version',
+      updateAvailable: 'Update available',
+      updateNow: 'Update now',
+      skipUpdate: 'Skip this version',
+      updateCommand: 'Run in terminal: pip install --upgrade skill-hub',
     }
   };
 
@@ -222,6 +243,57 @@
         document.getElementById('update-banner').classList.remove('hidden');
       }
     } catch (e) {}
+  }
+
+  async function checkAppVersion() {
+    try {
+      const resp = await fetch('/api/version');
+      const data = await resp.json();
+      const textEl = document.getElementById('version-text');
+      const dotEl = document.getElementById('version-dot');
+      const titleEl = document.getElementById('version-menu-title');
+      const updateBtn = document.getElementById('btn-version-update');
+      const skipBtn = document.getElementById('btn-version-skip');
+      textEl.textContent = 'v' + data.current;
+      if (data.hasUpdate) {
+        dotEl.classList.remove('hidden');
+        window._latestVersion = data.latest;
+        titleEl.textContent = t('updateAvailable') + ': v' + data.latest;
+        updateBtn.textContent = t('updateNow');
+        skipBtn.textContent = t('skipUpdate');
+      } else {
+        titleEl.textContent = t('version') + ' v' + data.current;
+        updateBtn.style.display = 'none';
+        skipBtn.style.display = 'none';
+      }
+    } catch (e) {}
+  }
+
+  function toggleVersionMenu() {
+    document.getElementById('version-menu').classList.toggle('hidden');
+  }
+
+  function doAppUpdate() {
+    toggleVersionMenu();
+    showToast(t('updateCommand'), 'success');
+  }
+
+  async function doSkipVersion() {
+    const latest = window._latestVersion;
+    if (!latest) {
+      toggleVersionMenu();
+      return;
+    }
+    const resp = await fetch('/api/version/skip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ version: latest }),
+    });
+    if (resp.ok) {
+      document.getElementById('version-dot').classList.add('hidden');
+      showToast(t('skipUpdate') + ' v' + latest);
+    }
+    toggleVersionMenu();
   }
 
   async function syncAndReload() {
@@ -558,6 +630,7 @@
   // Background refresh to get latest state (hasRemoteUpdates etc.)
   loadSkills();
   checkUpdateStatus();
+  checkAppVersion();
 </script>
 </body>
 </html>

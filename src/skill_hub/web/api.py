@@ -2,6 +2,7 @@
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
@@ -235,3 +236,41 @@ def update_status():
         if futures[id(r)].result()
     ]
     return jsonify({"hasUpdates": len(updates) > 0, "repos": updates})
+
+
+@api_bp.route("/version", methods=["GET"])
+def get_version():
+    """Return current version, latest version, and update availability."""
+    from skill_hub import __version__
+    from skill_hub.version import compare_versions, get_latest_version
+
+    current = __version__
+    latest = get_latest_version("wuerping/skill-hub", timeout=5)
+
+    skip_file = Path.home() / ".skills_repo" / "skip_update"
+    skipped = False
+    if skip_file.exists() and latest:
+        skipped = skip_file.read_text().strip() == latest
+
+    has_update = bool(latest and compare_versions(current, latest) < 0 and not skipped)
+
+    return jsonify({
+        "current": current,
+        "latest": latest,
+        "hasUpdate": has_update,
+        "skipped": skipped,
+    })
+
+
+@api_bp.route("/version/skip", methods=["POST"])
+def skip_version():
+    """Skip the current latest version notification."""
+    body = request.get_json(silent=True) or {}
+    version = body.get("version", "").strip()
+    if not version:
+        return jsonify({"error": "version is required"}), 400
+
+    skip_file = Path.home() / ".skills_repo" / "skip_update"
+    skip_file.parent.mkdir(parents=True, exist_ok=True)
+    skip_file.write_text(version)
+    return jsonify({"ok": True, "skipped": version})
