@@ -434,3 +434,36 @@ class TestNameConflictProtection:
         data = resp.get_json()
         assert len(data) == 1
         assert data[0]["conflict"] is False
+
+
+class TestSettingsAPI:
+    def test_get_settings(self, client):
+        resp = client.get('/api/settings')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'scanIntervalMinutes' in data
+        assert isinstance(data['scanIntervalMinutes'], int)
+
+    def test_update_settings(self, client):
+        resp = client.post('/api/settings', json={'scanIntervalMinutes': 60})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert data['scanIntervalMinutes'] == 60
+
+        # Verify it was saved
+        resp = client.get('/api/settings')
+        data = resp.get_json()
+        assert data['scanIntervalMinutes'] == 60
+
+    def test_update_settings_invalid_interval(self, client):
+        resp = client.post('/api/settings', json={'scanIntervalMinutes': 0})
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert 'error' in data
+
+    def test_update_settings_non_numeric(self, client):
+        resp = client.post('/api/settings', json={'scanIntervalMinutes': 'abc'})
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert 'error' in data

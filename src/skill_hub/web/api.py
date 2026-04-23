@@ -17,6 +17,7 @@ from skill_hub.web.repos import (
     save_repos_config,
     sync_mapping,
 )
+from skill_hub.web.scheduler import scheduler
 from skill_hub.web.state import install_skill, install_to_one, list_skills, uninstall_skill
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -155,20 +156,31 @@ def api_uninstall(name: str):
 def get_repos():
     """List all repos from repos.yaml with sync status."""
     repos = load_repos_config()
-    # Parallelize remote-update checks to avoid serial git fetch latency
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {id(r): pool.submit(has_remote_updates, r) for r in repos}
-        results = [
-            {
-                "url": r.url,
-                "branch": r.branch,
-                "name": r.name,
-                "localPath": str(repo_dir(r)),
-                "hasRemoteUpdates": futures[id(r)].result(),
-                "isLocal": r.is_local,
-            }
-            for r in repos
-        ]
+    # Use cached status from scheduler if available, fallback to real-time check
+    statuses = scheduler.get_all_statuses()
+    results = []
+    for r in repos:
+        status = statuses.get(r.name)
+        if status:
+            has_updates = status.has_updates
+        elif not r.is_local:
+            # Fallback: real-time check if cache miss
+            try:
+                has_updates = has_remote_updates(r)
+            except Exception:
+                has_updates = False
+        else:
+            has_updates = False
+        target = repo_dir(r)
+        results.append({
+            "url": r.url,
+            "branch": r.branch,
+            "name": r.name,
+            "localPath": str(target),
+            "hasRemoteUpdates": has_updates,
+            "isLocal": r.is_local,
+            "isCloned": target.exists(),
+        })
     return jsonify(results)
 
 
@@ -261,6 +273,30 @@ def get_version():
         "hasUpdate": has_update,
         "skipped": skipped,
     })
+
+
+@api_bp.route("/settings", methods=["GET"])
+def get_settings():
+    """Get current settings including scan interval."""
+    return jsonify({
+        "scanIntervalMinutes": scheduler.scan_interval,
+    })
+
+
+@api_bp.route("/settings", methods=["POST"])
+def update_settings():
+    """Update settings."""
+    body = request.get_json(silent=True) or {}
+    interval = body.get("scanIntervalMinutes")
+    if interval is not None:
+        try:
+            interval = int(interval)
+            if interval < 1:
+                return jsonify({"error": "scanIntervalMinutes must be at least 1"}), 400
+            scheduler.scan_interval = interval
+        except (ValueError, TypeError):
+            return jsonify({"error": "scanIntervalMinutes must be an integer"}), 400
+    return jsonify({"ok": True, "scanIntervalMinutes": scheduler.scan_interval})
 
 
 @api_bp.route("/version/skip", methods=["POST"])

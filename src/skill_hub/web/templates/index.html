@@ -45,6 +45,24 @@
       </label>
       <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-refresh"></button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-add-repo"></button>
+      <div class="relative" id="settings-wrap">
+        <button onclick="toggleSettingsMenu()" class="flex items-center gap-1 px-2 py-1.5 rounded border border-gray-300 bg-white text-xs hover:bg-gray-50 cursor-pointer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <div id="settings-menu" class="hidden absolute right-0 mt-1 w-64 bg-white border border-gray-300 rounded-lg shadow-lg z-50 text-sm p-3">
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1" id="scan-interval-label"></label>
+            <div class="flex items-center gap-2">
+              <input type="number" id="scan-interval" min="1" max="1440" class="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              <span class="text-xs text-gray-500" id="scan-interval-unit"></span>
+            </div>
+          </div>
+          <button onclick="saveSettings()" class="w-full px-3 py-1.5 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer" id="btn-save-settings"></button>
+        </div>
+      </div>
       <div class="relative" id="version-wrap">
         <button onclick="toggleVersionMenu()" class="flex items-center gap-1 px-2 py-1.5 rounded border border-gray-300 bg-white text-xs hover:bg-gray-50 cursor-pointer">
           <span id="version-text">v{{ current_version }}</span>
@@ -147,6 +165,13 @@
       updateNow: '立即更新',
       skipUpdate: '跳过此版本',
       updateCommand: '在终端运行：pip install --upgrade skill-hub',
+      scanInterval: '仓库扫描间隔',
+      minutes: '分钟',
+      save: '保存',
+      settingsSaved: '设置已保存',
+      invalidInterval: '请输入有效的分钟数（至少 1 分钟）',
+      saveFailed: '保存失败',
+      notCloned: '尚未克隆，点击下载',
     },
     en: {
       refresh: 'Refresh',
@@ -198,6 +223,13 @@
       updateNow: 'Update now',
       skipUpdate: 'Skip this version',
       updateCommand: 'Run in terminal: pip install --upgrade skill-hub',
+      scanInterval: 'Repo scan interval',
+      minutes: 'minutes',
+      save: 'Save',
+      settingsSaved: 'Settings saved',
+      invalidInterval: 'Please enter a valid number (at least 1 minute)',
+      saveFailed: 'Save failed',
+      notCloned: 'Not cloned, click to download',
     }
   };
 
@@ -267,6 +299,42 @@
         skipBtn.style.display = 'none';
       }
     } catch (e) {}
+  }
+
+  async function loadSettings() {
+    try {
+      const resp = await fetch('/api/settings');
+      const data = await resp.json();
+      document.getElementById('scan-interval').value = data.scanIntervalMinutes || 30;
+    } catch (e) {}
+  }
+
+  function toggleSettingsMenu() {
+    document.getElementById('settings-menu').classList.toggle('hidden');
+  }
+
+  async function saveSettings() {
+    const interval = parseInt(document.getElementById('scan-interval').value, 10);
+    if (isNaN(interval) || interval < 1) {
+      showToast(t('invalidInterval'), 'error');
+      return;
+    }
+    try {
+      const resp = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scanIntervalMinutes: interval }),
+      });
+      if (resp.ok) {
+        showToast(t('settingsSaved'));
+        toggleSettingsMenu();
+      } else {
+        const data = await resp.json();
+        showToast(data.error || t('saveFailed'), 'error');
+      }
+    } catch (e) {
+      showToast(t('saveFailed'), 'error');
+    }
   }
 
   function toggleVersionMenu() {
@@ -358,7 +426,7 @@
     const repos = await reposResp.json();
     repoMeta = {};
     for (const r of repos) {
-      repoMeta[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates, isLocal: r.isLocal };
+      repoMeta[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates, isLocal: r.isLocal, isCloned: r.isCloned };
     }
 
     const repoNames = [...new Set(allSkills.map(s => s.repoName))];
@@ -402,13 +470,28 @@
       html += `<div class="text-[11px] font-bold uppercase text-gray-500 px-4 pt-2 pb-1 tracking-wide">${t('remoteRepos')}</div>`;
       for (const r of remoteRepos) {
         const meta = repoMeta[r.name] || {};
-        const dotCls = meta.hasRemoteUpdates ? 'bg-yellow-400' : 'bg-green-600';
+        const isCloned = meta.isCloned;
+        const hasUpdate = meta.hasRemoteUpdates;
+        let dotCls, dotTitle, dotClick;
+        if (!isCloned) {
+          dotCls = 'bg-red-500';
+          dotTitle = t('notCloned');
+          dotClick = `onclick="event.stopPropagation(); syncOneRepo('${escAttr(r.name)}')" class="cursor-pointer"`;
+        } else if (hasUpdate) {
+          dotCls = 'bg-yellow-400';
+          dotTitle = t('remoteUpdateAvailable');
+          dotClick = `onclick="event.stopPropagation(); syncOneRepo('${escAttr(r.name)}')" class="cursor-pointer"`;
+        } else {
+          dotCls = 'bg-green-600';
+          dotTitle = t('syncedWithRemote');
+          dotClick = '';
+        }
         const active = r.name === selectedRepo;
         const itemCls = active
           ? 'bg-blue-50 border-l-[3px] border-blue-500 font-semibold'
           : 'border-l-[3px] border-transparent hover:bg-gray-100';
         html += `<div class="flex items-center gap-2 px-4 py-[7px] cursor-pointer text-sm ${itemCls}" onclick="selectRepo('${escAttr(r.name)}')">
-          <span class="w-2 h-2 rounded-full ${dotCls} shrink-0"></span>
+          <span class="w-2 h-2 rounded-full ${dotCls} shrink-0" title="${dotTitle}" ${dotClick}></span>
           <span class="truncate">${escHtml(r.name)}</span>
         </div>`;
       }
@@ -618,7 +701,7 @@
   if (__INITIAL_DATA__) {
     allSkills = __INITIAL_DATA__.skills;
     for (const r of __INITIAL_DATA__.repos) {
-      repoMeta[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates, isLocal: r.isLocal };
+      repoMeta[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates, isLocal: r.isLocal, isCloned: r.isCloned };
     }
     const repoNames = [...new Set(allSkills.map(s => s.repoName))];
     if (selectedRepo && !repoNames.includes(selectedRepo)) selectedRepo = null;
@@ -627,10 +710,16 @@
     renderSkills();
   }
 
+  // Set settings labels
+  document.getElementById('scan-interval-label').textContent = t('scanInterval');
+  document.getElementById('scan-interval-unit').textContent = t('minutes');
+  document.getElementById('btn-save-settings').textContent = t('save');
+
   // Background refresh to get latest state (hasRemoteUpdates etc.)
   loadSkills();
   checkUpdateStatus();
   checkAppVersion();
+  loadSettings();
 </script>
 </body>
 </html>

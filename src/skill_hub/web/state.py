@@ -133,6 +133,14 @@ def list_skills() -> list[SkillEntry]:
     """Scan repos via skill mappings and both install directories, return all skills with status."""
     repos = load_repos_config()
 
+    # Auto-sync remote repos that haven't been cloned yet
+    from skill_hub.web.repos import repo_dir, sync_mapping
+    for repo in repos:
+        if not repo.is_local:
+            target = repo_dir(repo)
+            if not target.exists():
+                sync_mapping(repo)
+
     claude_skills = _scan_install_dir(CLAUDE_SKILLS)
     agents_skills = _scan_install_dir(AGENTS_SKILLS)
 

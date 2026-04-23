@@ -8,6 +8,7 @@ from werkzeug.serving import WSGIRequestHandler
 from skill_hub import __version__
 from skill_hub.web.api import api_bp
 from skill_hub.web.repos import load_repos_config, repo_dir
+from skill_hub.web.scheduler import scheduler
 from skill_hub.web.state import list_skills
 
 # Patch WSGIRequestHandler to log request duration
@@ -47,6 +48,10 @@ def create_app() -> Flask:
     app = Flask(__name__, template_folder=str(Path(__file__).parent / "templates"))
     app.register_blueprint(api_bp)
 
+    # Start background scheduler for periodic repo sync checks
+    if not scheduler.is_running():
+        scheduler.start()
+
     @app.route("/")
     def index():
         skills = list_skills()
@@ -79,6 +84,7 @@ def create_app() -> Flask:
                     "localPath": str(repo_dir(r)),
                     "hasRemoteUpdates": False,
                     "isLocal": r.is_local,
+                    "isCloned": repo_dir(r).exists(),
                 }
                 for r in repos
             ],
