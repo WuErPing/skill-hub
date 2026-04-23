@@ -51,6 +51,7 @@ class TestRepoScheduler:
         # Mock repo_dir to return an existing path (simulating cloned repo)
         fake_repo_dir = tmp_path / "repos" / "test__repo"
         fake_repo_dir.mkdir(parents=True)
+        (fake_repo_dir / ".git").mkdir()
         monkeypatch.setattr(
             'skill_hub.web.scheduler.repo_dir',
             lambda repo: fake_repo_dir
@@ -78,6 +79,7 @@ class TestRepoScheduler:
         # Mock repo_dir to return an existing path (simulating cloned repo)
         fake_repo_dir = tmp_path / "repos" / "test__repo"
         fake_repo_dir.mkdir(parents=True)
+        (fake_repo_dir / ".git").mkdir()
         monkeypatch.setattr(
             'skill_hub.web.scheduler.repo_dir',
             lambda repo: fake_repo_dir

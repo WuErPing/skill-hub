@@ -95,8 +95,9 @@ class RepoScheduler:
                 )
                 continue
             target = repo_dir(repo)
-            if not target.exists():
-                # Repo not cloned yet — clone it now
+            is_valid_git = target.exists() and (target / ".git").exists()
+            if not target.exists() or not is_valid_git:
+                # Repo not cloned yet or directory is invalid — clone it now
                 try:
                     ok, msg = sync_mapping(repo)
                     if ok:
@@ -117,7 +118,7 @@ class RepoScheduler:
                         error=str(e),
                     )
                 continue
-            # Repo exists — check for remote updates
+            # Repo exists and is a valid git repo — check for remote updates
             try:
                 has_updates = has_remote_updates(repo)
                 new_status[repo.name] = RepoStatus(

@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-from skill_hub.web.repos import REPOS_DIR, load_repos_config, load_skill_mapping, repo_dir
+from skill_hub.web.repos import REPOS_DIR, load_repos_config, load_skill_mapping, repo_dir, sync_mapping
 
 MD5_CACHE_FILE = Path.home() / ".skills_repo" / "md5_cache.json"
 _md5_cache: dict[str, tuple[float, str]] = {}
@@ -141,7 +141,16 @@ def list_skills() -> list[SkillEntry]:
     for repo in repos:
         mapping = load_skill_mapping(repo)
         if not mapping:
-            continue
+            # Mapping empty — try to sync (clone + scan) for non-local repos
+            if not repo.is_local:
+                try:
+                    ok, _msg = sync_mapping(repo)
+                    if ok:
+                        mapping = load_skill_mapping(repo)
+                except Exception:
+                    pass
+            if not mapping:
+                continue
         repo_root = repo_dir(repo)
         for skill_name, rel_path in mapping.items():
             skill_path = repo_root / rel_path

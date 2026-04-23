@@ -179,7 +179,7 @@ def get_repos():
             "localPath": str(target),
             "hasRemoteUpdates": has_updates,
             "isLocal": r.is_local,
-            "isCloned": target.exists(),
+            "isCloned": target.exists() and (target / ".git").exists(),
         })
     return jsonify(results)
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-04-23
+
+### Fixed
+
+- **New machine initialization**: `list_skills()` now auto-triggers `sync_mapping()` when a remote repo has no skill mapping, ensuring fresh installs discover skills immediately
+- **Invalid git directory detection**: `scheduler.check_now()` now validates `.git` subdirectory before treating a directory as cloned; empty or corrupted directories are re-cloned
+- **Accurate clone status**: `isCloned` flag now checks for `.git` presence rather than just directory existence, preventing false "cloned" states on failed/incomplete clones
+
 ## [0.10.2] - 2026-04-23
 
 ### Fixed
@@ -202,7 +210,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.3
 [0.10.2]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.2
 [0.10.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.1
 [0.10.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.0

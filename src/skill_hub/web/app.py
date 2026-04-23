@@ -84,7 +84,7 @@ def create_app() -> Flask:
                     "localPath": str(repo_dir(r)),
                     "hasRemoteUpdates": False,
                     "isLocal": r.is_local,
-                    "isCloned": repo_dir(r).exists(),
+                    "isCloned": repo_dir(r).exists() and (repo_dir(r) / ".git").exists(),
                 }
                 for r in repos
             ],
