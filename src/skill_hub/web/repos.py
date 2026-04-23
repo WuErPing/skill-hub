@@ -470,12 +470,12 @@ _tasks: dict[str, RepoTask] = {}
 _tasks_lock = threading.Lock()
 
 
-def get_task(task_id: str) -> RepoTask | None:
+def get_task(task_id: str) -> Optional[RepoTask]:
     with _tasks_lock:
         return _tasks.get(task_id)
 
 
-def _parse_clone_progress(line: str) -> tuple[int, str] | None:
+def _parse_clone_progress(line: str) -> Optional[tuple[int, str]]:
     """Parse git clone --progress stderr line. Returns (percent, step) or None."""
     # "Receiving objects:  45% (123/270)" etc.
     m = re.search(r"(Receiving objects|Resolving deltas|remote: Counting objects|remote: Compressing objects):\s+(\d+)%", line)

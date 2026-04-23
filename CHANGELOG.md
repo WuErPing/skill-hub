@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-04-24
+
+### Fixed
+
+- **Python 3.9 compatibility**: Replace `X | None` type hints with `Optional[X]` in `repos.py` (union syntax requires Python 3.10+)
+
 ## [0.13.0] - 2026-04-24
 
 ### Added
@@ -245,7 +251,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.13.1
 [0.13.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.13.0
 [0.12.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.12.0
 [0.11.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.11.0
