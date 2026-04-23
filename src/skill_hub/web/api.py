@@ -12,11 +12,13 @@ from skill_hub.web.repos import (
     delete_repo,
     diagnose_all_repos,
     diagnose_repo,
+    get_task,
     has_remote_updates,
     load_repos_config,
     pull_latest,
     repo_dir,
     save_repos_config,
+    start_repo_task,
     sync_mapping,
 )
 from skill_hub.web.scheduler import scheduler
@@ -212,6 +214,36 @@ def add_repo():
     if success:
         return jsonify({"ok": True, "message": msg}), 201
     return jsonify({"ok": True, "message": f"Added but sync failed: {msg}"}), 201
+
+
+@api_bp.route("/repos/async", methods=["POST"])
+def add_repo_async():
+    """Start an async clone/pull task for a repo. Returns task_id for polling."""
+    body = request.get_json() or {}
+    url = body.get("url", "").strip()
+    branch = body.get("branch", "main").strip()
+    if not url:
+        return jsonify({"error": "url is required"}), 400
+
+    # Ensure repo is in config
+    repos = load_repos_config()
+    existing = next((r for r in repos if r.url == url), None)
+    if existing is None:
+        repo = Repo(url=url, branch=branch)
+        repos.append(repo)
+        save_repos_config(repos)
+
+    task = start_repo_task(url, branch)
+    return jsonify(task.to_dict()), 202
+
+
+@api_bp.route("/repos/task/<task_id>", methods=["GET"])
+def get_repo_task(task_id: str):
+    """Poll the status of an async repo task."""
+    task = get_task(task_id)
+    if not task:
+        return jsonify({"error": "Task not found"}), 404
+    return jsonify(task.to_dict())
 
 
 @api_bp.route("/repos/<path:name>", methods=["DELETE"])

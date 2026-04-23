@@ -3,8 +3,10 @@
 import re
 import shutil
 import subprocess
+import threading
+import uuid
 import yaml
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -434,3 +436,162 @@ def diagnose_all_repos() -> list[dict]:
     """Run diagnostics on all configured repos."""
     repos = load_repos_config()
     return [diagnose_repo(repo) for repo in repos]
+
+
+# ---------------------------------------------------------------------------
+# Async task tracking for repo clone/pull with progress
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RepoTask:
+    task_id: str
+    url: str
+    branch: str
+    status: str = "running"       # running | success | error
+    progress: int = 0             # 0-100
+    step: str = ""                # human-readable current step
+    error: str = ""               # error message if failed
+    repo_name: str = ""           # populated after clone
+
+    def to_dict(self) -> dict:
+        return {
+            "taskId": self.task_id,
+            "url": self.url,
+            "branch": self.branch,
+            "status": self.status,
+            "progress": self.progress,
+            "step": self.step,
+            "error": self.error,
+            "repoName": self.repo_name,
+        }
+
+
+_tasks: dict[str, RepoTask] = {}
+_tasks_lock = threading.Lock()
+
+
+def get_task(task_id: str) -> RepoTask | None:
+    with _tasks_lock:
+        return _tasks.get(task_id)
+
+
+def _parse_clone_progress(line: str) -> tuple[int, str] | None:
+    """Parse git clone --progress stderr line. Returns (percent, step) or None."""
+    # "Receiving objects:  45% (123/270)" etc.
+    m = re.search(r"(Receiving objects|Resolving deltas|remote: Counting objects|remote: Compressing objects):\s+(\d+)%", line)
+    if m:
+        stage = m.group(1)
+        pct = int(m.group(2))
+        # Weight: receiving 0-70%, resolving 70-95%
+        if "Receiving" in stage or "Counting" in stage or "Compressing" in stage:
+            return int(pct * 0.70), f"{stage}: {pct}%"
+        elif "Resolving" in stage:
+            return 70 + int(pct * 0.25), f"{stage}: {pct}%"
+    # "Cloning into '...'"
+    m2 = re.search(r"Cloning into '(.+)'", line)
+    if m2:
+        return 5, f"Cloning into '{m2.group(1)}'"
+    return None
+
+
+def _run_task(task: RepoTask):
+    """Background thread: clone or pull a repo, update task progress."""
+    try:
+        target = repo_dir(Repo(url=task.url, branch=task.branch))
+        is_new = not target.exists()
+
+        if is_new:
+            # --- Clone ---
+            task.step = "Checking git..."
+            task.progress = 1
+            git_ok, git_msg = check_git_installed()
+            if not git_ok:
+                task.status = "error"
+                task.error = f"Git not installed: {git_msg}"
+                return
+
+            task.step = "Checking network..."
+            task.progress = 3
+            net_ok, net_msg = check_network_connectivity()
+            if not net_ok:
+                task.status = "error"
+                task.error = f"Network error: {net_msg}"
+                return
+
+            task.step = "Cloning..."
+            task.progress = 5
+
+            proc = subprocess.Popen(
+                ["git", "clone", "--branch", task.branch, "--progress", task.url, str(target)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            # Read stderr line by line for progress
+            assert proc.stderr is not None
+            for line in proc.stderr:
+                line = line.strip()
+                if not line:
+                    continue
+                parsed = _parse_clone_progress(line)
+                if parsed:
+                    task.progress, task.step = parsed
+                elif "fatal:" in line or "error:" in line:
+                    task.status = "error"
+                    task.error = line
+                    proc.wait()
+                    return
+
+            ret = proc.wait()
+            if ret != 0:
+                task.status = "error"
+                task.error = f"git clone exited with code {ret}"
+                return
+
+            task.progress = 95
+            task.step = "Scanning skills..."
+        else:
+            # --- Pull ---
+            task.step = "Pulling updates..."
+            task.progress = 50
+            try:
+                subprocess.run(
+                    ["git", "pull", "origin", task.branch],
+                    cwd=target, check=True, capture_output=True, text=True, timeout=120,
+                )
+            except subprocess.CalledProcessError as e:
+                task.status = "error"
+                task.error = f"Pull failed: {e.stderr}"
+                return
+            except subprocess.TimeoutExpired:
+                task.status = "error"
+                task.error = "Pull timed out"
+                return
+            task.progress = 95
+            task.step = "Scanning skills..."
+
+        # Build mapping
+        repo = Repo(url=task.url, branch=task.branch)
+        mapping, conflicts = _find_skills_in_repo(target)
+        save_skill_mapping(repo, mapping)
+        count = len(mapping)
+        task.repo_name = repo.name or ""
+        task.progress = 100
+        msg = f"{'Cloned' if is_new else 'Pulled'} {task.url} — {count} skill(s)"
+        if conflicts:
+            msg += f" ({len(conflicts)} conflict(s) skipped)"
+        task.step = msg
+        task.status = "success"
+
+    except Exception as e:
+        task.status = "error"
+        task.error = str(e)
+
+
+def start_repo_task(url: str, branch: str = "main") -> RepoTask:
+    """Start an async clone/pull task. Returns the task immediately."""
+    task_id = uuid.uuid4().hex[:12]
+    task = RepoTask(task_id=task_id, url=url, branch=branch)
+    with _tasks_lock:
+        _tasks[task_id] = task
+    thread = threading.Thread(target=_run_task, args=(task,), daemon=True)
+    thread.start()
+    return task

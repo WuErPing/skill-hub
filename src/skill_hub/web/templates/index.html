@@ -99,6 +99,25 @@
     </div>
   </div>
 
+  <!-- Repo task progress panel -->
+  <div id="task-progress-panel" class="hidden bg-white rounded-lg p-4 mb-4 border border-blue-300">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-semibold text-blue-800" id="task-title"></span>
+      <button onclick="dismissTask()" class="text-gray-400 hover:text-gray-700 cursor-pointer bg-transparent border-0 p-1 text-lg leading-none" id="task-close-btn">✕</button>
+    </div>
+    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+      <div id="task-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+    </div>
+    <div class="flex items-center justify-between">
+      <span class="text-xs text-gray-600" id="task-step"></span>
+      <span class="text-xs text-gray-500 font-mono" id="task-pct">0%</span>
+    </div>
+    <div id="task-error" class="hidden mt-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2"></div>
+    <div id="task-actions" class="hidden mt-3 flex gap-2">
+      <button onclick="retryTask()" class="px-3 py-1.5 rounded border border-orange-500 text-orange-700 text-xs hover:bg-orange-50 cursor-pointer" id="btn-retry"></button>
+    </div>
+  </div>
+
   <!-- Diagnosis panel -->
   <div id="diagnosis-panel" class="hidden bg-white rounded-lg p-4 mb-4 border border-purple-300">
     <div class="flex items-center justify-between mb-3">
@@ -188,6 +207,10 @@
       checkingRepoStatus: '正在检查仓库状态...',
       diagnosisFailed: '诊断失败',
       skills: '技能:',
+      cloningRepo: '正在克隆仓库...',
+      retry: '重试',
+      taskSuccess: '加载完成',
+      taskFailed: '加载失败',
     },
     en: {
       refresh: 'Refresh',
@@ -252,6 +275,10 @@
       checkingRepoStatus: 'Checking repo status...',
       diagnosisFailed: 'Diagnosis Failed',
       skills: 'Skills:',
+      cloningRepo: 'Cloning repository...',
+      retry: 'Retry',
+      taskSuccess: 'Load complete',
+      taskFailed: 'Load failed',
     }
   };
 
@@ -279,6 +306,10 @@
   let selectedRepo = null;
   let allSkills = [];
   let repoMeta = {};
+  let _currentTaskId = null;
+  let _taskUrl = '';
+  let _taskBranch = 'main';
+  let _pollTimer = null;
 
   function showToast(msg, type = 'success') {
     const toastEl = document.getElementById('toast');
@@ -422,22 +453,145 @@
     const url = document.getElementById('repo-url').value.trim();
     const branch = document.getElementById('repo-branch').value.trim() || 'main';
     if (!url) return;
-    const payload = isLocalPath(url) ? { url } : { url, branch };
-    const resp = await fetch('/api/repos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await resp.json();
-    if (resp.ok) {
-      showToast(data.message || t('repoAdded'));
-      toggleAddRepo();
-      document.getElementById('repo-url').value = '';
-      onRepoUrlInput();
-      await loadSkills();
-    } else {
-      showToast(data.error || t('addFailed'), 'error');
+
+    if (isLocalPath(url)) {
+      // Local paths: use synchronous endpoint (fast)
+      const resp = await fetch('/api/repos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        showToast(data.message || t('repoAdded'));
+        toggleAddRepo();
+        document.getElementById('repo-url').value = '';
+        onRepoUrlInput();
+        await loadSkills();
+      } else {
+        showToast(data.error || t('addFailed'), 'error');
+      }
+      return;
     }
+
+    // Remote repos: async with progress
+    _taskUrl = url;
+    _taskBranch = branch;
+    showTaskPanel(url);
+
+    try {
+      const resp = await fetch('/api/repos/async', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, branch }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        showTaskError(data.error || t('addFailed'));
+        return;
+      }
+      _currentTaskId = data.taskId;
+      toggleAddRepo();
+      pollTask();
+    } catch (e) {
+      showTaskError(e.message);
+    }
+  }
+
+  function showTaskPanel(url) {
+    const panel = document.getElementById('task-progress-panel');
+    document.getElementById('task-title').textContent = url;
+    document.getElementById('task-bar').style.width = '0%';
+    document.getElementById('task-pct').textContent = '0%';
+    document.getElementById('task-step').textContent = t('cloningRepo');
+    document.getElementById('task-error').classList.add('hidden');
+    document.getElementById('task-actions').classList.add('hidden');
+    document.getElementById('task-close-btn').classList.add('hidden');
+    panel.classList.remove('hidden');
+    panel.className = panel.className.replace(/border-\w+-300/g, 'border-blue-300');
+  }
+
+  function updateTaskUI(data) {
+    document.getElementById('task-bar').style.width = data.progress + '%';
+    document.getElementById('task-pct').textContent = data.progress + '%';
+    document.getElementById('task-step').textContent = data.step || '';
+
+    if (data.status === 'success') {
+      document.getElementById('task-bar').className = document.getElementById('task-bar').className.replace('bg-blue-600', 'bg-green-600');
+      const panel = document.getElementById('task-progress-panel');
+      panel.className = panel.className.replace(/border-\w+-300/g, 'border-green-300');
+      document.getElementById('task-step').textContent = data.step;
+      document.getElementById('task-close-btn').classList.remove('hidden');
+      _currentTaskId = null;
+      loadSkills();
+    } else if (data.status === 'error') {
+      showTaskError(data.error);
+    }
+  }
+
+  function showTaskError(msg) {
+    document.getElementById('task-bar').className = document.getElementById('task-bar').className.replace('bg-blue-600', 'bg-red-500');
+    const panel = document.getElementById('task-progress-panel');
+    panel.className = panel.className.replace(/border-\w+-300/g, 'border-red-300');
+    const errEl = document.getElementById('task-error');
+    errEl.textContent = msg;
+    errEl.classList.remove('hidden');
+    document.getElementById('task-actions').classList.remove('hidden');
+    document.getElementById('btn-retry').textContent = t('retry');
+    document.getElementById('task-close-btn').classList.remove('hidden');
+    _currentTaskId = null;
+  }
+
+  async function pollTask() {
+    if (!_currentTaskId) return;
+    try {
+      const resp = await fetch(`/api/repos/task/${_currentTaskId}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      updateTaskUI(data);
+      if (data.status === 'running') {
+        _pollTimer = setTimeout(pollTask, 800);
+      }
+    } catch (e) {
+      _pollTimer = setTimeout(pollTask, 2000);
+    }
+  }
+
+  async function retryTask() {
+    // Reset panel to running state
+    const bar = document.getElementById('task-bar');
+    bar.className = bar.className.replace(/bg-\w+-500|bg-\w+-600/g, 'bg-blue-600');
+    const panel = document.getElementById('task-progress-panel');
+    panel.className = panel.className.replace(/border-\w+-300/g, 'border-blue-300');
+    document.getElementById('task-error').classList.add('hidden');
+    document.getElementById('task-actions').classList.add('hidden');
+    document.getElementById('task-close-btn').classList.add('hidden');
+    document.getElementById('task-bar').style.width = '0%';
+    document.getElementById('task-pct').textContent = '0%';
+    document.getElementById('task-step').textContent = t('cloningRepo');
+
+    try {
+      const resp = await fetch('/api/repos/async', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: _taskUrl, branch: _taskBranch }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        showTaskError(data.error || t('addFailed'));
+        return;
+      }
+      _currentTaskId = data.taskId;
+      pollTask();
+    } catch (e) {
+      showTaskError(e.message);
+    }
+  }
+
+  function dismissTask() {
+    if (_pollTimer) clearTimeout(_pollTimer);
+    _currentTaskId = null;
+    document.getElementById('task-progress-panel').classList.add('hidden');
   }
 
   async function loadSkills() {

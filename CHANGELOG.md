@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-04-24
+
+### Added
+
+- **Async repo clone/pull with progress**: Adding a remote repo now runs in a background thread with a real-time progress bar showing clone percentage and current stage
+- **Task polling API**: `POST /api/repos/async` starts an async clone/pull task; `GET /api/repos/task/<id>` polls progress status
+- **Retry on failure**: If clone/pull fails (network error, timeout, etc.), a Retry button allows resuming without re-entering the URL
+- **Closable progress panel**: Progress panel shows green on success, red on error, and can be dismissed at any time
+
+### Fixed
+
+- **Add remote repo had no feedback**: `POST /api/repos` was synchronous, blocking the browser for up to 120s during `git clone` with no visual feedback; now fully async with progress tracking
+
 ## [0.12.0] - 2026-04-23
 
 ### Changed
@@ -232,7 +245,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.13.0
 [0.12.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.12.0
 [0.11.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.11.0
 [0.10.3]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.3
