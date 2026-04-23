@@ -103,11 +103,17 @@ def save_skill_mapping(repo: Repo, mapping: dict[str, str]) -> None:
         yaml.dump(mapping, f, default_flow_style=False, allow_unicode=True)
 
 
-def _find_skills_in_repo(repo_dir: Path) -> dict[str, str]:
-    """Scan a cloned repo for skill directories (contain SKILL.md) and return {name: relative_path}."""
-    mapping = {}
+def _find_skills_in_repo(repo_dir: Path) -> tuple[dict[str, str], list[str]]:
+    """Scan a cloned repo for skill directories (contain SKILL.md) and return {name: relative_path}, [conflicts].
+
+    Conflicts occur when multiple SKILL.md files reside in directories with the
+    same name (e.g. repo/a/skill-x/SKILL.md and repo/b/skill-x/SKILL.md).
+    The first discovered path wins; duplicates are reported as conflicts.
+    """
+    mapping: dict[str, str] = {}
+    conflicts: list[str] = []
     if not repo_dir.exists():
-        return mapping
+        return mapping, conflicts
 
     for skill_md in repo_dir.rglob("SKILL.md"):
         # skill dir is the parent of SKILL.md
@@ -116,9 +122,17 @@ def _find_skills_in_repo(repo_dir: Path) -> dict[str, str]:
         name = skill_dir.name
         # relative path from repo root
         rel = skill_dir.relative_to(repo_dir)
-        mapping[name] = str(rel)
+        rel_str = str(rel)
+        if name in mapping:
+            if mapping[name] != rel_str:
+                conflicts.append(
+                    f"'{name}' at '{rel_str}' conflicts with existing '{mapping[name]}'"
+                )
+            # skip duplicate / conflicting names — first wins
+            continue
+        mapping[name] = rel_str
 
-    return mapping
+    return mapping, conflicts
 
 
 def sync_mapping(repo: Repo) -> tuple[bool, str]:
@@ -144,10 +158,13 @@ def sync_mapping(repo: Repo) -> tuple[bool, str]:
         else:
             action = "Synced"
 
-    mapping = _find_skills_in_repo(target)
+    mapping, conflicts = _find_skills_in_repo(target)
     save_skill_mapping(repo, mapping)
     count = len(mapping)
-    return True, f"{action} {repo.url} — found {count} skill(s)"
+    msg = f"{action} {repo.url} — found {count} skill(s)"
+    if conflicts:
+        msg += f" (warning: {len(conflicts)} name conflict(s) skipped)"
+    return True, msg
 
 
 def clone_or_pull(repo: Repo) -> tuple[bool, str]:
@@ -213,10 +230,13 @@ def pull_latest(repo: Repo) -> tuple[bool, str]:
         except subprocess.CalledProcessError as e:
             return False, f"Pull failed: {e.stderr}"
     # Rebuild mapping after pull to catch added/removed skills
-    mapping = _find_skills_in_repo(target)
+    mapping, conflicts = _find_skills_in_repo(target)
     save_skill_mapping(repo, mapping)
     count = len(mapping)
-    return True, f"Pulled {repo.url} — {count} skill(s) in mapping"
+    msg = f"Pulled {repo.url} — {count} skill(s) in mapping"
+    if conflicts:
+        msg += f" (warning: {len(conflicts)} name conflict(s) skipped)"
+    return True, msg
 
 
 def delete_repo(repo: Repo) -> tuple[bool, str]:

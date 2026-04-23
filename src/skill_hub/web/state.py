@@ -70,6 +70,7 @@ class SkillEntry:
     md5_agents: str   # MD5 of installed version in ~/.agents/skills (empty if not installed)
     link_claude: bool = False  # True if installed via symlink
     link_agents: bool = False  # True if installed via symlink
+    conflict: bool = False  # True if another repo provides the same skill name
 
     @property
     def claude_matches_source(self) -> bool:
@@ -147,6 +148,11 @@ def list_skills() -> list[SkillEntry]:
             if skill_path.exists():
                 entries.append((repo, skill_name, skill_path))
 
+    # Detect cross-repo name conflicts
+    name_counts: dict[str, int] = {}
+    for _repo, skill_name, _skill_path in entries:
+        name_counts[skill_name] = name_counts.get(skill_name, 0) + 1
+
     # Parallel MD5 for source skills (the dominant cost)
     with ThreadPoolExecutor(max_workers=8) as pool:
         md5_futures = {
@@ -175,6 +181,7 @@ def list_skills() -> list[SkillEntry]:
             md5_agents=a_md5,
             link_claude=c_link,
             link_agents=a_link,
+            conflict=name_counts[skill_name] > 1,
         ))
 
     return sorted(skills, key=lambda s: (s.repo_name, s.name))

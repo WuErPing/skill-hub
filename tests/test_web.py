@@ -376,3 +376,61 @@ class TestSymlinkInstall:
         )
         assert (claude / name).is_symlink()
         assert (agents / name).is_symlink()
+
+
+class TestNameConflictProtection:
+    """Tests for name conflict detection and protection."""
+
+    def test_same_repo_duplicate_skills_reports_conflict(self, tmp_path):
+        """When one repo contains two skill dirs with the same name, the first wins and a conflict is reported."""
+        from skill_hub.web.repos import _find_skills_in_repo
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "a" / "skill-x").mkdir(parents=True)
+        (repo / "a" / "skill-x" / "SKILL.md").write_text("---\nname: skill-x\n---")
+        (repo / "b" / "skill-x").mkdir(parents=True)
+        (repo / "b" / "skill-x" / "SKILL.md").write_text("---\nname: skill-x\n---")
+
+        mapping, conflicts = _find_skills_in_repo(repo)
+        assert mapping["skill-x"] == str(Path("a") / "skill-x")
+        assert len(conflicts) == 1
+        assert "conflicts with existing" in conflicts[0]
+
+    def test_cross_repo_conflict_flagged_in_list(self, client, temp_home):
+        """When two repos provide the same skill name, list_skills marks conflict=True."""
+        tmp_path, _claude, _agents = temp_home
+
+        # Add a second repo that also provides "test-skill"
+        second_repo = tmp_path / "skills_repo" / "repos" / "second__repo"
+        second_repo.mkdir(parents=True)
+        (second_repo / "test-skill").mkdir()
+        (second_repo / "test-skill" / "SKILL.md").write_text("---\nname: test-skill\ndescription: Second\n---\n")
+
+        second_mapping = tmp_path / "skills_repo" / "mappings" / "second__repo.yaml"
+        second_mapping.parent.mkdir(parents=True, exist_ok=True)
+        second_mapping.write_text("test-skill: test-skill\n")
+
+        # Update repos config to include second repo
+        import skill_hub.web.repos as repos_module
+        repos_yaml = tmp_path / "skills_repo" / "repos.yaml"
+        repos_yaml.write_text(
+            "repos:\n"
+            "  - url: https://github.com/example/repo\n    branch: main\n"
+            "  - url: https://github.com/second/repo\n    branch: main\n"
+        )
+
+        resp = client.get("/api/skills")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        test_skills = [s for s in data if s["name"] == "test-skill"]
+        assert len(test_skills) == 2
+        assert all(s["conflict"] is True for s in test_skills)
+
+    def test_no_conflict_for_unique_names(self, client, temp_home):
+        """Skills with unique names should not be flagged as conflict."""
+        resp = client.get("/api/skills")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data) == 1
+        assert data[0]["conflict"] is False

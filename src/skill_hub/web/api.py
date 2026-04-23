@@ -54,6 +54,7 @@ def get_skills():
             "linkClaude": s.link_claude,
             "linkAgents": s.link_agents,
             "path": str(s.path),
+            "conflict": s.conflict,
         }
         for s in skills
     ])
