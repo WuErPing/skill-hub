@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-04-23
+
+### Changed
+
+- **No default repo auto-seeding**: `load_repos_config()` no longer auto-creates `repos.yaml` with `anthropics/skills` on first run; repos.yaml starts empty
+- **Add repo form default value**: Repo URL input now pre-fills `https://github.com/anthropics/skills` as a suggested default instead of being auto-added as a configured repo
+
 ## [0.11.0] - 2026-04-23
 
 ### Added
@@ -225,7 +232,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.12.0
 [0.11.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.11.0
 [0.10.3]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.3
 [0.10.2]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.2

@@ -105,7 +105,7 @@ skill-hub version --check
 - 点击技能名称查看 `SKILL.md` frontmatter 元数据
 - 添加/删除仓库，支持远端更新检测
 - **本地目录支持** — 可将任意本地路径（如 `~/code/my-skills`）添加为技能源
-- **默认仓库** — 首次运行时自动添加 `anthropics/skills` 作为默认仓库
+- **推荐默认仓库** — 添加仓库表单中预填 `anthropics/skills` 作为快速入门建议
 - **仓库诊断** — 🔍 按钮运行全面健康检查（git、网络、SKILL.md 文件、映射）
 
 ## SKILL.md 格式
