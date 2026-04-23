@@ -1,36 +1,62 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background circle -->
-  <circle cx="256" cy="256" r="240" fill="#f8fafc" stroke="#e2e8f0" stroke-width="4"/>
+  <defs>
+    <radialGradient id="bg-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fef2f2"/>
+      <stop offset="100%" stop-color="#fecaca"/>
+    </radialGradient>
+    <radialGradient id="hub-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hub-fill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#b91c1c"/>
+    </linearGradient>
+    <linearGradient id="node-fill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f87171"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#991b1b" flood-opacity="0.15"/>
+    </filter>
+  </defs>
 
-  <!-- Center hub: hexagon -->
-  <polygon points="256,110 336,156 336,248 256,294 176,248 176,156" fill="#2563eb" rx="12"/>
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="248" fill="url(#bg-grad)" stroke="#fca5a5" stroke-width="3"/>
+
+  <!-- Hub glow -->
+  <circle cx="256" cy="220" r="100" fill="url(#hub-glow)"/>
+
+  <!-- Center hub: hexagon with shadow -->
+  <polygon points="256,118 330,160 330,244 256,286 182,244 182,160" fill="url(#hub-fill)" filter="url(#shadow)"/>
 
   <!-- Inner hub symbol -->
-  <circle cx="256" cy="202" r="28" fill="white"/>
-  <circle cx="256" cy="202" r="14" fill="#2563eb"/>
+  <circle cx="256" cy="202" r="30" fill="white" opacity="0.95"/>
+  <circle cx="256" cy="202" r="16" fill="#ef4444"/>
+  <circle cx="256" cy="202" r="7" fill="white"/>
 
-  <!-- Selected connections (solid) -->
-  <line x1="256" y1="110" x2="256" y2="64" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
-  <line x1="336" y1="156" x2="384" y2="128" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
-  <line x1="336" y1="248" x2="384" y2="276" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
+  <!-- Selected connections (solid, thicker) -->
+  <line x1="256" y1="118" x2="256" y2="64" stroke="#dc2626" stroke-width="10" stroke-linecap="round"/>
+  <line x1="330" y1="160" x2="394" y2="120" stroke="#dc2626" stroke-width="10" stroke-linecap="round"/>
+  <line x1="330" y1="244" x2="394" y2="284" stroke="#dc2626" stroke-width="10" stroke-linecap="round"/>
 
-  <!-- Selected skill nodes (solid blue) -->
-  <circle cx="256" cy="64" r="18" fill="#2563eb"/>
-  <circle cx="384" cy="128" r="18" fill="#2563eb"/>
-  <circle cx="384" cy="276" r="18" fill="#2563eb"/>
+  <!-- Selected skill nodes (gradient, larger) -->
+  <circle cx="256" cy="64" r="22" fill="url(#node-fill)" filter="url(#shadow)"/>
+  <circle cx="394" cy="120" r="22" fill="url(#node-fill)" filter="url(#shadow)"/>
+  <circle cx="394" cy="284" r="22" fill="url(#node-fill)" filter="url(#shadow)"/>
 
-  <!-- Unselected connections (dashed gray) -->
-  <line x1="256" y1="294" x2="256" y2="340" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
-  <line x1="176" y1="248" x2="128" y2="276" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
-  <line x1="176" y1="156" x2="128" y2="128" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,6"/>
+  <!-- Node inner detail -->
+  <circle cx="256" cy="64" r="8" fill="white" opacity="0.9"/>
+  <circle cx="394" cy="120" r="8" fill="white" opacity="0.9"/>
+  <circle cx="394" cy="284" r="8" fill="white" opacity="0.9"/>
 
-  <!-- Unselected skill nodes (hollow gray) -->
-  <circle cx="256" cy="340" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
-  <circle cx="128" cy="276" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
-  <circle cx="128" cy="128" r="14" fill="none" stroke="#cbd5e1" stroke-width="5"/>
+  <!-- Unselected connections (dashed, slightly thicker) -->
+  <line x1="256" y1="286" x2="256" y2="348" stroke="#c9a89e" stroke-width="7" stroke-linecap="round" stroke-dasharray="10,6"/>
+  <line x1="182" y1="244" x2="118" y2="284" stroke="#c9a89e" stroke-width="7" stroke-linecap="round" stroke-dasharray="10,6"/>
+  <line x1="182" y1="160" x2="118" y2="120" stroke="#c9a89e" stroke-width="7" stroke-linecap="round" stroke-dasharray="10,6"/>
 
-  <!-- Small inner dots on selected nodes for detail -->
-  <circle cx="256" cy="64" r="6" fill="white"/>
-  <circle cx="384" cy="128" r="6" fill="white"/>
-  <circle cx="384" cy="276" r="6" fill="white"/>
+  <!-- Unselected skill nodes (hollow, slightly larger) -->
+  <circle cx="256" cy="348" r="17" fill="none" stroke="#c9a89e" stroke-width="5"/>
+  <circle cx="118" cy="284" r="17" fill="none" stroke="#c9a89e" stroke-width="5"/>
+  <circle cx="118" cy="120" r="17" fill="none" stroke="#c9a89e" stroke-width="5"/>
 </svg>

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-04-24
+
+### Changed
+
+- **Use symlinks default**: Install checkbox now defaults to symlink mode instead of copy, reducing redundant file duplication on update
+- **README narrative restructure**: Reordered documentation to show screenshot first, then data flow, then directory structure (using `anthropics/skills` as concrete example)
+- **Icon redesign**: Hub icon switched from blue to red theme with gradient fills, glow effects, and warm-toned unselected nodes for better visual prominence
+
 ## [0.13.1] - 2026-04-24
 
 ### Fixed
@@ -251,7 +259,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.14.0
 [0.13.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.13.1
 [0.13.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.13.0
 [0.12.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.12.0

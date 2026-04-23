@@ -16,30 +16,44 @@
 - **版本感知** — 黄色圆点提示技能已过期，防止过时指令在后台静默消耗 Token
 - **按需安装，避免全局膨胀** — 保持全局技能空间精简。项目专属技能安装到 `.agents/skills/`（私有），仅通用技能放入 `~/.agents/skills/`（全局）。作用域内无关技能越少，误匹配消耗的 Token 就越少
 
-## 架构设计
+![](imgs/2026-04-24-00-54-50.png)
+
+## 工作原理
 
 ### 数据流向
 
 <p align="center"><img src="docs/assets/data-flow.svg" width="720" alt="skill-hub data flow"></p>
 
-### 模块结构
+### 目录结构
+
+以 [anthropics/skills](https://github.com/anthropics/skills) 为例 — 一个知名的社区技能仓库。通过 UI 添加后，本地布局如下：
 
 ```
-src/skill_hub/
-├── cli.py              # Click CLI 入口（web、version、self-update）
-├── models.py           # SkillMetadata 数据类
-├── version.py          # 版本解析与 GitHub 发行版检查
-├── utils/
-│   ├── __init__.py     # 路径工具（expand_path, derive_name）
-│   └── yaml_parser.py  # SKILL.md YAML frontmatter 解析器
-└── web/
-    ├── app.py          # Flask 应用工厂
-    ├── api.py          # REST API 路由
-    ├── repos.py        # 仓库管理（克隆、扫描、安装）
-    ├── state.py        # 已安装技能状态跟踪
-    └── templates/
-        └── index.html  # 单页 Web UI
+~/.skills_repo/
+├── repos.yaml                  # 仓库列表配置
+├── repos/
+│   └── anthropics__skills/     # 从 github.com/anthropics/skills 克隆
+│       ├── web-design/
+│       │   └── SKILL.md        # 被发现为一个技能
+│       ├── excel-sheets/
+│       │   └── SKILL.md
+│       └── ...
+└── mappings/
+    └── anthropics__skills.yaml # 技能 → 已安装路径映射
+
+~/.claude/skills/               # 已安装技能（目标 A）
+~/.agents/skills/               # 已安装技能（目标 B）
 ```
+
+skill-hub 扫描每个仓库中的 `SKILL.md` 文件，构建映射，然后安装（软链接或复制）到两个目标目录。
+
+### 步骤
+
+1. **添加 GitHub 仓库或本地目录** — 通过 UI 添加，远程仓库自动克隆到 `~/.skills_repo/repos/`，本地路径原地扫描
+2. **自动发现技能** — 扫描仓库中的 `SKILL.md` 文件
+3. **一键安装** — 将技能安装到 `~/.claude/skills/` 和 `~/.agents/skills/`
+4. **同步状态** — 绿色圆点表示安装版本与源一致，黄色表示过期
+5. **仓库同步** — 检测并拉取远端更新，每个仓库有同步状态指示（本地路径跳过克隆）
 
 ## 安装
 
@@ -88,14 +102,6 @@ skill-hub version --check
 | `skill-hub version --check` | 检查是否有新版本可用 |
 | `skill-hub self-update` | 通过 pip 升级 skill-hub |
 
-## 工作原理
-
-1. **添加 GitHub 仓库或本地目录** — 通过 UI 添加，远程仓库自动克隆到 `~/.skills_repo/repos/`，本地路径原地扫描
-2. **自动发现技能** — 扫描仓库中的 `SKILL.md` 文件
-3. **一键安装** — 将技能安装到 `~/.claude/skills/` 和 `~/.agents/skills/`
-4. **同步状态** — 绿色圆点表示安装版本与源一致，黄色表示过期
-5. **仓库同步** — 检测并拉取远端更新，每个仓库有同步状态指示（本地路径跳过克隆）
-
 ## 功能
 
 - 技能按仓库分组展示（远程和本地）
@@ -127,19 +133,23 @@ metadata:
 你的技能说明在这里...
 ```
 
-## 目录结构
+## 架构
 
 ```
-~/.skills_repo/
-├── repos.yaml             # 仓库列表配置
-├── repos/                 # 克隆的 git 仓库
-│   └── owner__repo/
-│       └── ...
-└── mappings/              # 技能位置映射（YAML）
-    └── owner__repo.yaml
-
-~/.claude/skills/          # 已安装技能（目标 A）
-~/.agents/skills/          # 已安装技能（目标 B）
+src/skill_hub/
+├── cli.py              # Click CLI 入口（web、version、self-update）
+├── models.py           # SkillMetadata 数据类
+├── version.py          # 版本解析与 GitHub 发行版检查
+├── utils/
+│   ├── __init__.py     # 路径工具（expand_path, derive_name）
+│   └── yaml_parser.py  # SKILL.md YAML frontmatter 解析器
+└── web/
+    ├── app.py          # Flask 应用工厂
+    ├── api.py          # REST API 路由
+    ├── repos.py        # 仓库管理（克隆、扫描、安装）
+    ├── state.py        # 已安装技能状态跟踪
+    └── templates/
+        └── index.html  # 单页 Web UI
 ```
 
 ## 许可证

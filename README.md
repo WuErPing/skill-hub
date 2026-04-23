@@ -16,30 +16,44 @@ Managing agent skills shouldn't waste tokens. skill-hub centralizes skill discov
 - **Version awareness** — yellow dots tell you when a skill is outdated, preventing stale instructions from silently consuming tokens
 - **Install only what you need** — keep your global skill space lean. Install project-specific skills to `.agents/skills/` (private) and only widely-used skills to `~/.agents/skills/` (global). The fewer irrelevant skills in scope, the less token waste on false-positive matches
 
-## Architecture
+![](imgs/2026-04-24-00-54-50.png)
+
+## How It Works
 
 ### Data Flow
 
 <p align="center"><img src="docs/assets/data-flow.svg" width="720" alt="skill-hub data flow"></p>
 
-### Module Structure
+### Directory Structure
+
+Take [anthropics/skills](https://github.com/anthropics/skills) as an example — a well-known community skill repository. After adding it via the UI, the local layout looks like:
 
 ```
-src/skill_hub/
-├── cli.py              # Click CLI entrypoint (web, version, self-update)
-├── models.py           # SkillMetadata dataclass
-├── version.py          # Version parsing and GitHub release checking
-├── utils/
-│   ├── __init__.py     # Path helpers (expand_path, derive_name)
-│   └── yaml_parser.py  # SKILL.md YAML frontmatter parser
-└── web/
-    ├── app.py          # Flask app factory
-    ├── api.py          # REST API routes
-    ├── repos.py        # Repo management (clone, scan, install)
-    ├── state.py        # Installed skills state tracking
-    └── templates/
-        └── index.html  # Single-page web UI
+~/.skills_repo/
+├── repos.yaml                  # repo list config
+├── repos/
+│   └── anthropics__skills/     # cloned from github.com/anthropics/skills
+│       ├── web-design/
+│       │   └── SKILL.md        # discovered as a skill
+│       ├── excel-sheets/
+│       │   └── SKILL.md
+│       └── ...
+└── mappings/
+    └── anthropics__skills.yaml # skill → installed path mapping
+
+~/.claude/skills/               # installed skills (target A)
+~/.agents/skills/               # installed skills (target B)
 ```
+
+skill-hub scans `SKILL.md` files in each repo, builds a mapping, and installs (symlink or copy) to both target directories.
+
+### Steps
+
+1. **Add a GitHub repo or local directory** via the UI — remote repos get cloned into `~/.skills_repo/repos/`, local paths are scanned in place
+2. **Skills are discovered** automatically via `SKILL.md` files in the repo
+3. **Install skills** to `~/.claude/skills/` and `~/.agents/skills/` with one click
+4. **Sync status** — green dots mean installed version matches source, yellow means outdated
+5. **Repo sync** — detect and pull remote updates, with a sync status indicator per repo (local paths skip cloning)
 
 ## Installation
 
@@ -88,14 +102,6 @@ skill-hub version --check
 | `skill-hub version --check` | Check if a newer version is available |
 | `skill-hub self-update` | Upgrade skill-hub via pip |
 
-## How It Works
-
-1. **Add a GitHub repo or local directory** via the UI — remote repos get cloned into `~/.skills_repo/repos/`, local paths are scanned in place
-2. **Skills are discovered** automatically via `SKILL.md` files in the repo
-3. **Install skills** to `~/.claude/skills/` and `~/.agents/skills/` with one click
-4. **Sync status** — green dots mean installed version matches source, yellow means outdated
-5. **Repo sync** — detect and pull remote updates, with a sync status indicator per repo (local paths skip cloning)
-
 ## Features
 
 - Skills grouped by repository (remote and local)
@@ -127,19 +133,23 @@ metadata:
 Your skill instructions here...
 ```
 
-## Directory Structure
+## Architecture
 
 ```
-~/.skills_repo/
-├── repos.yaml             # repo list config
-├── repos/                 # cloned git repos
-│   └── owner__repo/
-│       └── ...
-└── mappings/              # skill location mappings (YAML)
-    └── owner__repo.yaml
-
-~/.claude/skills/          # installed skills (target A)
-~/.agents/skills/          # installed skills (target B)
+src/skill_hub/
+├── cli.py              # Click CLI entrypoint (web, version, self-update)
+├── models.py           # SkillMetadata dataclass
+├── version.py          # Version parsing and GitHub release checking
+├── utils/
+│   ├── __init__.py     # Path helpers (expand_path, derive_name)
+│   └── yaml_parser.py  # SKILL.md YAML frontmatter parser
+└── web/
+    ├── app.py          # Flask app factory
+    ├── api.py          # REST API routes
+    ├── repos.py        # Repo management (clone, scan, install)
+    ├── state.py        # Installed skills state tracking
+    └── templates/
+        └── index.html  # Single-page web UI
 ```
 
 ## License
