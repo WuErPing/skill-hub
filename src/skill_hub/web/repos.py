@@ -145,6 +145,16 @@ def sync_mapping(repo: Repo) -> tuple[bool, str]:
         action = "Scanned"
     else:
         if not target.exists():
+            # Check git first
+            git_ok, git_msg = check_git_installed()
+            if not git_ok:
+                return False, f"Git not installed: {git_msg}"
+
+            # Check network for remote repos
+            net_ok, net_msg = check_network_connectivity()
+            if not net_ok:
+                return False, f"Network error: {net_msg}"
+
             try:
                 subprocess.run(
                     ["git", "clone", "--branch", repo.branch, repo.url, str(target)],
@@ -274,3 +284,158 @@ def has_remote_updates(repo: Repo) -> bool:
         return count > 0
     except (subprocess.CalledProcessError, ValueError, subprocess.TimeoutExpired):
         return False
+
+
+def check_git_installed() -> tuple[bool, str]:
+    """Check if git is installed and accessible."""
+    try:
+        result = subprocess.run(
+            ["git", "--version"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            return True, result.stdout.strip()
+        return False, "git command returned non-zero exit code"
+    except FileNotFoundError:
+        return False, "git not found in PATH"
+    except subprocess.TimeoutExpired:
+        return False, "git --version timed out"
+    except Exception as e:
+        return False, str(e)
+
+
+def check_network_connectivity() -> tuple[bool, str]:
+    """Check if we can reach GitHub."""
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", "--heads", "https://github.com/anthropics/skills.git"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode == 0:
+            return True, "Connected to GitHub"
+        return False, f"git ls-remote failed: {result.stderr}"
+    except subprocess.TimeoutExpired:
+        return False, "Network connection timed out"
+    except Exception as e:
+        return False, str(e)
+
+
+def diagnose_repo(repo: Repo) -> dict:
+    """Run diagnostics on a repo and return a detailed report."""
+    report = {
+        "repo_url": repo.url,
+        "repo_name": repo.name,
+        "is_local": repo.is_local,
+        "checks": [],
+    }
+
+    # Check 1: Git installed
+    git_ok, git_msg = check_git_installed()
+    report["checks"].append({
+        "name": "git_installed",
+        "ok": git_ok,
+        "message": git_msg,
+    })
+
+    if not git_ok:
+        report["overall_ok"] = False
+        report["summary"] = "Git is not installed"
+        return report
+
+    # Check 2: Network connectivity (for remote repos)
+    if not repo.is_local:
+        net_ok, net_msg = check_network_connectivity()
+        report["checks"].append({
+            "name": "network_connectivity",
+            "ok": net_ok,
+            "message": net_msg,
+        })
+        if not net_ok:
+            report["overall_ok"] = False
+            report["summary"] = f"Cannot reach GitHub: {net_msg}"
+            return report
+
+    # Check 3: Repo directory exists
+    target = repo_dir(repo)
+    dir_exists = target.exists()
+    report["checks"].append({
+        "name": "repo_dir_exists",
+        "ok": dir_exists,
+        "message": f"Directory exists: {target}" if dir_exists else f"Directory not found: {target}",
+    })
+
+    if not dir_exists:
+        report["overall_ok"] = False
+        report["summary"] = "Repo not cloned"
+        return report
+
+    # Check 4: Is it a git repo?
+    is_git = (target / ".git").exists()
+    report["checks"].append({
+        "name": "is_git_repo",
+        "ok": is_git,
+        "message": "Valid git repository" if is_git else "Not a git repository",
+    })
+
+    # Check 5: SKILL.md files exist
+    skill_mds = list(target.rglob("SKILL.md"))
+    skill_count = len(skill_mds)
+    report["checks"].append({
+        "name": "skill_md_files",
+        "ok": skill_count > 0,
+        "message": f"Found {skill_count} SKILL.md file(s)",
+    })
+
+    if skill_count > 0:
+        # Show first few SKILL.md paths
+        sample_paths = [str(p.relative_to(target)) for p in skill_mds[:5]]
+        report["checks"][-1]["sample_paths"] = sample_paths
+
+    # Check 6: Mapping file exists
+    mp = mapping_path(repo)
+    mapping_exists = mp.exists()
+    report["checks"].append({
+        "name": "mapping_file",
+        "ok": mapping_exists,
+        "message": f"Mapping file exists: {mp}" if mapping_exists else f"Mapping file not found: {mp}",
+    })
+
+    # Check 7: Mapping is not empty
+    if mapping_exists:
+        mapping = load_skill_mapping(repo)
+        skill_count_in_mapping = len(mapping)
+        report["checks"].append({
+            "name": "mapping_content",
+            "ok": skill_count_in_mapping > 0,
+            "message": f"Mapping contains {skill_count_in_mapping} skill(s)",
+        })
+        if skill_count_in_mapping > 0:
+            report["checks"][-1]["skills"] = list(mapping.keys())[:10]
+
+    # Check 8: Scan for skills
+    mapping_scanned, conflicts = _find_skills_in_repo(target)
+    report["checks"].append({
+        "name": "skill_scan",
+        "ok": len(mapping_scanned) > 0,
+        "message": f"Scan found {len(mapping_scanned)} skill(s)",
+    })
+    if conflicts:
+        report["checks"][-1]["conflicts"] = conflicts
+
+    # Overall status
+    all_ok = all(c["ok"] for c in report["checks"])
+    report["overall_ok"] = all_ok
+
+    if all_ok:
+        report["summary"] = f"All checks passed. Found {len(mapping_scanned)} skill(s)."
+    else:
+        failed_checks = [c["name"] for c in report["checks"] if not c["ok"]]
+        report["summary"] = f"Failed checks: {', '.join(failed_checks)}"
+
+    return report
+
+
+def diagnose_all_repos() -> list[dict]:
+    """Run diagnostics on all configured repos."""
+    repos = load_repos_config()
+    return [diagnose_repo(repo) for repo in repos]

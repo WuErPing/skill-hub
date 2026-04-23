@@ -106,6 +106,7 @@ skill-hub version --check
 - Add/remove repos, with remote update detection
 - **Local directory support** — add any local path (e.g. `~/code/my-skills`) as a skill source
 - **Default repository** — `anthropics/skills` is automatically added on first run
+- **Repository diagnostics** — 🔍 button runs comprehensive health checks (git, network, SKILL.md files, mappings)
 
 ## SKILL.md Format
 

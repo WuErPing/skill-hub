@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-04-23
+
+### Added
+
+- **Repo diagnostics API**: `GET /api/diagnose` and `GET /api/diagnose/<name>` endpoints provide detailed health checks for all configured repositories
+- **Git installation check**: `check_git_installed()` verifies git is available before attempting clone operations
+- **Network connectivity check**: `check_network_connectivity()` tests GitHub reachability before remote operations
+- **Comprehensive repo diagnostics**: `diagnose_repo()` runs 8 checks including git, network, directory existence, SKILL.md files, mapping files, and skill scanning
+- **Diagnosis button in Web UI**: 🔍 button in header triggers full diagnostics with detailed results panel
+- **i18n support for diagnostics**: Chinese and English labels for all diagnostic messages
+
+### Changed
+
+- **Improved error handling in `sync_mapping()`**: Now checks git installation and network connectivity before attempting clone, providing clearer error messages
+
 ## [0.10.3] - 2026-04-23
 
 ### Fixed
@@ -210,7 +225,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.11.0
 [0.10.3]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.3
 [0.10.2]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.2
 [0.10.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.10.1

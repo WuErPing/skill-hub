@@ -10,6 +10,8 @@ from skill_hub.web.repos import (
     Repo,
     clone_or_pull,
     delete_repo,
+    diagnose_all_repos,
+    diagnose_repo,
     has_remote_updates,
     load_repos_config,
     pull_latest,
@@ -311,3 +313,28 @@ def skip_version():
     skip_file.parent.mkdir(parents=True, exist_ok=True)
     skip_file.write_text(version)
     return jsonify({"ok": True, "skipped": version})
+
+
+@api_bp.route("/diagnose", methods=["GET"])
+def diagnose():
+    """Run diagnostics on all repos and return a detailed report."""
+    try:
+        reports = diagnose_all_repos()
+        return jsonify({"ok": True, "reports": reports})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@api_bp.route("/diagnose/<path:name>", methods=["GET"])
+def diagnose_one(name: str):
+    """Run diagnostics on a specific repo."""
+    repos = load_repos_config()
+    repo = next((r for r in repos if r.name == name), None)
+    if not repo:
+        return jsonify({"error": f"Repo '{name}' not found"}), 404
+
+    try:
+        report = diagnose_repo(repo)
+        return jsonify({"ok": True, "report": report})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500

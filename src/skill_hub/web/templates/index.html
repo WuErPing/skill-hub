@@ -45,6 +45,7 @@
       </label>
       <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-refresh"></button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-add-repo"></button>
+      <button onclick="runDiagnosis()" class="px-3 py-1.5 rounded border border-purple-300 bg-purple-50 text-sm hover:bg-purple-100 cursor-pointer text-purple-700" id="btn-diagnose">🔍</button>
       <div class="relative" id="settings-wrap">
         <button onclick="toggleSettingsMenu()" class="flex items-center gap-1 px-2 py-1.5 rounded border border-gray-300 bg-white text-xs hover:bg-gray-50 cursor-pointer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -96,6 +97,15 @@
       <button onclick="addRepo()" class="px-3 py-1.5 rounded border border-green-600 text-green-700 text-sm hover:bg-green-50 cursor-pointer" id="btn-add"></button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-cancel"></button>
     </div>
+  </div>
+
+  <!-- Diagnosis panel -->
+  <div id="diagnosis-panel" class="hidden bg-white rounded-lg p-4 mb-4 border border-purple-300">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold text-purple-800" id="diagnosis-title"></h3>
+      <button onclick="toggleDiagnosis()" class="text-gray-500 hover:text-gray-700 cursor-pointer bg-transparent border-0 p-1">✕</button>
+    </div>
+    <div id="diagnosis-content"></div>
   </div>
 
   <!-- Main layout: sidebar + content -->
@@ -172,6 +182,12 @@
       invalidInterval: '请输入有效的分钟数（至少 1 分钟）',
       saveFailed: '保存失败',
       notCloned: '尚未克隆，点击下载',
+      diagnose: '诊断',
+      diagnosisTitle: '诊断结果',
+      runningDiagnosis: '正在运行诊断...',
+      checkingRepoStatus: '正在检查仓库状态...',
+      diagnosisFailed: '诊断失败',
+      skills: '技能:',
     },
     en: {
       refresh: 'Refresh',
@@ -230,6 +246,12 @@
       invalidInterval: 'Please enter a valid number (at least 1 minute)',
       saveFailed: 'Save failed',
       notCloned: 'Not cloned, click to download',
+      diagnose: 'Diagnose',
+      diagnosisTitle: 'Diagnosis Results',
+      runningDiagnosis: 'Running diagnostics...',
+      checkingRepoStatus: 'Checking repo status...',
+      diagnosisFailed: 'Diagnosis Failed',
+      skills: 'Skills:',
     }
   };
 
@@ -245,6 +267,7 @@
   // Bind static button labels
   document.getElementById('btn-refresh').textContent = t('refresh');
   document.getElementById('btn-add-repo').textContent = t('addRepo');
+  document.getElementById('btn-diagnose').textContent = '🔍 ' + t('diagnose');
   document.getElementById('update-banner-text').textContent = t('updatesAvailable');
   document.getElementById('btn-sync').textContent = t('sync');
   document.getElementById('repo-url').placeholder = t('repoUrlPlaceholder');
@@ -695,6 +718,86 @@
       await loadSkills();
     } else {
       showToast(data.error || t('deleteFailed'), 'error');
+    }
+  }
+
+  function toggleDiagnosis() {
+    document.getElementById('diagnosis-panel').classList.toggle('hidden');
+  }
+
+  async function runDiagnosis() {
+    const panel = document.getElementById('diagnosis-panel');
+    const content = document.getElementById('diagnosis-content');
+    const title = document.getElementById('diagnosis-title');
+
+    panel.classList.remove('hidden');
+    title.textContent = lang === 'zh' ? '正在运行诊断...' : 'Running diagnostics...';
+    content.innerHTML = '<div class="text-gray-500">' + (lang === 'zh' ? '正在检查仓库状态...' : 'Checking repo status...') + '</div>';
+
+    try {
+      const resp = await fetch('/api/diagnose');
+      const data = await resp.json();
+
+      if (!data.ok) {
+        title.textContent = lang === 'zh' ? '诊断失败' : 'Diagnosis Failed';
+        content.innerHTML = `<div class="text-red-600">${data.error}</div>`;
+        return;
+      }
+
+      title.textContent = lang === 'zh' ? '诊断结果' : 'Diagnosis Results';
+      let html = '';
+
+      for (const report of data.reports) {
+        const statusIcon = report.overall_ok ? '✅' : '❌';
+        const statusClass = report.overall_ok ? 'text-green-700' : 'text-red-700';
+
+        html += `<div class="mb-4 p-3 rounded-lg border ${report.overall_ok ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-lg">${statusIcon}</span>
+            <span class="font-semibold ${statusClass}">${escHtml(report.repo_name || report.repo_url)}</span>
+          </div>
+          <div class="text-sm ${statusClass} mb-2">${escHtml(report.summary)}</div>
+          <div class="space-y-1">`;
+
+        for (const check of report.checks) {
+          const checkIcon = check.ok ? '✓' : '✗';
+          const checkClass = check.ok ? 'text-green-600' : 'text-red-600';
+          html += `<div class="flex items-start gap-2 text-xs">
+            <span class="${checkClass} font-bold">${checkIcon}</span>
+            <span class="font-medium text-gray-700">${escHtml(check.name)}:</span>
+            <span class="${checkClass}">${escHtml(check.message)}</span>
+          </div>`;
+
+          if (check.sample_paths && check.sample_paths.length > 0) {
+            html += `<div class="ml-5 text-xs text-gray-500">`;
+            for (const p of check.sample_paths) {
+              html += `<div>• ${escHtml(p)}</div>`;
+            }
+            html += `</div>`;
+          }
+
+          if (check.skills && check.skills.length > 0) {
+            html += `<div class="ml-5 text-xs text-gray-500">`;
+            html += `<div>${lang === 'zh' ? '技能:' : 'Skills:'} ${escHtml(check.skills.join(', '))}</div>`;
+            html += `</div>`;
+          }
+
+          if (check.conflicts && check.conflicts.length > 0) {
+            html += `<div class="ml-5 text-xs text-orange-600">`;
+            for (const c of check.conflicts) {
+              html += `<div>⚠ ${escHtml(c)}</div>`;
+            }
+            html += `</div>`;
+          }
+        }
+
+        html += `</div></div>`;
+      }
+
+      content.innerHTML = html;
+    } catch (e) {
+      title.textContent = lang === 'zh' ? '诊断失败' : 'Diagnosis Failed';
+      content.innerHTML = `<div class="text-red-600">${e.message}</div>`;
     }
   }
 
