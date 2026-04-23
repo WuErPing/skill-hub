@@ -373,7 +373,7 @@
 
   async function syncOneRepo(repoName) {
     const info = repoMeta[repoName] || {};
-    if (!info.hasRemoteUpdates) return;
+    if (info.isCloned && !info.hasRemoteUpdates) return;
     if (!confirm(t('confirmSyncRepo', repoName))) return;
     await fetch('/api/repos/sync', { method: 'POST' });
     document.getElementById('update-banner').classList.add('hidden');
@@ -430,11 +430,12 @@
     }
 
     const repoNames = [...new Set(allSkills.map(s => s.repoName))];
-    if (selectedRepo && !repoNames.includes(selectedRepo)) {
+    const allRepoNames = [...new Set([...repoNames, ...Object.keys(repoMeta)])];
+    if (selectedRepo && !allRepoNames.includes(selectedRepo)) {
       selectedRepo = null;
     }
-    if (!selectedRepo && repoNames.length > 0) {
-      selectedRepo = repoNames[0];
+    if (!selectedRepo && allRepoNames.length > 0) {
+      selectedRepo = allRepoNames[0];
     }
 
     renderSidebar();
@@ -704,8 +705,9 @@
       repoMeta[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates, isLocal: r.isLocal, isCloned: r.isCloned };
     }
     const repoNames = [...new Set(allSkills.map(s => s.repoName))];
-    if (selectedRepo && !repoNames.includes(selectedRepo)) selectedRepo = null;
-    if (!selectedRepo && repoNames.length > 0) selectedRepo = repoNames[0];
+    const allRepoNames = [...new Set([...repoNames, ...Object.keys(repoMeta)])];
+    if (selectedRepo && !allRepoNames.includes(selectedRepo)) selectedRepo = null;
+    if (!selectedRepo && allRepoNames.length > 0) selectedRepo = allRepoNames[0];
     renderSidebar();
     renderSkills();
   }

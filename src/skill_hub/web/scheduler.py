@@ -7,7 +7,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
 
-from skill_hub.web.repos import load_repos_config, has_remote_updates, Repo
+from skill_hub.web.repos import load_repos_config, has_remote_updates, sync_mapping, repo_dir, Repo
 
 SETTINGS_FILE = Path.home() / ".skills_repo" / "settings.json"
 DEFAULT_SCAN_INTERVAL_MINUTES = 30
@@ -84,7 +84,7 @@ class RepoScheduler:
             return dict(self._status_cache)
 
     def check_now(self) -> None:
-        """Run a single check cycle immediately."""
+        """Run a single check cycle immediately. Clone uncloned repos first."""
         repos = load_repos_config()
         new_status: dict[str, RepoStatus] = {}
         for repo in repos:
@@ -94,6 +94,30 @@ class RepoScheduler:
                     last_checked=time.time(),
                 )
                 continue
+            target = repo_dir(repo)
+            if not target.exists():
+                # Repo not cloned yet — clone it now
+                try:
+                    ok, msg = sync_mapping(repo)
+                    if ok:
+                        new_status[repo.name] = RepoStatus(
+                            has_updates=False,
+                            last_checked=time.time(),
+                        )
+                    else:
+                        new_status[repo.name] = RepoStatus(
+                            has_updates=False,
+                            last_checked=time.time(),
+                            error=msg,
+                        )
+                except Exception as e:
+                    new_status[repo.name] = RepoStatus(
+                        has_updates=False,
+                        last_checked=time.time(),
+                        error=str(e),
+                    )
+                continue
+            # Repo exists — check for remote updates
             try:
                 has_updates = has_remote_updates(repo)
                 new_status[repo.name] = RepoStatus(

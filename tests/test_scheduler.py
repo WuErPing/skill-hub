@@ -48,6 +48,13 @@ class TestRepoScheduler:
             'skill_hub.web.scheduler.load_repos_config',
             lambda: [test_repo]
         )
+        # Mock repo_dir to return an existing path (simulating cloned repo)
+        fake_repo_dir = tmp_path / "repos" / "test__repo"
+        fake_repo_dir.mkdir(parents=True)
+        monkeypatch.setattr(
+            'skill_hub.web.scheduler.repo_dir',
+            lambda repo: fake_repo_dir
+        )
         # Mock has_remote_updates to return True
         monkeypatch.setattr(
             'skill_hub.web.scheduler.has_remote_updates',
@@ -61,12 +68,19 @@ class TestRepoScheduler:
         assert status.has_updates is True
         assert status.error is None
 
-    def test_get_all_statuses(self, fresh_scheduler, monkeypatch):
+    def test_get_all_statuses(self, fresh_scheduler, tmp_path, monkeypatch):
         from skill_hub.web.repos import Repo
         test_repo = Repo(url="https://github.com/test/repo", branch="main")
         monkeypatch.setattr(
             'skill_hub.web.scheduler.load_repos_config',
             lambda: [test_repo]
+        )
+        # Mock repo_dir to return an existing path (simulating cloned repo)
+        fake_repo_dir = tmp_path / "repos" / "test__repo"
+        fake_repo_dir.mkdir(parents=True)
+        monkeypatch.setattr(
+            'skill_hub.web.scheduler.repo_dir',
+            lambda repo: fake_repo_dir
         )
         monkeypatch.setattr(
             'skill_hub.web.scheduler.has_remote_updates',
