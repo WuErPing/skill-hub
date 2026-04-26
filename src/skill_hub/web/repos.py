@@ -226,8 +226,11 @@ def pull_latest(repo: Repo) -> tuple[bool, str]:
                     ["git", "pull"],
                     cwd=target, check=True, capture_output=True, text=True, timeout=30,
                 )
-            except subprocess.CalledProcessError as e:
-                return False, f"Pull failed: {e.stderr}"
+            except subprocess.CalledProcessError:
+                # For local repos, a git pull failure should not block mapping
+                # rebuild — filesystem changes (new skills) should still be
+                # discovered.
+                pass
     else:
         try:
             subprocess.run(

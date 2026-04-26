@@ -8,7 +8,16 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-from skill_hub.web.repos import REPOS_DIR, load_repos_config, load_skill_mapping, repo_dir, sync_mapping
+from skill_hub.web.repos import (
+    REPOS_DIR,
+    _find_skills_in_repo,
+    load_repos_config,
+    load_skill_mapping,
+    mapping_path,
+    repo_dir,
+    save_skill_mapping,
+    sync_mapping,
+)
 
 MD5_CACHE_FILE = Path.home() / ".skills_repo" / "md5_cache.json"
 _md5_cache: dict[str, tuple[float, str]] = {}
@@ -140,6 +149,19 @@ def list_skills() -> list[SkillEntry]:
     entries: list[tuple[Repo, str, Path]] = []
     for repo in repos:
         mapping = load_skill_mapping(repo)
+        target = repo_dir(repo)
+
+        if repo.is_local and target.exists():
+            # Local repo: rebuild mapping if the directory has changed since the
+            # mapping file was last written so that newly-added skills show up
+            # immediately without requiring a manual sync.
+            mp = mapping_path(repo)
+            repo_mtime = _dir_mtime(target)
+            if not mapping or not mp.exists() or repo_mtime > mp.stat().st_mtime:
+                mapping, _conflicts = _find_skills_in_repo(target)
+                if mapping:
+                    save_skill_mapping(repo, mapping)
+
         if not mapping:
             # Mapping empty — try to sync (clone + scan) for non-local repos
             if not repo.is_local:
