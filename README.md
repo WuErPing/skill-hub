@@ -114,6 +114,7 @@ skill-hub version --check
 - **Local directory support** — add any local path (e.g. `~/code/my-skills`) as a skill source
 - **Suggested default repo** — `anthropics/skills` is pre-filled in the Add Repo form as a quick-start suggestion
 - **Repository diagnostics** — 🔍 button runs comprehensive health checks (git, network, SKILL.md files, mappings)
+- **Bulk install/uninstall** — "Install All" / "Uninstall All" buttons per repo to manage all skills at once
 
 ## SKILL.md Format
 

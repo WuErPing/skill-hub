@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-04-27
+
+### Added
+
+- **Bulk install/uninstall per repo**: "Install All" and "Uninstall All" buttons in the repo header allow installing or removing all skills from a single repository in one click
+- **Bulk install API**: `POST /api/repos/<name>/install-all` installs all skills from a repo to both `~/.claude/skills/` and `~/.agents/skills/`, supports `method: "copy" | "symlink"`
+- **Bulk uninstall API**: `POST /api/repos/<name>/uninstall-all` removes all skills from a repo from both target directories
+- **i18n support for bulk operations**: Chinese and English labels for install all, uninstall all, and confirmation dialogs
+
 ## [0.14.1] - 2026-04-26
 
 ### Fixed
@@ -265,7 +274,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.15.0
 [0.14.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.14.0
 [0.13.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.13.1
 [0.13.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.13.0
