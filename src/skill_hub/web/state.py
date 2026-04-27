@@ -318,3 +318,50 @@ def uninstall_skill(name: str) -> tuple[bool, str]:
         return True, f"Uninstalled {name} from {', '.join(removed)}"
     except Exception as e:
         return False, str(e)
+
+
+def install_repo_skills(repo_name: str, method: str = "copy") -> tuple[bool, str]:
+    """Install all skills from a repo to both ~/.claude/skills/ and ~/.agents/skills/."""
+    skills = list_skills()
+    repo_skills = [s for s in skills if s.repo_name == repo_name]
+    if not repo_skills:
+        return False, f"No skills found in repo '{repo_name}'"
+
+    installed = 0
+    errors: list[str] = []
+    for s in repo_skills:
+        if not s.path.exists():
+            errors.append(f"{s.name}: source not found")
+            continue
+        ok, msg = install_skill(s.name, s.path, method=method)
+        if ok:
+            installed += 1
+        else:
+            errors.append(f"{s.name}: {msg}")
+
+    total = len(repo_skills)
+    if errors:
+        return installed > 0, f"Installed {installed}/{total} skill(s); errors: {'; '.join(errors)}"
+    return True, f"Installed {installed}/{total} skill(s) from {repo_name}"
+
+
+def uninstall_repo_skills(repo_name: str) -> tuple[bool, str]:
+    """Uninstall all skills from a repo from both ~/.claude/skills/ and ~/.agents/skills/."""
+    skills = list_skills()
+    repo_skills = [s for s in skills if s.repo_name == repo_name]
+    if not repo_skills:
+        return False, f"No skills found in repo '{repo_name}'"
+
+    uninstalled = 0
+    errors: list[str] = []
+    for s in repo_skills:
+        ok, msg = uninstall_skill(s.name)
+        if ok:
+            uninstalled += 1
+        else:
+            errors.append(f"{s.name}: {msg}")
+
+    total = len(repo_skills)
+    if errors:
+        return uninstalled > 0, f"Uninstalled {uninstalled}/{total} skill(s); errors: {'; '.join(errors)}"
+    return True, f"Uninstalled {uninstalled}/{total} skill(s) from {repo_name}"

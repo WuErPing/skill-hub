@@ -467,3 +467,71 @@ class TestSettingsAPI:
         assert resp.status_code == 400
         data = resp.get_json()
         assert 'error' in data
+
+
+class TestRepoInstallAll:
+    """Tests for bulk install/uninstall of all skills from a repo."""
+
+    def test_install_all_skills_from_repo(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        # Add a second skill to the repo
+        repo_clone = tmp_path / "skills_repo" / "repos" / "example__repo"
+        (repo_clone / "another-skill").mkdir()
+        (repo_clone / "another-skill" / "SKILL.md").write_text("---\nname: another-skill\ndescription: Another\n---\n")
+        mapping_file = tmp_path / "skills_repo" / "mappings" / "example__repo.yaml"
+        mapping_file.write_text("test-skill: test-skill\nanother-skill: another-skill\n")
+
+        resp = client.post("/api/repos/example%2Frepo/install-all", content_type="application/json")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["ok"] is True
+        assert "2/2" in data["message"]
+        assert (claude / "test-skill").exists()
+        assert (agents / "test-skill").exists()
+        assert (claude / "another-skill").exists()
+        assert (agents / "another-skill").exists()
+
+    def test_uninstall_all_skills_from_repo(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        # Install first
+        client.post("/api/skills/test-skill/install", content_type="application/json")
+        assert (claude / "test-skill").exists()
+
+        resp = client.post("/api/repos/example%2Frepo/uninstall-all")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["ok"] is True
+        assert not (claude / "test-skill").exists()
+        assert not (agents / "test-skill").exists()
+
+    def test_install_all_nonexistent_repo_returns_404(self, client, temp_home):
+        resp = client.post("/api/repos/nonexistent%2Frepo/install-all", content_type="application/json")
+        assert resp.status_code == 404
+
+    def test_uninstall_all_nonexistent_repo_returns_404(self, client, temp_home):
+        resp = client.post("/api/repos/nonexistent%2Frepo/uninstall-all")
+        assert resp.status_code == 404
+
+    def test_install_all_with_symlink(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        resp = client.post(
+            "/api/repos/example%2Frepo/install-all",
+            json={"method": "symlink"},
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["ok"] is True
+        assert (claude / "test-skill").is_symlink()
+        assert (agents / "test-skill").is_symlink()
+
+    def test_install_all_then_uninstall_all(self, client, temp_home):
+        tmp_path, claude, agents = temp_home
+        # Install all
+        client.post("/api/repos/example%2Frepo/install-all", content_type="application/json")
+        assert (claude / "test-skill").exists()
+        # Uninstall all
+        resp = client.post("/api/repos/example%2Frepo/uninstall-all")
+        assert resp.status_code == 200
+        assert not (claude / "test-skill").exists()
+        assert not (agents / "test-skill").exists()

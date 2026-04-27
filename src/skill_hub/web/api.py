@@ -22,7 +22,14 @@ from skill_hub.web.repos import (
     sync_mapping,
 )
 from skill_hub.web.scheduler import scheduler
-from skill_hub.web.state import install_skill, install_to_one, list_skills, uninstall_skill
+from skill_hub.web.state import (
+    install_repo_skills,
+    install_skill,
+    install_to_one,
+    list_skills,
+    uninstall_repo_skills,
+    uninstall_skill,
+)
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -154,6 +161,29 @@ def api_uninstall(name: str):
     if success:
         return jsonify({"ok": True, "message": msg})
     return jsonify({"error": msg}), 500
+
+
+@api_bp.route("/repos/<path:name>/install-all", methods=["POST"])
+def api_install_all(name: str):
+    """Install all skills from a repo to both directories."""
+    body = request.get_json(silent=True) or {}
+    method = body.get("method", "copy")
+    if method not in ("copy", "symlink"):
+        return jsonify({"error": "method must be 'copy' or 'symlink'"}), 400
+
+    success, msg = install_repo_skills(name, method=method)
+    if success:
+        return jsonify({"ok": True, "message": msg})
+    return jsonify({"error": msg}), 404
+
+
+@api_bp.route("/repos/<path:name>/uninstall-all", methods=["POST"])
+def api_uninstall_all(name: str):
+    """Uninstall all skills from a repo from both directories."""
+    success, msg = uninstall_repo_skills(name)
+    if success:
+        return jsonify({"ok": True, "message": msg})
+    return jsonify({"error": msg}), 404
 
 
 @api_bp.route("/repos", methods=["GET"])

@@ -211,6 +211,12 @@
       retry: '重试',
       taskSuccess: '加载完成',
       taskFailed: '加载失败',
+      installAll: '全部安装',
+      uninstallAll: '全部卸载',
+      confirmInstallAll: (name) => `安装仓库 ${name} 中的全部 skills？`,
+      confirmUninstallAll: (name) => `卸载仓库 ${name} 中的全部 skills？`,
+      installAllFailed: '全量安装失败',
+      uninstallAllFailed: '全量卸载失败',
     },
     en: {
       refresh: 'Refresh',
@@ -279,6 +285,12 @@
       retry: 'Retry',
       taskSuccess: 'Load complete',
       taskFailed: 'Load failed',
+      installAll: 'Install All',
+      uninstallAll: 'Uninstall All',
+      confirmInstallAll: (name) => `Install all skills from repo ${name}?`,
+      confirmUninstallAll: (name) => `Uninstall all skills from repo ${name}?`,
+      installAllFailed: 'Bulk install failed',
+      uninstallAllFailed: 'Bulk uninstall failed',
     }
   };
 
@@ -729,7 +741,11 @@
       <div class="flex items-center gap-2 px-3 py-2 bg-gray-200 rounded-md text-sm font-semibold mb-2">
         <span class="w-2.5 h-2.5 rounded-full ${dotCls}" title="${dotTitle}" ${dotClick}></span>
         <span class="truncate">${escHtml(selectedRepo)}</span>
-        <button onclick="removeRepo('${escapedRepo}')" class="ml-auto text-xs text-red-600 hover:underline cursor-pointer bg-transparent border-0 p-0.5">${t('deleteRepo')}</button>
+        <span class="ml-auto flex gap-2">
+          <button onclick="installAllSkills('${escapedRepo}')" class="text-xs text-green-700 hover:underline cursor-pointer bg-transparent border border-green-600 rounded px-2 py-0.5">${t('installAll')}</button>
+          <button onclick="uninstallAllSkills('${escapedRepo}')" class="text-xs text-red-600 hover:underline cursor-pointer bg-transparent border border-red-500 rounded px-2 py-0.5">${t('uninstallAll')}</button>
+          <button onclick="removeRepo('${escapedRepo}')" class="text-xs text-red-600 hover:underline cursor-pointer bg-transparent border-0 p-0.5">${t('deleteRepo')}</button>
+        </span>
       </div>`;
 
     if (items.length === 0) {
@@ -814,6 +830,27 @@
     const data = await resp.json();
     if (resp.ok) { showToast(data.message); await loadSkills(); }
     else { showToast(data.error || t('uninstallFailed'), 'error'); }
+  }
+
+  async function installAllSkills(repoName) {
+    if (!confirm(t('confirmInstallAll', repoName))) return;
+    const useSymlink = document.getElementById('use-symlink').checked;
+    const resp = await fetch(`/api/repos/${encodeURIComponent(repoName)}/install-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method: useSymlink ? 'symlink' : 'copy' }),
+    });
+    const data = await resp.json();
+    if (resp.ok) { showToast(data.message); await loadSkills(); }
+    else { showToast(data.error || t('installAllFailed'), 'error'); }
+  }
+
+  async function uninstallAllSkills(repoName) {
+    if (!confirm(t('confirmUninstallAll', repoName))) return;
+    const resp = await fetch(`/api/repos/${encodeURIComponent(repoName)}/uninstall-all`, { method: 'POST' });
+    const data = await resp.json();
+    if (resp.ok) { showToast(data.message); await loadSkills(); }
+    else { showToast(data.error || t('uninstallAllFailed'), 'error'); }
   }
 
   async function toggleMeta(name, el) {
