@@ -894,7 +894,7 @@
 
           const symlinkIcon = ds.isSymlink ? '<span class="absolute -bottom-0.5 -right-0.5 text-[6px] text-blue-500">🔗</span>' : '';
 
-          dirDots += `<span class="relative inline-flex items-center justify-center h-4 px-1 rounded border ${borderColor} bg-white ${textColor} text-[9px] font-bold shrink-0 mr-1" title="${escAttr(dotTitle)}" ${dotAction || ''}>${escHtml(dir.abbreviation)}${symlinkIcon}</span>`;
+          dirDots += `<span class="relative inline-flex items-center justify-center h-4 px-1 rounded border ${borderColor} bg-white ${textColor} text-[9px] shrink-0 mr-1" title="${escAttr(dotTitle)}" ${dotAction || ''}>${escHtml(dir.abbreviation)}${symlinkIcon}</span>`;
         }
 
         const statusLabel = s.status === 'outdated' ? t('partial') : t(s.status);
