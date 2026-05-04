@@ -245,6 +245,9 @@ def get_repos():
         else:
             has_updates = False
         target = repo_dir(r)
+        # For local repos, "isCloned" means the directory exists.
+        # For remote repos, it means the git repo is cloned.
+        is_cloned = target.exists() if r.is_local else (target.exists() and (target / ".git").exists())
         results.append({
             "url": r.url,
             "branch": r.branch,
@@ -252,7 +255,7 @@ def get_repos():
             "localPath": str(target),
             "hasRemoteUpdates": has_updates,
             "isLocal": r.is_local,
-            "isCloned": target.exists() and (target / ".git").exists(),
+            "isCloned": is_cloned,
         })
     return jsonify(results)
 

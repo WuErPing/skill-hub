@@ -248,6 +248,57 @@ def test_delete_local_repo_does_not_remove_source(client, temp_home):
     assert not repos_module.mapping_path(repo).exists()
 
 
+def test_local_repo_not_git_shows_as_available(client, temp_home):
+    """Local repos that are not git repos should still show as available (isCloned=True)."""
+    tmp_path, claude, agents = temp_home
+    local_repo = tmp_path / "local_skills"
+    local_repo.mkdir()
+    (local_repo / "my-skill").mkdir()
+    (local_repo / "my-skill" / "SKILL.md").write_text("---\nname: my-skill\ndescription: Local\n---\n")
+
+    resp = client.post("/api/repos",
+        json={"url": str(local_repo)},
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
+
+    repos_resp = client.get("/api/repos")
+    repos = repos_resp.get_json()
+    local_repo_entry = next(r for r in repos if r.get("isLocal"))
+    assert local_repo_entry["isCloned"] is True
+
+
+def test_local_repo_skill_install_shows_installed_status(client, temp_home):
+    """Installing a skill from a local repo should show 'installed' status, not greyed out."""
+    tmp_path, claude, agents = temp_home
+    local_repo = tmp_path / "local_skills"
+    local_repo.mkdir()
+    (local_repo / "my-skill").mkdir()
+    (local_repo / "my-skill" / "SKILL.md").write_text("---\nname: my-skill\ndescription: Local\n---\n")
+
+    resp = client.post("/api/repos",
+        json={"url": str(local_repo)},
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
+
+    # Install the skill
+    resp = client.post("/api/skills/my-skill/install", content_type="application/json")
+    assert resp.status_code == 200
+
+    # Check status shows as installed
+    skills_resp = client.get("/api/skills")
+    skills = skills_resp.get_json()
+    skill = next(s for s in skills if s["name"] == "my-skill")
+    assert skill["status"] == "installed"
+
+    # Check dirStatus shows installed in all directories
+    assert skill["dirStatus"]["claude"]["installed"] is True
+    assert skill["dirStatus"]["agents"]["installed"] is True
+    assert skill["dirStatus"]["claude"]["matchesSource"] is True
+    assert skill["dirStatus"]["agents"]["matchesSource"] is True
+
+
 class TestSymlinkInstall:
     """Tests for symlink-based skill installation."""
 

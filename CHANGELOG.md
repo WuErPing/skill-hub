@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-05-05
+
+### Added
+- **Standalone Install Directories panel**: New dedicated panel for managing install directories, accessible via header button
+- **Add Repo form redesign**: Added repo list section and header for better organization
+
+### Fixed
+- **Local repo availability**: Local repositories now correctly show as available (`isCloned=true`) even when they are not git repositories
+- **Local repo skill install status**: Skills from local repos now properly display installed status after installation
+
 ## [0.17.0] - 2026-05-05
 
 ### Added
@@ -298,7 +308,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.18.0
 [0.17.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.17.0
 [0.16.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.16.0
 [0.15.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.15.0

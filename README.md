@@ -16,7 +16,7 @@ Managing agent skills shouldn't waste tokens. skill-hub centralizes skill discov
 - **Version awareness** — yellow badges tell you when a skill is outdated, preventing stale instructions from silently consuming tokens
 - **Install only what you need** — keep your global skill space lean. Install project-specific skills to `.agents/skills/` (private) and only widely-used skills to `~/.agents/skills/` (global). The fewer irrelevant skills in scope, the less token waste on false-positive matches
 
-![](imgs/2026-05-05-00-25-57.png)
+![](imgs/2026-05-05-01-18-48.png)
 
 ## How It Works
 
@@ -115,6 +115,7 @@ skill-hub version --check
 - **Suggested default repo** — `anthropics/skills` is pre-filled in the Add Repo form as a quick-start suggestion
 - **Repository diagnostics** — 🔍 button runs comprehensive health checks (git, network, SKILL.md files, mappings)
 - **Bulk install/uninstall** — "Install All" / "Uninstall All" buttons per repo to manage all skills at once
+- **Install Directories panel** — standalone panel for managing target install directories (`~/.claude/skills/`, `~/.agents/skills/`, and custom paths)
 
 ## SKILL.md Format
 

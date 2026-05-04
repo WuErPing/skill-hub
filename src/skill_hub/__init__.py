@@ -1,3 +1,3 @@
 """skill-hub: manage skills from ~/.skills_repo/."""
 
-__version__ = "0.17.0"
+__version__ = "0.18.0"

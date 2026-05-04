@@ -77,6 +77,7 @@
       </label>
       <button onclick="loadSkills()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-refresh"></button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-add-repo"></button>
+      <button onclick="toggleInstallDirsPanel()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-install-dirs"></button>
       <button onclick="runDiagnosis()" class="px-3 py-1.5 rounded border border-purple-300 bg-purple-50 text-sm hover:bg-purple-100 cursor-pointer text-purple-700" id="btn-diagnose">🔍</button>
       <button onclick="toggleSettingsPanel()" class="flex items-center gap-1 px-2 py-1.5 rounded border border-gray-300 bg-white text-xs hover:bg-gray-50 cursor-pointer" id="settings-wrap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -106,6 +107,7 @@
 
   <!-- Add repo form -->
   <div id="add-repo-form" class="hidden bg-white rounded-lg p-4 mb-4 border border-gray-300">
+    <h4 class="text-sm font-semibold text-gray-700 mb-2" id="add-repo-header"></h4>
     <div class="flex gap-2 items-center">
       <input type="text" id="repo-url" value="https://github.com/anthropics/skills"
         oninput="onRepoUrlInput()"
@@ -116,6 +118,28 @@
     <div class="flex gap-2 mt-3">
       <button onclick="addRepo()" class="px-3 py-1.5 rounded border border-green-600 text-green-700 text-sm hover:bg-green-50 cursor-pointer" id="btn-add"></button>
       <button onclick="toggleAddRepo()" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm hover:bg-gray-50 cursor-pointer" id="btn-cancel"></button>
+    </div>
+
+    <hr class="border-gray-200 my-3">
+
+    <h4 class="text-sm font-semibold text-gray-700 mb-2" id="repo-list-header"></h4>
+    <div id="repo-list" class="space-y-1 max-h-40 overflow-y-auto"></div>
+  </div>
+
+  <!-- Install Dirs panel -->
+  <div id="install-dirs-panel" class="hidden bg-white rounded-lg p-4 mb-4 border border-green-300">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold text-green-800" id="install-dirs-title"></h3>
+      <button onclick="toggleInstallDirsPanel()" class="text-gray-500 hover:text-gray-700 cursor-pointer bg-transparent border-0 p-1">✕</button>
+    </div>
+    <div class="text-sm">
+      <div id="install-dirs-list-panel" class="space-y-1 mb-2 max-h-40 overflow-y-auto"></div>
+      <div class="flex gap-2">
+        <input type="text" id="new-install-dir-panel" placeholder="~/.custom/skills"
+          class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
+        <button onclick="addInstallDirFromPanel()" class="px-2 py-1 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer">+</button>
+      </div>
+      <div id="install-dir-error-panel" class="hidden mt-1 text-xs text-red-600"></div>
     </div>
   </div>
 
@@ -154,22 +178,6 @@
       <button onclick="toggleSettingsPanel()" class="text-gray-500 hover:text-gray-700 cursor-pointer bg-transparent border-0 p-1">✕</button>
     </div>
     <div class="text-sm">
-      <!-- Install Directories -->
-      <div class="mb-4">
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-xs font-semibold text-gray-700" id="install-dirs-label"></label>
-        </div>
-        <div id="install-dirs-list" class="space-y-1 mb-2 max-h-40 overflow-y-auto"></div>
-        <div class="flex gap-2">
-          <input type="text" id="new-install-dir" placeholder="~/.custom/skills"
-            class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
-          <button onclick="addInstallDir()" class="px-2 py-1 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer">+</button>
-        </div>
-        <div id="install-dir-error" class="hidden mt-1 text-xs text-red-600"></div>
-      </div>
-
-      <hr class="border-gray-200 my-3">
-
       <!-- Scan Interval -->
       <div class="mb-3">
         <label class="block text-xs text-gray-500 mb-1" id="scan-interval-label"></label>
@@ -256,7 +264,7 @@
   const i18n = {
     zh: {
       refresh: '刷新',
-      addRepo: '添加仓库',
+      addRepo: '仓库管理',
       updatesAvailable: '检测到更新可用',
       sync: '刷新',
       repoUrlPlaceholder: 'https://github.com/owner/repo 或 ~/local/path',
@@ -340,7 +348,7 @@
     },
     en: {
       refresh: 'Refresh',
-      addRepo: 'Add Repo',
+      addRepo: 'Manage Repos',
       updatesAvailable: 'Updates available',
       sync: 'Sync',
       repoUrlPlaceholder: 'https://github.com/owner/repo or ~/local/path',
@@ -526,7 +534,10 @@
   document.getElementById('repo-branch').placeholder = t('branchPlaceholder');
   document.getElementById('btn-add').textContent = t('add');
   document.getElementById('btn-cancel').textContent = t('cancel');
+  document.getElementById('btn-install-dirs').textContent = t('installDirs');
   document.getElementById('symlink-label').textContent = t('useSymlink');
+  document.getElementById('add-repo-header').textContent = t('addRepo');
+  document.getElementById('repo-list-header').textContent = lang === 'zh' ? '已添加仓库' : 'Added Repos';
 
   let selectedRepo = null;
   let allSkills = [];
@@ -594,9 +605,26 @@
     const isHidden = panel.classList.contains('hidden');
     
     if (isHidden) {
-      // Close diagnosis panel if open
+      // Close other panels if open
       document.getElementById('diagnosis-panel').classList.add('hidden');
+      document.getElementById('install-dirs-panel').classList.add('hidden');
       panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+  }
+
+  function toggleInstallDirsPanel() {
+    const panel = document.getElementById('install-dirs-panel');
+    const isHidden = panel.classList.contains('hidden');
+    
+    if (isHidden) {
+      // Close other panels if open
+      document.getElementById('diagnosis-panel').classList.add('hidden');
+      document.getElementById('settings-panel').classList.add('hidden');
+      document.getElementById('add-repo-form').classList.add('hidden');
+      panel.classList.remove('hidden');
+      renderInstallDirsPanel();
     } else {
       panel.classList.add('hidden');
     }
@@ -656,6 +684,58 @@
       </div>`;
     }
     container.innerHTML = html;
+  }
+
+  function renderInstallDirsPanel() {
+    const container = document.getElementById('install-dirs-list-panel');
+    if (!container) return;
+
+    let html = '';
+    for (const dir of installDirs) {
+      const isDefault = dir.isDefault;
+      const deleteBtn = isDefault
+        ? `<span class="text-gray-300 text-xs">${lang === 'zh' ? '默认' : 'default'}</span>`
+        : `<button onclick="removeInstallDir('${escAttr(dir.label)}')" class="text-red-500 hover:text-red-700 text-xs cursor-pointer bg-transparent border-0">✕</button>`;
+
+      html += `<div class="flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded text-xs">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">${escHtml(dir.abbreviation)}</span>
+          <span class="truncate text-gray-700" title="${escAttr(dir.path)}">${escHtml(dir.path)}</span>
+        </div>
+        ${deleteBtn}
+      </div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  async function addInstallDirFromPanel() {
+    const input = document.getElementById('new-install-dir-panel');
+    const path = input.value.trim();
+    const errorEl = document.getElementById('install-dir-error-panel');
+
+    if (!path) return;
+
+    try {
+      const resp = await fetch('/api/install-dirs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        input.value = '';
+        errorEl.classList.add('hidden');
+        showToast(t('dirAdded'));
+        await loadInstallDirs();
+        await loadSkills();
+      } else {
+        errorEl.textContent = data.error || t('addFailed');
+        errorEl.classList.remove('hidden');
+      }
+    } catch (e) {
+      errorEl.textContent = t('addFailed');
+      errorEl.classList.remove('hidden');
+    }
   }
 
   async function addInstallDir() {
@@ -751,7 +831,43 @@
   }
 
   function toggleAddRepo() {
-    document.getElementById('add-repo-form').classList.toggle('hidden');
+    const panel = document.getElementById('add-repo-form');
+    const isHidden = panel.classList.contains('hidden');
+    
+    if (isHidden) {
+      // Close other panels if open
+      document.getElementById('install-dirs-panel').classList.add('hidden');
+      panel.classList.remove('hidden');
+      renderRepoList();
+    } else {
+      panel.classList.add('hidden');
+    }
+  }
+
+  function renderRepoList() {
+    const container = document.getElementById('repo-list');
+    if (!container) return;
+    
+    const repos = Object.values(repoMeta);
+    if (repos.length === 0) {
+      container.innerHTML = `<div class="text-gray-500 text-xs px-2 py-1">${t('noRepos')}</div>`;
+      return;
+    }
+    
+    let html = '';
+    for (const name of Object.keys(repoMeta)) {
+      const meta = repoMeta[name] || {};
+      const typeLabel = meta.isLocal ? t('localPath') : t('remoteRepos');
+      html += `<div class="flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded text-xs">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="w-2 h-2 rounded-full ${meta.isLocal ? 'bg-green-600' : 'bg-blue-600'} shrink-0"></span>
+          <span class="truncate text-gray-700" title="${escAttr(meta.url || '')}">${escHtml(name)}</span>
+          <span class="text-gray-400 text-[10px]">${escHtml(typeLabel)}</span>
+        </div>
+        <button onclick="removeRepo('${escAttr(name)}')" class="text-red-500 hover:text-red-700 text-xs cursor-pointer bg-transparent border-0">${t('deleteRepo')}</button>
+      </div>`;
+    }
+    container.innerHTML = html;
   }
 
   function isLocalPath(url) {
@@ -997,8 +1113,12 @@
         const itemCls = active
           ? 'bg-blue-50 border-l-[3px] border-blue-500 font-semibold'
           : 'border-l-[3px] border-transparent hover:bg-gray-100';
+        const meta = repoMeta[r.name] || {};
+        const isAvailable = meta.isCloned;
+        const dotCls = isAvailable ? 'bg-green-600' : 'bg-red-500';
+        const dotTitle = isAvailable ? t('localPath') : t('notCloned');
         html += `<div class="flex items-center gap-2 px-4 py-[7px] cursor-pointer text-sm ${itemCls}" onclick="selectRepo('${escAttr(r.name)}')">
-          <span class="w-2 h-2 rounded-full bg-gray-400 shrink-0"></span>
+          <span class="w-2 h-2 rounded-full ${dotCls} shrink-0" title="${dotTitle}"></span>
           <span class="truncate">${escHtml(r.name)}</span>
         </div>`;
       }
@@ -1246,8 +1366,9 @@
     const isHidden = panel.classList.contains('hidden');
     
     if (isHidden) {
-      // Close settings panel if open
+      // Close other panels if open
       document.getElementById('settings-panel').classList.add('hidden');
+      document.getElementById('install-dirs-panel').classList.add('hidden');
       panel.classList.remove('hidden');
     } else {
       panel.classList.add('hidden');
@@ -1260,6 +1381,7 @@
     const title = document.getElementById('diagnosis-title');
 
     document.getElementById('settings-panel').classList.add('hidden');
+    document.getElementById('install-dirs-panel').classList.add('hidden');
     panel.classList.remove('hidden');
     title.textContent = lang === 'zh' ? '正在运行诊断...' : 'Running diagnostics...';
     content.innerHTML = '<div class="text-gray-500">' + (lang === 'zh' ? '正在检查仓库状态...' : 'Checking repo status...') + '</div>';
@@ -1347,24 +1469,28 @@
     renderInstallDirs();
   }
 
-  // Set settings labels
+  // Set panel titles
   document.getElementById('settings-title').textContent = t('settings');
-  document.getElementById('install-dirs-label').textContent = t('installDirs');
+  document.getElementById('install-dirs-title').textContent = t('installDirs');
   document.getElementById('scan-interval-label').textContent = t('scanInterval');
   document.getElementById('scan-interval-unit').textContent = t('minutes');
   document.getElementById('btn-save-settings').textContent = t('save');
 
-  // Close settings panel on Escape key
+  // Close panels on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const settingsPanel = document.getElementById('settings-panel');
+      const installDirsPanel = document.getElementById('install-dirs-panel');
       if (!settingsPanel.classList.contains('hidden')) {
         settingsPanel.classList.add('hidden');
+      }
+      if (!installDirsPanel.classList.contains('hidden')) {
+        installDirsPanel.classList.add('hidden');
       }
     }
   });
 
-  // Close settings panel when clicking outside
+  // Close panels when clicking outside
   document.addEventListener('click', (e) => {
     const settingsPanel = document.getElementById('settings-panel');
     const settingsBtn = document.getElementById('settings-wrap');
@@ -1372,6 +1498,14 @@
         !settingsPanel.contains(e.target) &&
         !settingsBtn.contains(e.target)) {
       settingsPanel.classList.add('hidden');
+    }
+
+    const installDirsPanel = document.getElementById('install-dirs-panel');
+    const installDirsBtn = document.getElementById('btn-install-dirs');
+    if (!installDirsPanel.classList.contains('hidden') &&
+        !installDirsPanel.contains(e.target) &&
+        !installDirsBtn.contains(e.target)) {
+      installDirsPanel.classList.add('hidden');
     }
   });
 

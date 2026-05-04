@@ -116,9 +116,96 @@ class TestSettingsPanel:
         settings_btn.click()
         
         panel = browser.locator("#settings-panel")
-        assert panel.locator("#install-dirs-list").count() == 1
         assert panel.locator("#scan-interval").count() == 1
         assert panel.locator("#btn-save-settings").count() == 1
+
+
+class TestInstallDirsPanel:
+    """Tests for the standalone Install Directories panel."""
+
+    def test_install_dirs_button_exists(self, browser):
+        """Install Directories button should exist in header."""
+        btn = browser.locator("#btn-install-dirs")
+        assert btn.count() == 1
+        assert btn.is_visible()
+
+    def test_install_dirs_panel_hidden_by_default(self, browser):
+        """Install Dirs panel should be hidden on initial load."""
+        panel = browser.locator("#install-dirs-panel")
+        assert panel.count() == 1
+        assert "hidden" in panel.get_attribute("class")
+
+    def test_install_dirs_button_toggles_panel(self, browser):
+        """Clicking Install Dirs button should show/hide the panel."""
+        btn = browser.locator("#btn-install-dirs")
+        panel = browser.locator("#install-dirs-panel")
+        
+        btn.click()
+        assert "hidden" not in panel.get_attribute("class")
+        
+        btn.click()
+        assert "hidden" in panel.get_attribute("class")
+
+    def test_install_dirs_panel_has_form_content(self, browser):
+        """Install Dirs panel should contain list and add form."""
+        btn = browser.locator("#btn-install-dirs")
+        btn.click()
+        
+        panel = browser.locator("#install-dirs-panel")
+        assert panel.locator("#install-dirs-list-panel").count() == 1
+        assert panel.locator("#new-install-dir-panel").count() == 1
+        assert panel.locator("#install-dir-error-panel").count() == 1
+
+    def test_settings_panel_no_longer_has_install_dirs(self, browser):
+        """Settings panel should no longer contain install dirs section."""
+        settings_btn = browser.locator("#settings-wrap")
+        settings_btn.click()
+        
+        settings_panel = browser.locator("#settings-panel")
+        assert settings_panel.locator("#install-dirs-list").count() == 0
+        assert settings_panel.locator("#new-install-dir").count() == 0
+
+    def test_only_one_panel_visible_at_a_time(self, browser):
+        """Opening install dirs should close other panels."""
+        install_btn = browser.locator("#btn-install-dirs")
+        settings_btn = browser.locator("#settings-wrap")
+        
+        # Open settings first
+        settings_btn.click()
+        settings_panel = browser.locator("#settings-panel")
+        assert "hidden" not in settings_panel.get_attribute("class")
+        
+        # Open install dirs - should close settings
+        install_btn.click()
+        install_panel = browser.locator("#install-dirs-panel")
+        assert "hidden" not in install_panel.get_attribute("class")
+        assert "hidden" in settings_panel.get_attribute("class")
+        
+        # Open settings - should close install dirs
+        settings_btn.click()
+        assert "hidden" in install_panel.get_attribute("class")
+        assert "hidden" not in settings_panel.get_attribute("class")
+
+
+class TestRepoManagement:
+    """Tests for repo management capabilities in the Add Repo panel."""
+
+    def test_add_repo_panel_has_repo_list(self, browser):
+        """Add Repo panel should contain a list of existing repos."""
+        btn = browser.locator("#btn-add-repo")
+        btn.click()
+        
+        panel = browser.locator("#add-repo-form")
+        assert panel.locator("#repo-list").count() == 1
+
+    def test_repo_list_has_header(self, browser):
+        """Repo list should have a header."""
+        btn = browser.locator("#btn-add-repo")
+        btn.click()
+        
+        panel = browser.locator("#add-repo-form")
+        header = panel.locator("#repo-list-header")
+        assert header.count() == 1
 
 
 class TestShowAlertModal:
