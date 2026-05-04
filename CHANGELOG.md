@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-05-05
+
+### Added
+- **Custom alert modal**: Replaced browser default `alert()` with a beautiful modal matching the existing design system (blue info icon, animations, keyboard support)
+- **Settings panel redesign**: Converted Settings dropdown into an inline panel matching the Diagnosis Results style (title bar, close button, blue accent, mutual exclusivity with Diagnosis panel)
+- **Auto-screenshot in version update skill**: `.agents/skills/project-version-update/scripts/screenshot.py` captures homepage screenshots and updates both READMEs automatically
+
+### Changed
+- **Settings UX**: Settings button now toggles an inline panel instead of a dropdown menu; Escape key and click-outside both close the panel
+
 ## [0.16.0] - 2026-05-04
 
 ### Added

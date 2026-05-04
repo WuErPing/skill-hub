@@ -1,65 +1,38 @@
 # skill-hub — Agent Guide
 
-skill-hub is a CLI tool for viewing, installing, and managing agent skills stored in `~/.agents/skills` (public) and `.agents/skills` (private/project-level).
+skill-hub is a Python CLI + Flask web UI for managing agent skills from GitHub repos and local directories. Skills are installed to `~/.claude/skills/` and `~/.agents/skills/`.
 
-## Key Concepts
+## Development Commands
 
-- **Public skills** — `~/.agents/skills/` — shared globally across all projects
-- **Private skills** — `.agents/skills/` — project-local, takes priority over public when names collide
-- **SKILL.md** — every skill is a directory with a `SKILL.md` file containing YAML frontmatter (`name`, `description`) and markdown instructions
-
-## CLI Commands
-
-| Command | What it does |
-|---------|-------------|
-| `skill-hub list` | List all skills (public + private) |
-| `skill-hub list --public` | Public skills only |
-| `skill-hub list --private` | Private skills only |
-| `skill-hub list --verbose` | Full details (path, version, compatibility) |
-| `skill-hub list --diff` | Side-by-side comparison of private vs public |
-| `skill-hub view <name>` | Print a skill's full SKILL.md content |
-| `skill-hub path` | Show the public skills directory path |
-| `skill-hub install <source>` | Install skill to private (default) |
-| `skill-hub install <source> --to public` | Install to public |
-| `skill-hub install <source> --as <name>` | Install with a custom name |
-| `skill-hub sync <name> private public` | Promote private skill to public |
-| `skill-hub sync <name> public private` | Pull public skill into project |
-| `skill-hub sync ... --dry-run` | Preview without making changes |
-| `skill-hub sync ... --force` | Overwrite without confirmation |
-| `skill-hub update` | Check all public skills for updates |
-| `skill-hub update <name>` | Check a specific skill for updates |
-| `skill-hub version` | Show installed version |
-| `skill-hub version --check` | Check if newer version exists |
-| `skill-hub self-update` | Upgrade skill-hub via pip |
-
-## Install Sources
-
-- **Local path**: `skill-hub install /path/to/my-skill` or `./relative/path`
-- **GitHub**: `skill-hub install user/repo/skill-folder`
-- **URL**: `skill-hub install https://example.com/SKILL.md`
-- **Bare name** (already discovered): `skill-hub install my-skill`
-
-## SKILL.md Format
-
-```markdown
----
-name: skill-name
-description: What the skill does and when to use it
-license: MIT
-compatibility: cursor, claude, opencode
-metadata:
-  version: 1.0.0
-  author: you@example.com
-  updateUrl: https://github.com/user/repo/path/to/skill
----
-
-## Skill instructions here
+```bash
+make install     # pip install -e .
+make test        # pytest tests/ -v --tb=short
+make lint        # ruff check src/ tests/
+make build       # python -m build
 ```
 
-## Skills in This Project
+Run the web UI locally: `skill-hub web` (opens on http://127.0.0.1:7860).
 
-Private skills live in `.agents/skills/`. Use `skill-hub list --private` to see what's available, or `skill-hub view <name>` to read one.
+## Project Structure
 
-## Available Skill: `skill-hub-assistant`
+- `src/skill_hub/cli.py` — Click CLI entrypoint (`web`, `version`, `self-update`)
+- `src/skill_hub/web/` — Flask app (`app.py` factory, `api.py` routes, `repos.py` git ops, `state.py` skill tracking)
+- `src/skill_hub/models.py` — `SkillMetadata` dataclass (YAML frontmatter from `SKILL.md`)
+- `tests/` — pytest suite; `conftest.py` is minimal
 
-Use the `skill-hub-assistant` skill (in `.agents/skills/`) when a user asks to manage skills in natural language — listing, installing, syncing, or viewing skills.
+## Version Bumping
+
+Two files must stay in sync:
+1. `src/skill_hub/__init__.py` — `__version__`
+2. `pyproject.toml` — `project.version`
+
+Use the `.agents/skills/project-version-update/` skill for the full release workflow (update CHANGELOG.md, README.md, README.zh-CN.md, tag, push).
+
+## Key Conventions
+
+- **SKILL.md** format: YAML frontmatter (`name`, `description`, `license`, `compatibility`, `metadata`) + markdown body
+- **Install directories** are configured in `~/.skills_repo/config.json` (managed via web UI). Defaults: `~/.claude/skills/` and `~/.agents/skills/`.
+- **Repo config** lives in `~/.skills_repo/repos.yaml` (managed via web UI). Remote repos clone into `~/.skills_repo/repos/`.
+- **Private skills** for this repo live in `.agents/skills/` (project-level). Only `project-version-update` is currently persisted.
+- **Linting**: ruff only. No type checker (mypy/pytype) is configured.
+- **Testing**: pytest with short traceback. No CI workflows exist in `.github/workflows/`.

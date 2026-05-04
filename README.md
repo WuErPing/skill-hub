@@ -16,7 +16,7 @@ Managing agent skills shouldn't waste tokens. skill-hub centralizes skill discov
 - **Version awareness** — yellow badges tell you when a skill is outdated, preventing stale instructions from silently consuming tokens
 - **Install only what you need** — keep your global skill space lean. Install project-specific skills to `.agents/skills/` (private) and only widely-used skills to `~/.agents/skills/` (global). The fewer irrelevant skills in scope, the less token waste on false-positive matches
 
-![](imgs/2026-04-24-00-54-50.png)
+![](imgs/2026-05-05-00-25-57.png)
 
 ## How It Works
 

@@ -74,6 +74,25 @@ Ensure `README.md` accurately reflects the current feature set:
 - Update architecture diagrams if module structure changed
 - Update feature lists
 
+### 4.5. Update Screenshot
+
+Capture an up-to-date screenshot of the skill-hub homepage and update both README files:
+
+```bash
+python .agents/skills/project-version-update/scripts/screenshot.py
+```
+
+This will:
+1. Start the skill-hub web server (if not already running)
+2. Capture a full-page screenshot of `http://127.0.0.1:7860`
+3. Save it to `imgs/YYYY-MM-DD-HH-MM-SS.png`
+4. Update `README.md` and `README.zh-CN.md` to reference the new screenshot
+5. Remove old screenshot files to avoid clutter
+
+Requirements:
+- Playwright must be installed (`pip install -e ".[dev]"`)
+- The `imgs/` directory must exist in the project root
+
 ### 5. Sync README.zh-CN.md
 
 Translate the updated `README.md` content into Chinese:
@@ -107,7 +126,8 @@ git commit -m "chore(release): bump version to X.Y.Z
 - Update __version__ in src/skill_hub/__init__.py
 - Update version in pyproject.toml
 - Add CHANGELOG entry for X.Y.Z
-- Update README and README.zh-CN.md"
+- Update README and README.zh-CN.md
+- Update homepage screenshot"
 ```
 
 ### 8. Git Push
@@ -154,9 +174,10 @@ Bumping from `0.6.0` to `0.7.0`:
    - `self-update` CLI command
    ```
 4. Update `README.md` command table and feature list
-5. Translate changes to `README.zh-CN.md`
-6. Run tests
-7. Invoke skill `git-commit-helper` to stage and commit changes
-8. `git push`
-9. `git tag v0.7.0 && git push origin v0.7.0`
-10. Update `.agents/skills/project-version-update/SKILL.md` if the workflow evolved
+5. Run `python .agents/skills/project-version-update/scripts/screenshot.py` to capture homepage screenshot
+6. Translate changes to `README.zh-CN.md`
+7. Run tests
+8. Invoke skill `git-commit-helper` to stage and commit changes
+9. `git push`
+10. `git tag v0.7.0 && git push origin v0.7.0`
+11. Update `.agents/skills/project-version-update/SKILL.md` if the workflow evolved
