@@ -53,7 +53,24 @@
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </button>
-        <div id="settings-menu" class="hidden absolute right-0 mt-1 w-64 bg-white border border-gray-300 rounded-lg shadow-lg z-50 text-sm p-3">
+        <div id="settings-menu" class="hidden absolute right-0 mt-1 w-80 bg-white border border-gray-300 rounded-lg shadow-lg z-50 text-sm p-3">
+          <!-- Install Directories -->
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-xs font-semibold text-gray-700" id="install-dirs-label"></label>
+            </div>
+            <div id="install-dirs-list" class="space-y-1 mb-2 max-h-40 overflow-y-auto"></div>
+            <div class="flex gap-2">
+              <input type="text" id="new-install-dir" placeholder="~/.custom/skills" 
+                class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-400">
+              <button onclick="addInstallDir()" class="px-2 py-1 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer">+</button>
+            </div>
+            <div id="install-dir-error" class="hidden mt-1 text-xs text-red-600"></div>
+          </div>
+          
+          <hr class="border-gray-200 my-3">
+          
+          <!-- Scan Interval -->
           <div class="mb-3">
             <label class="block text-xs text-gray-500 mb-1" id="scan-interval-label"></label>
             <div class="flex items-center gap-2">
@@ -182,6 +199,13 @@
       uninstallFailed: '卸载失败',
       deleteFailed: '删除失败',
       loadFailed: '加载失败',
+      installDirs: '安装目录',
+      addDir: '添加',
+      dirExists: '目录已存在',
+      dirAdded: '目录添加成功',
+      dirRemoved: '目录已删除',
+      cannotRemoveDefault: '不能删除默认目录',
+      dirNotFound: '目录未找到',
       confirmSyncRepo: (name) => `同步 ${name} 到最新版本？`,
       confirmUpdateTo: (name, target) => `从源更新 ${name} 到 ${target}？`,
       confirmDeleteRepo: (name) => `确定要删除仓库 ${name} 吗？`,
@@ -237,6 +261,13 @@
       notInstalled: 'Not installed',
       outdated: 'Outdated',
       partial: 'Partially installed (differs from source)',
+      installDirs: 'Install Directories',
+      addDir: 'Add',
+      dirExists: 'Directory already exists',
+      dirAdded: 'Directory added',
+      dirRemoved: 'Directory removed',
+      cannotRemoveDefault: 'Cannot remove default directory',
+      dirNotFound: 'Directory not found',
       claude: 'claude',
       agents: 'agents',
       remoteUpdateAvailable: 'Remote update available, click to sync',
@@ -318,6 +349,7 @@
   let selectedRepo = null;
   let allSkills = [];
   let repoMeta = {};
+  let installDirs = [];
   let _currentTaskId = null;
   let _taskUrl = '';
   let _taskBranch = 'main';
@@ -400,6 +432,86 @@
       }
     } catch (e) {
       showToast(t('saveFailed'), 'error');
+    }
+  }
+
+  // Install directory management
+  async function loadInstallDirs() {
+    try {
+      const resp = await fetch('/api/install-dirs');
+      if (!resp.ok) return;
+      installDirs = await resp.json();
+      renderInstallDirs();
+    } catch (e) {}
+  }
+
+  function renderInstallDirs() {
+    const container = document.getElementById('install-dirs-list');
+    if (!container) return;
+
+    let html = '';
+    for (const dir of installDirs) {
+      const isDefault = dir.isDefault;
+      const deleteBtn = isDefault
+        ? `<span class="text-gray-300 text-xs">${lang === 'zh' ? '默认' : 'default'}</span>`
+        : `<button onclick="removeInstallDir('${escAttr(dir.label)}')" class="text-red-500 hover:text-red-700 text-xs cursor-pointer bg-transparent border-0">✕</button>`;
+
+      html += `<div class="flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded text-xs">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">${escHtml(dir.abbreviation)}</span>
+          <span class="truncate text-gray-700" title="${escAttr(dir.path)}">${escHtml(dir.path)}</span>
+        </div>
+        ${deleteBtn}
+      </div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  async function addInstallDir() {
+    const input = document.getElementById('new-install-dir');
+    const path = input.value.trim();
+    const errorEl = document.getElementById('install-dir-error');
+
+    if (!path) return;
+
+    try {
+      const resp = await fetch('/api/install-dirs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        input.value = '';
+        errorEl.classList.add('hidden');
+        showToast(t('dirAdded'));
+        await loadInstallDirs();
+        await loadSkills();
+      } else {
+        errorEl.textContent = data.error || t('addFailed');
+        errorEl.classList.remove('hidden');
+      }
+    } catch (e) {
+      errorEl.textContent = t('addFailed');
+      errorEl.classList.remove('hidden');
+    }
+  }
+
+  async function removeInstallDir(label) {
+    try {
+      const resp = await fetch(`/api/install-dirs/${encodeURIComponent(label)}`, {
+        method: 'DELETE',
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        showToast(t('dirRemoved'));
+        await loadInstallDirs();
+        await loadSkills();
+      } else {
+        showToast(data.error || t('deleteFailed'), 'error');
+      }
+    } catch (e) {
+      showToast(t('deleteFailed'), 'error');
     }
   }
 
@@ -756,34 +868,37 @@
         const isInstalled = s.status === 'installed' || s.status === 'outdated';
         const escapedName = s.name.replace(/'/g, "\\'");
 
-        const claudeDot = s.inClaude
-          ? (s.claudeMatchesSource ? 'bg-green-600' : 'bg-yellow-400 cursor-pointer')
-          : 'bg-gray-300';
-        const agentsDot = s.inAgents
-          ? (s.agentsMatchesSource ? 'bg-green-600' : 'bg-yellow-400 cursor-pointer')
-          : 'bg-gray-300';
+        // Build directory status dots
+        let dirDots = '';
+        const dirStatus = s.dirStatus || {};
+        for (const dir of installDirs) {
+          const ds = dirStatus[dir.label] || { installed: false, matchesSource: false, isSymlink: false };
+          let dotColor, dotTitle, dotAction;
 
-        const claudeTitle = s.inClaude
-          ? (s.linkClaude ? `${t('installedLatest')} (symlink)` : t('installedLatest'))
-          : t('notInstalledTitle');
-        const agentsTitle = s.inAgents
-          ? (s.linkAgents ? `${t('installedLatest')} (symlink)` : t('installedLatest'))
-          : t('notInstalledTitle');
-        const claudeClick = s.inClaude && !s.claudeMatchesSource
-          ? `onclick="installTo('${escapedName}', 'claude')" title="${t('clickToUpdate')}"`
-          : `title="${claudeTitle}"`;
-        const agentsClick = s.inAgents && !s.agentsMatchesSource
-          ? `onclick="installTo('${escapedName}', 'agents')" title="${t('clickToUpdate')}"`
-          : `title="${agentsTitle}"`;
+          if (ds.installed) {
+            if (ds.matchesSource) {
+              dotColor = 'bg-green-600';
+              dotTitle = `${dir.path}: ${t('installedLatest')}${ds.isSymlink ? ' (symlink)' : ''}`;
+            } else {
+              dotColor = 'bg-yellow-400 cursor-pointer';
+              dotTitle = `${dir.path}: ${t('clickToUpdate')}`;
+              dotAction = `onclick="installToDir('${escapedName}', '${escAttr(dir.label)}')"`;
+            }
+          } else {
+            dotColor = 'bg-gray-300';
+            dotTitle = `${dir.path}: ${t('notInstalledTitle')}`;
+          }
+
+          const symlinkIcon = ds.isSymlink ? '<span class="absolute -bottom-0.5 -right-0.5 text-[8px] text-blue-500">🔗</span>' : '';
+
+          dirDots += `<span class="relative inline-flex items-center justify-center w-5 h-5 rounded-full ${dotColor} text-white text-[10px] font-bold shrink-0 mr-1" title="${escAttr(dotTitle)}" ${dotAction || ''}>${escHtml(dir.abbreviation)}${symlinkIcon}</span>`;
+        }
 
         const statusLabel = s.status === 'outdated' ? t('partial') : t(s.status);
 
         html += `<li class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 mb-1">
           <span class="flex-1 font-medium cursor-pointer hover:underline hover:text-blue-600" onclick="toggleMeta('${escapedName}', this)">${escHtml(s.name)}</span>
-          <span class="w-2.5 h-2.5 rounded-full ${claudeDot}" ${claudeClick}></span>
-          <span class="text-[11px] text-gray-500 mr-2">${t('claude')}${s.linkClaude ? ' <span class="text-blue-500">🔗</span>' : ''}</span>
-          <span class="w-2.5 h-2.5 rounded-full ${agentsDot}" ${agentsClick}></span>
-          <span class="text-[11px] text-gray-500 mr-2">${t('agents')}${s.linkAgents ? ' <span class="text-blue-500">🔗</span>' : ''}</span>
+          <span class="flex items-center">${dirDots}</span>
           <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(s.status)}">${statusLabel}</span>
           ${isInstalled
             ? `<button onclick="uninstallSkill('${escapedName}')" class="px-3 py-1 rounded border border-red-500 text-red-600 text-xs hover:bg-red-50 cursor-pointer">${t('uninstall')}</button>`
@@ -811,14 +926,15 @@
     else { showToast(data.error || t('installFailed'), 'error'); }
   }
 
-  async function installTo(name, target) {
-    const targetLabel = target === 'claude' ? '~/.claude/skills' : '~/.agents/skills';
-    if (!confirm(t('confirmUpdateTo', name, targetLabel))) return;
+  async function installToDir(name, targetLabel) {
+    const dir = installDirs.find(d => d.label === targetLabel);
+    const dirPath = dir ? dir.path : targetLabel;
+    if (!confirm(t('confirmUpdateTo', name, dirPath))) return;
     const useSymlink = document.getElementById('use-symlink').checked;
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install-to`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target, method: useSymlink ? 'symlink' : 'copy' }),
+      body: JSON.stringify({ target: targetLabel, method: useSymlink ? 'symlink' : 'copy' }),
     });
     const data = await resp.json();
     if (resp.ok) { showToast(data.message); await loadSkills(); }
@@ -994,8 +1110,9 @@
 
   // Instant first paint from server-injected data
   if (__INITIAL_DATA__) {
-    allSkills = __INITIAL_DATA__.skills;
-    for (const r of __INITIAL_DATA__.repos) {
+    allSkills = __INITIAL_DATA__.skills || [];
+    installDirs = __INITIAL_DATA__.installDirs || [];
+    for (const r of __INITIAL_DATA__.repos || []) {
       repoMeta[r.name] = { hasRemoteUpdates: r.hasRemoteUpdates, isLocal: r.isLocal, isCloned: r.isCloned };
     }
     const repoNames = [...new Set(allSkills.map(s => s.repoName))];
@@ -1004,15 +1121,18 @@
     if (!selectedRepo && allRepoNames.length > 0) selectedRepo = allRepoNames[0];
     renderSidebar();
     renderSkills();
+    renderInstallDirs();
   }
 
   // Set settings labels
+  document.getElementById('install-dirs-label').textContent = t('installDirs');
   document.getElementById('scan-interval-label').textContent = t('scanInterval');
   document.getElementById('scan-interval-unit').textContent = t('minutes');
   document.getElementById('btn-save-settings').textContent = t('save');
 
   // Background refresh to get latest state (hasRemoteUpdates etc.)
   loadSkills();
+  loadInstallDirs();
   checkUpdateStatus();
   checkAppVersion();
   loadSettings();
