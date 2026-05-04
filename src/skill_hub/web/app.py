@@ -7,7 +7,8 @@ from werkzeug.serving import WSGIRequestHandler
 
 from skill_hub import __version__
 from skill_hub.web.api import api_bp
-from skill_hub.web.repos import load_repos_config, repo_dir
+from skill_hub.web.config import get_install_dirs
+from skill_hub.web.repos import has_remote_updates, load_repos_config, repo_dir
 from skill_hub.web.scheduler import scheduler
 from skill_hub.web.state import list_skills
 
@@ -56,6 +57,8 @@ def create_app() -> Flask:
     def index():
         skills = list_skills()
         repos = load_repos_config()
+        install_dirs = get_install_dirs()
+        
         initial_data = {
             "skills": [
                 {
@@ -63,6 +66,14 @@ def create_app() -> Flask:
                     "repoName": s.repo_name,
                     "repoUrl": s.repo_url,
                     "status": s.status,
+                    "dirStatus": {
+                        label: {
+                            "installed": ds.installed,
+                            "matchesSource": ds.installed and ds.md5 == s.source_md5,
+                            "isSymlink": ds.is_symlink,
+                        }
+                        for label, ds in s.dir_status.items()
+                    },
                     "inClaude": s.in_claude,
                     "inAgents": s.in_agents,
                     "claudeMatchesSource": s.claude_matches_source,
@@ -87,6 +98,15 @@ def create_app() -> Flask:
                     "isCloned": repo_dir(r).exists() and (repo_dir(r) / ".git").exists(),
                 }
                 for r in repos
+            ],
+            "installDirs": [
+                {
+                    "path": d.path,
+                    "label": d.label,
+                    "abbreviation": d.abbreviation,
+                    "isDefault": d.is_default,
+                }
+                for d in install_dirs
             ],
         }
         return render_template(
