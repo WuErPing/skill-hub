@@ -298,7 +298,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.17.0
 [0.16.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.16.0
 [0.15.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.15.0
 [0.14.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.14.0
