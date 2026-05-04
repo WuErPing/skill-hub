@@ -31,12 +31,26 @@ def temp_home(tmp_path):
     repos_yaml = tmp_path / "skills_repo" / "repos.yaml"
     repos_yaml.write_text("repos:\n  - url: https://github.com/example/repo\n    branch: main\n")
 
+    # Create config.json with test install dirs
+    config_file = tmp_path / "skills_repo" / "config.json"
+    import json
+    config_file.write_text(json.dumps({
+        "installDirs": [
+            {"path": str(claude), "label": "claude", "isDefault": True, "abbreviation": "C"},
+            {"path": str(agents), "label": "agents", "isDefault": True, "abbreviation": "A"},
+        ]
+    }))
+
     import skill_hub.web.repos
     import skill_hub.web.state
+    import skill_hub.web.config as config_module
+    
     skill_hub.web.repos.SKILLS_REPO_ROOT = tmp_path / "skills_repo"
     skill_hub.web.repos.REPOS_YAML = repos_yaml
     skill_hub.web.repos.REPOS_DIR = tmp_path / "skills_repo" / "repos"
     skill_hub.web.repos.MAPPINGS_DIR = tmp_path / "skills_repo" / "mappings"
+    config_module.CONFIG_FILE = config_file
+    
     import skill_hub.web.state as state_module
     state_module.REPOS_DIR = tmp_path / "skills_repo" / "repos"
     skill_hub.web.state.CLAUDE_SKILLS = claude
@@ -49,6 +63,7 @@ def temp_home(tmp_path):
     skill_hub.web.repos.REPOS_YAML = skill_hub.web.repos.REPOS_YAML
     skill_hub.web.repos.REPOS_DIR = skill_hub.web.repos.REPOS_DIR
     skill_hub.web.repos.MAPPINGS_DIR = skill_hub.web.repos.MAPPINGS_DIR
+    config_module.CONFIG_FILE = config_module.CONFIG_FILE
     state_module.REPOS_DIR = skill_hub.web.repos.REPOS_DIR
 
 
