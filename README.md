@@ -13,7 +13,7 @@ Managing agent skills shouldn't waste tokens. skill-hub centralizes skill discov
 - **One source of truth** — skills live in `~/.skills_repo/`, not scattered across chat histories
 - **Visual discovery** — browse skill metadata in the Web UI instead of reading full SKILL.md files through your agent
 - **Sync-once, use-everywhere** — install to `~/.claude/skills/` and `~/.agents/skills/` in one click, avoiding repeated "please install this skill" conversations
-- **Version awareness** — yellow dots tell you when a skill is outdated, preventing stale instructions from silently consuming tokens
+- **Version awareness** — yellow badges tell you when a skill is outdated, preventing stale instructions from silently consuming tokens
 - **Install only what you need** — keep your global skill space lean. Install project-specific skills to `.agents/skills/` (private) and only widely-used skills to `~/.agents/skills/` (global). The fewer irrelevant skills in scope, the less token waste on false-positive matches
 
 ![](imgs/2026-04-24-00-54-50.png)
@@ -52,7 +52,7 @@ skill-hub scans `SKILL.md` files in each repo, builds a mapping, and installs (s
 1. **Add a GitHub repo or local directory** via the UI — remote repos get cloned into `~/.skills_repo/repos/`, local paths are scanned in place
 2. **Skills are discovered** automatically via `SKILL.md` files in the repo
 3. **Install skills** to `~/.claude/skills/` and `~/.agents/skills/` with one click
-4. **Sync status** — green dots mean installed version matches source, yellow means outdated
+4. **Sync status** — green badges mean installed version matches source, yellow means outdated, gray means not installed
 5. **Repo sync** — detect and pull remote updates, with a sync status indicator per repo (local paths skip cloning)
 
 ## Installation
@@ -105,9 +105,9 @@ skill-hub version --check
 ## Features
 
 - Skills grouped by repository (remote and local)
-- Per-directory install status (green = up-to-date, yellow = outdated vs source)
+- Per-directory install status badges (green = up-to-date, yellow = outdated, gray = not installed)
 - Install to both `~/.claude/skills` and `~/.agents/skills` simultaneously
-- Click yellow dots to reinstall a single directory from source
+- Click green badges to uninstall from that directory; click yellow/gray badges to install or update
 - Click skill names to view metadata from `SKILL.md` frontmatter
 - Add/remove repos, with remote update detection
 - **Async clone with progress** — remote repos clone in the background with a real-time progress bar, retry on failure

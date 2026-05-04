@@ -375,6 +375,24 @@ def uninstall_skill(name: str) -> tuple[bool, str]:
         return False, str(e)
 
 
+def uninstall_from_one(name: str, target_label: str) -> tuple[bool, str]:
+    """Remove skill from a single directory by label."""
+    try:
+        install_dirs = get_install_dirs()
+        target_dir = next((d for d in install_dirs if d.label == target_label), None)
+        
+        if target_dir is None:
+            return False, f"Unknown target directory: {target_label}"
+        
+        dest = target_dir.resolved_path / name
+        if dest.exists() or dest.is_symlink():
+            _remove_destination(dest)
+            return True, f"Uninstalled {name} from {target_label}"
+        return True, f"{name} was not installed in {target_label}"
+    except Exception as e:
+        return False, str(e)
+
+
 def install_repo_skills(repo_name: str, method: str = "copy") -> tuple[bool, str]:
     """Install all skills from a repo to all configured directories."""
     skills = list_skills()

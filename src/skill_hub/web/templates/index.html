@@ -186,6 +186,7 @@
       localPath: '本地路径',
       syncedWithRemote: '已与远端同步',
       clickToUpdate: '与源不同，点击更新',
+      clickToInstall: '点击安装',
       installedLatest: '已安装 (最新)',
       notInstalledTitle: '未安装',
       uninstall: '卸载',
@@ -208,6 +209,7 @@
       dirNotFound: '目录未找到',
       confirmSyncRepo: (name) => `同步 ${name} 到最新版本？`,
       confirmUpdateTo: (name, target) => `从源更新 ${name} 到 ${target}？`,
+      confirmInstallTo: (name, target) => `安装 ${name} 到 ${target}？`,
       confirmDeleteRepo: (name) => `确定要删除仓库 ${name} 吗？`,
       syncComplete: '同步完成',
       repoSyncComplete: (name) => `${name} 同步完成`,
@@ -274,6 +276,7 @@
       localPath: 'Local path',
       syncedWithRemote: 'Synced with remote',
       clickToUpdate: 'Differs from source, click to update',
+      clickToInstall: 'Click to install',
       installedLatest: 'Installed (latest)',
       notInstalledTitle: 'Not installed',
       uninstall: 'Uninstall',
@@ -289,6 +292,7 @@
       loadFailed: 'Load failed',
       confirmSyncRepo: (name) => `Sync ${name} to latest?`,
       confirmUpdateTo: (name, target) => `Update ${name} to ${target}?`,
+      confirmInstallTo: (name, target) => `Install ${name} to ${target}?`,
       confirmDeleteRepo: (name) => `Delete repo ${name}?`,
       syncComplete: 'Sync complete',
       repoSyncComplete: (name) => `${name} synced`,
@@ -868,33 +872,38 @@
         const isInstalled = s.status === 'installed' || s.status === 'outdated';
         const escapedName = s.name.replace(/'/g, "\\'");
 
-        // Build directory status dots (hollow circles)
+        // Build directory status badges [●C]
         let dirDots = '';
         const dirStatus = s.dirStatus || {};
         for (const dir of installDirs) {
           const ds = dirStatus[dir.label] || { installed: false, matchesSource: false, isSymlink: false };
-          let borderColor, textColor, dotTitle, dotAction;
+          let dotColor, dotTitle, dotAction;
 
+          let textColor;
           if (ds.installed) {
             if (ds.matchesSource) {
-              borderColor = 'border-green-600';
-              textColor = 'text-green-600';
+              dotColor = 'bg-green-600';
+              textColor = 'text-green-700';
               dotTitle = `${dir.path}: ${t('installedLatest')}${ds.isSymlink ? ' (symlink)' : ''}`;
+              dotAction = `onclick="uninstallFromDir('${escapedName}', '${escAttr(dir.label)}')"`;
             } else {
-              borderColor = 'border-yellow-500';
-              textColor = 'text-yellow-500';
+              dotColor = 'bg-yellow-500';
+              textColor = 'text-yellow-600';
               dotTitle = `${dir.path}: ${t('clickToUpdate')}`;
               dotAction = `onclick="installToDir('${escapedName}', '${escAttr(dir.label)}')"`;
             }
           } else {
-            borderColor = 'border-gray-400';
-            textColor = 'text-gray-400';
-            dotTitle = `${dir.path}: ${t('notInstalledTitle')}`;
+            dotColor = 'bg-gray-400';
+            textColor = 'text-gray-500';
+            dotTitle = `${dir.path}: ${t('notInstalledTitle')} — ${t('clickToInstall')}`;
+            dotAction = `onclick="installToDir('${escapedName}', '${escAttr(dir.label)}')"`;
           }
 
-          const symlinkIcon = ds.isSymlink ? '<span class="absolute -bottom-1 -right-1 text-[4px] text-blue-500" style="font-size:4px; line-height:1;">🔗</span>' : '';
+          const installIcon = ds.isSymlink
+            ? '<span class="absolute -bottom-0.5 -right-0.5 text-[6px]" style="font-size:6px; line-height:1;">🔗</span>'
+            : (ds.installed ? '<span class="absolute -bottom-0.5 -right-0.5 text-[6px]" style="font-size:6px; line-height:1;">📄</span>' : '');
 
-          dirDots += `<span class="relative inline-flex items-center justify-center h-4 px-1 rounded border ${borderColor} bg-white ${textColor} text-[9px] shrink-0 mr-1" title="${escAttr(dotTitle)}" ${dotAction || ''}>${escHtml(dir.abbreviation)}${symlinkIcon}</span>`;
+          dirDots += `<span class="relative inline-flex items-center gap-1 h-5 px-1.5 rounded border border-gray-300 bg-white ${textColor} text-[10px] font-bold shrink-0 mr-1 cursor-pointer" title="${escAttr(dotTitle)}" ${dotAction || ''}><span class="w-2 h-2 rounded-full ${dotColor}"></span>${escHtml(dir.abbreviation)}${installIcon}</span>`;
         }
 
         const statusLabel = s.status === 'outdated' ? t('partial') : t(s.status);
@@ -932,7 +941,7 @@
   async function installToDir(name, targetLabel) {
     const dir = installDirs.find(d => d.label === targetLabel);
     const dirPath = dir ? dir.path : targetLabel;
-    if (!confirm(t('confirmUpdateTo', name, dirPath))) return;
+    if (!confirm(t('confirmInstallTo', name, dirPath))) return;
     const useSymlink = document.getElementById('use-symlink').checked;
     const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/install-to`, {
       method: 'POST',
@@ -942,6 +951,20 @@
     const data = await resp.json();
     if (resp.ok) { showToast(data.message); await loadSkills(); }
     else { showToast(data.error || t('installFailed'), 'error'); }
+  }
+
+  async function uninstallFromDir(name, targetLabel) {
+    const dir = installDirs.find(d => d.label === targetLabel);
+    const dirPath = dir ? dir.path : targetLabel;
+    if (!confirm(`${t('uninstall')} ${name} from ${dirPath}?`)) return;
+    const resp = await fetch(`/api/skills/${encodeURIComponent(name)}/uninstall-from`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: targetLabel }),
+    });
+    const data = await resp.json();
+    if (resp.ok) { showToast(data.message); await loadSkills(); }
+    else { showToast(data.error || t('uninstallFailed'), 'error'); }
   }
 
   async function uninstallSkill(name) {

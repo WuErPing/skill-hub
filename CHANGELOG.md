@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-05-04
+
+### Added
+
+- **Per-directory uninstall**: Click a green status badge to uninstall a skill from that specific directory, without affecting other directories
+- **`POST /api/skills/<name>/uninstall-from`**: New API endpoint for single-directory uninstallation
+- **Status badge text color**: Abbreviation letters now match their status color (green = installed, yellow = outdated, gray = not installed)
+- **Install confirmation i18n**: Added `clickToInstall` and `confirmInstallTo` translations for Chinese and English
+
+### Changed
+
+- **Status badge redesign**: Badges now show a colored dot + abbreviation + install method icon (🔗 for symlink, 📄 for copy) in a compact rounded rectangle
+- **Uninstall confirmation per directory**: Green badges trigger uninstall action; yellow/gray badges trigger install/update action
+
 ## [0.15.0] - 2026-04-27
 
 ### Added
@@ -274,7 +288,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.16.0
 [0.15.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.15.0
 [0.14.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.14.0
 [0.13.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.13.1

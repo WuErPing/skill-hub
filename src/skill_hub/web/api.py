@@ -27,6 +27,7 @@ from skill_hub.web.state import (
     install_skill,
     install_to_one,
     list_skills,
+    uninstall_from_one,
     uninstall_repo_skills,
     uninstall_skill,
 )
@@ -178,6 +179,24 @@ def api_install_to(name: str):
 def api_uninstall(name: str):
     """Uninstall a skill from both directories."""
     success, msg = uninstall_skill(name)
+    if success:
+        return jsonify({"ok": True, "message": msg})
+    return jsonify({"error": msg}), 500
+
+
+@api_bp.route("/skills/<name>/uninstall-from", methods=["POST"])
+def api_uninstall_from(name: str):
+    """Uninstall a skill from a single directory by label."""
+    body = request.get_json(silent=True) or {}
+    target_label = body.get("target", "").strip()
+
+    # Validate target label exists
+    install_dirs = _get_install_dirs()
+    valid_labels = {d.label for d in install_dirs}
+    if target_label not in valid_labels:
+        return jsonify({"error": f"target must be one of: {', '.join(valid_labels)}"}), 400
+
+    success, msg = uninstall_from_one(name, target_label)
     if success:
         return jsonify({"ok": True, "message": msg})
     return jsonify({"error": msg}), 500
