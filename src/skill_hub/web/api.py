@@ -46,16 +46,31 @@ def _api_after_request(response):
     return response
 
 
+from skill_hub.web.config import get_install_dirs as _get_install_dirs
+
+
 @api_bp.route("/skills", methods=["GET"])
 def get_skills():
-    """List all skills with their installation status."""
+    """List all skills with their installation status across all directories."""
     skills = list_skills()
+    install_dirs = _get_install_dirs()
+    
     return jsonify([
         {
             "name": s.name,
             "repoName": s.repo_name,
             "repoUrl": s.repo_url,
             "status": s.status,
+            "dirStatus": {
+                label: {
+                    "installed": ds.installed,
+                    "matchesSource": ds.installed and ds.md5 == s.source_md5,
+                    "isSymlink": ds.is_symlink,
+                    "md5": ds.md5,
+                }
+                for label, ds in s.dir_status.items()
+            },
+            # Legacy fields for backward compatibility
             "inClaude": s.in_claude,
             "inAgents": s.in_agents,
             "claudeMatchesSource": s.claude_matches_source,
@@ -130,14 +145,19 @@ def api_skill_meta(name: str):
 
 @api_bp.route("/skills/<name>/install-to", methods=["POST"])
 def api_install_to(name: str):
-    """Install a skill to a single directory ('claude' or 'agents')."""
+    """Install a skill to a single directory by label."""
     body = request.get_json(silent=True) or {}
-    target = body.get("target", "").strip()
+    target_label = body.get("target", "").strip()
     method = body.get("method", "copy")
-    if target not in ("claude", "agents"):
-        return jsonify({"error": "target must be 'claude' or 'agents'"}), 400
+    
     if method not in ("copy", "symlink"):
         return jsonify({"error": "method must be 'copy' or 'symlink'"}), 400
+    
+    # Validate target label exists
+    install_dirs = _get_install_dirs()
+    valid_labels = {d.label for d in install_dirs}
+    if target_label not in valid_labels:
+        return jsonify({"error": f"target must be one of: {', '.join(valid_labels)}"}), 400
 
     skills = list_skills()
     skill = next((s for s in skills if s.name == name), None)
@@ -148,7 +168,7 @@ def api_install_to(name: str):
     if not source_path.exists():
         return jsonify({"error": f"Source path not found: {source_path}"}), 400
 
-    success, msg = install_to_one(name, source_path, target, method=method)
+    success, msg = install_to_one(name, source_path, target_label, method=method)
     if success:
         return jsonify({"ok": True, "message": msg})
     return jsonify({"error": msg}), 500
@@ -400,3 +420,56 @@ def diagnose_one(name: str):
         return jsonify({"ok": True, "report": report})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@api_bp.route("/install-dirs", methods=["GET"])
+def get_install_dirs_api():
+    """List all configured install directories."""
+    dirs = _get_install_dirs()
+    return jsonify([
+        {
+            "path": d.path,
+            "label": d.label,
+            "isDefault": d.is_default,
+            "abbreviation": d.abbreviation,
+            "resolvedPath": str(d.resolved_path),
+        }
+        for d in dirs
+    ])
+
+
+@api_bp.route("/install-dirs", methods=["POST"])
+def add_install_dir_api():
+    """Add a new install directory."""
+    from skill_hub.web.config import add_install_dir as _add_install_dir
+    
+    body = request.get_json(silent=True) or {}
+    path = body.get("path", "").strip()
+    
+    if not path:
+        return jsonify({"error": "path is required"}), 400
+    
+    try:
+        new_dir = _add_install_dir(path)
+        return jsonify({
+            "ok": True,
+            "dir": {
+                "path": new_dir.path,
+                "label": new_dir.label,
+                "abbreviation": new_dir.abbreviation,
+            }
+        }), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@api_bp.route("/install-dirs/<label>", methods=["DELETE"])
+def remove_install_dir_api(label: str):
+    """Remove an install directory by label."""
+    from skill_hub.web.config import remove_install_dir as _remove_install_dir
+    
+    try:
+        _remove_install_dir(label)
+        return jsonify({"ok": True, "message": f"Removed directory '{label}'"})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
