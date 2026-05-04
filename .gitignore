@@ -219,3 +219,5 @@ __marimo__/
 .sisyphus/
 .cursor/
 .qwen/
+# Worktrees
+.worktrees/
