@@ -881,18 +881,18 @@
               textColor = 'text-green-600';
               dotTitle = `${dir.path}: ${t('installedLatest')}${ds.isSymlink ? ' (symlink)' : ''}`;
             } else {
-              borderColor = 'border-yellow-400';
-              textColor = 'text-yellow-600';
+              borderColor = 'border-yellow-500';
+              textColor = 'text-yellow-500';
               dotTitle = `${dir.path}: ${t('clickToUpdate')}`;
               dotAction = `onclick="installToDir('${escapedName}', '${escAttr(dir.label)}')"`;
             }
           } else {
-            borderColor = 'border-gray-300';
+            borderColor = 'border-gray-400';
             textColor = 'text-gray-400';
             dotTitle = `${dir.path}: ${t('notInstalledTitle')}`;
           }
 
-          const symlinkIcon = ds.isSymlink ? '<span class="absolute -bottom-0.5 -right-0.5 text-[6px] text-blue-500">🔗</span>' : '';
+          const symlinkIcon = ds.isSymlink ? '<span class="absolute -bottom-1 -right-1 text-[4px] text-blue-500" style="font-size:4px; line-height:1;">🔗</span>' : '';
 
           dirDots += `<span class="relative inline-flex items-center justify-center h-4 px-1 rounded border ${borderColor} bg-white ${textColor} text-[9px] shrink-0 mr-1" title="${escAttr(dotTitle)}" ${dotAction || ''}>${escHtml(dir.abbreviation)}${symlinkIcon}</span>`;
         }
