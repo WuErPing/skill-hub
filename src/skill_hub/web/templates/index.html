@@ -868,30 +868,33 @@
         const isInstalled = s.status === 'installed' || s.status === 'outdated';
         const escapedName = s.name.replace(/'/g, "\\'");
 
-        // Build directory status dots
+        // Build directory status dots (hollow circles)
         let dirDots = '';
         const dirStatus = s.dirStatus || {};
         for (const dir of installDirs) {
           const ds = dirStatus[dir.label] || { installed: false, matchesSource: false, isSymlink: false };
-          let dotColor, dotTitle, dotAction;
+          let borderColor, textColor, dotTitle, dotAction;
 
           if (ds.installed) {
             if (ds.matchesSource) {
-              dotColor = 'bg-green-600';
+              borderColor = 'border-green-600';
+              textColor = 'text-green-600';
               dotTitle = `${dir.path}: ${t('installedLatest')}${ds.isSymlink ? ' (symlink)' : ''}`;
             } else {
-              dotColor = 'bg-yellow-400 cursor-pointer';
+              borderColor = 'border-yellow-400';
+              textColor = 'text-yellow-600';
               dotTitle = `${dir.path}: ${t('clickToUpdate')}`;
               dotAction = `onclick="installToDir('${escapedName}', '${escAttr(dir.label)}')"`;
             }
           } else {
-            dotColor = 'bg-gray-300';
+            borderColor = 'border-gray-300';
+            textColor = 'text-gray-400';
             dotTitle = `${dir.path}: ${t('notInstalledTitle')}`;
           }
 
-          const symlinkIcon = ds.isSymlink ? '<span class="absolute -bottom-0.5 -right-0.5 text-[8px] text-blue-500">🔗</span>' : '';
+          const symlinkIcon = ds.isSymlink ? '<span class="absolute -bottom-0.5 -right-0.5 text-[6px] text-blue-500">🔗</span>' : '';
 
-          dirDots += `<span class="relative inline-flex items-center justify-center w-5 h-5 rounded-full ${dotColor} text-white text-[10px] font-bold shrink-0 mr-1" title="${escAttr(dotTitle)}" ${dotAction || ''}>${escHtml(dir.abbreviation)}${symlinkIcon}</span>`;
+          dirDots += `<span class="relative inline-flex items-center justify-center w-2.5 h-2.5 rounded-full border border-current ${borderColor} bg-white ${textColor} text-[7px] font-bold shrink-0 mr-1" title="${escAttr(dotTitle)}" ${dotAction || ''}>${escHtml(dir.abbreviation)}${symlinkIcon}</span>`;
         }
 
         const statusLabel = s.status === 'outdated' ? t('partial') : t(s.status);
