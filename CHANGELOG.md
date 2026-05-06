@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-05-06
+
+### Added
+- **Repo Introduction**: Generate structured summary from README with AI agent callback support
+- **Author Information**: Display repo owner and top contributors from GitHub API (auto-hide when unavailable)
+- **Markdown Preview**: Render generated repo summaries with full Markdown formatting (headers, lists, code blocks)
+- **Interactive Intro Panel**: Click repo name to expand/collapse the introduction panel
+- **Agent Callback Interface**: `generate_summary_via_local_agent()` calls local agent CLI (e.g., `opencode`, `claude`) to analyze README
+- **Screenshot Version Verification**: `screenshot.py` now verifies the web UI shows the correct version before capturing
+
+### Changed
+- **Generate Summary Button**: Moved to the right of "Uninstall All" and left of "Delete Repo" for better workflow
+- **Confirmation Dialog**: "Generate Summary" now prompts for confirmation before calling the agent
+- **Tech Stack Removed**: Cleaned up noisy output from generated summaries
+
 ## [0.18.0] - 2026-05-05
 
 ### Added

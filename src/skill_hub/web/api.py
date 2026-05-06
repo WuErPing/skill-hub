@@ -31,6 +31,13 @@ from skill_hub.web.state import (
     uninstall_repo_skills,
     uninstall_skill,
 )
+from skill_hub.web.intro import (
+    load_intro,
+    read_repo_readme,
+    save_intro,
+)
+from skill_hub.web.github_api import fetch_repo_authors
+from datetime import datetime
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -495,3 +502,143 @@ def remove_install_dir_api(label: str):
         return jsonify({"ok": True, "message": f"Removed directory '{label}'"})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+
+
+# ---------------------------------------------------------------------------
+# Repo Introduction & Authors
+# ---------------------------------------------------------------------------
+
+@api_bp.route("/repos/<path:name>/intro", methods=["GET"])
+def get_repo_intro(name: str):
+    """Get repo introduction. Returns cached summary or indicates need to generate."""
+    from skill_hub.web.repos import load_repos_config, repo_dir
+    
+    repos = load_repos_config()
+    repo = next((r for r in repos if r.name == name), None)
+    if not repo:
+        return jsonify({"error": f"Repo '{name}' not found"}), 404
+    
+    target = repo_dir(repo)
+    readme = read_repo_readme(target)
+    
+    intro = load_intro(name, target / "README.md" if readme else target)
+    
+    # If no cache, check if README exists
+    if not intro.cached:
+        if not readme:
+            return jsonify({"error": "README.md not found"}), 404
+        return jsonify({
+            "cached": False,
+            "message": "No summary cached. Use POST /intro/prompt to generate."
+        })
+    
+    return jsonify({
+        "ok": True,
+        "cached": True,
+        "summary": intro.summary,
+        "generatedAt": intro.generated_at.isoformat() if intro.generated_at else None,
+    })
+
+
+@api_bp.route("/repos/<path:name>/intro/generate", methods=["POST"])
+def generate_intro_directly(name: str):
+    """Directly generate repo summary via local agent CLI and save it."""
+    from skill_hub.web.repos import load_repos_config, repo_dir
+    from skill_hub.web.intro import generate_summary_via_local_agent
+
+    repos = load_repos_config()
+    repo = next((r for r in repos if r.name == name), None)
+    if not repo:
+        return jsonify({"error": f"Repo '{name}' not found"}), 404
+
+    target = repo_dir(repo)
+    readme = read_repo_readme(target)
+    if not readme:
+        return jsonify({"error": "README.md not found"}), 404
+
+    summary = generate_summary_via_local_agent(name, readme)
+    if summary is None:
+        return jsonify({
+            "error": "Local agent not available or execution failed. "
+            "Make sure 'opencode' (or your configured AGENT_CMD) is installed and accessible."
+        }), 503
+
+    # Save to cache
+    readme_path = target / "README.md"
+    if not readme_path.exists():
+        readme_path = target / "Readme.md"
+
+    intro = load_intro(name, readme_path)
+    intro.summary = summary
+    intro.generated_at = datetime.utcnow()
+    intro.cached = True
+    from skill_hub.web.intro import _md5_of_file
+    intro.readme_md5 = _md5_of_file(readme_path)
+    save_intro(intro)
+
+    return jsonify({
+        "ok": True,
+        "summary": summary,
+        "generatedAt": intro.generated_at.isoformat(),
+    })
+
+
+@api_bp.route("/repos/<path:name>/intro", methods=["POST"])
+def set_repo_intro(name: str):
+    """Submit a generated summary for a repo."""
+    from skill_hub.web.repos import load_repos_config, repo_dir
+    
+    repos = load_repos_config()
+    repo = next((r for r in repos if r.name == name), None)
+    if not repo:
+        return jsonify({"error": f"Repo '{name}' not found"}), 404
+    
+    body = request.get_json(silent=True) or {}
+    summary = body.get("summary")
+    if not summary or not isinstance(summary, dict):
+        return jsonify({"error": "summary object is required"}), 400
+    
+    target = repo_dir(repo)
+    readme_path = target / "README.md"
+    if not readme_path.exists():
+        readme_path = target / "Readme.md"
+    
+    intro = load_intro(name, readme_path)
+    intro.summary = summary
+    intro.generated_at = datetime.utcnow()
+    intro.cached = True
+    
+    # Recompute readme_md5
+    from skill_hub.web.intro import _md5_of_file
+    intro.readme_md5 = _md5_of_file(readme_path)
+    
+    save_intro(intro)
+    return jsonify({"ok": True, "message": "Summary saved"})
+
+
+@api_bp.route("/repos/<path:name>/authors", methods=["GET"])
+def get_repo_authors(name: str):
+    """Get author information for a repo (owner + top contributors)."""
+    from skill_hub.web.repos import load_repos_config
+    
+    repos = load_repos_config()
+    repo = next((r for r in repos if r.name == name), None)
+    if not repo:
+        return jsonify({"error": f"Repo '{name}' not found"}), 404
+    
+    authors = fetch_repo_authors(repo.url)
+    return jsonify({
+        "ok": True,
+        "authors": [
+            {
+                "username": a.username,
+                "name": a.name,
+                "bio": a.bio,
+                "avatarUrl": a.avatar_url,
+                "profileUrl": a.profile_url,
+                "role": a.role,
+                "contributions": a.contributions,
+            }
+            for a in authors
+        ],
+    })

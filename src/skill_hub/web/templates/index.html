@@ -275,6 +275,29 @@
   </div>
 </div>
 
+<!-- Prompt Modal -->
+<div id="prompt-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width: 600px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="p-6" style="display: flex; flex-direction: column; max-height: 85vh;">
+      <div class="flex items-center justify-between mb-4 shrink-0">
+        <h3 class="text-base font-semibold text-gray-900" id="prompt-modal-title"></h3>
+        <button onclick="closePromptModal()" class="text-gray-500 hover:text-gray-700 cursor-pointer bg-transparent border-0 p-1">✕</button>
+      </div>
+      <p class="text-sm text-gray-600 mb-3 shrink-0" id="prompt-modal-desc"></p>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 overflow-y-auto" style="min-height: 100px; max-height: 50vh;">
+        <pre id="prompt-content" class="text-xs text-gray-700 whitespace-pre-wrap break-all font-mono" style="word-break: break-all;"></pre>
+      </div>
+      <div class="flex gap-2 mb-3 shrink-0">
+        <button onclick="copyPromptToClipboard()" class="flex-1 px-3 py-2 rounded-lg border border-blue-600 bg-blue-600 text-white text-sm hover:bg-blue-700 cursor-pointer font-medium" id="btn-copy-prompt">📋 Copy Prompt</button>
+      </div>
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 shrink-0">
+        <p class="text-xs text-yellow-800 font-medium mb-1" id="prompt-instructions-label"></p>
+        <code class="text-xs text-yellow-700 font-mono break-all" style="word-break: break-all;" id="prompt-cli-command"></code>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   const __INITIAL_DATA__ = {{ initial_data | tojson }};
 
@@ -346,6 +369,22 @@
       invalidInterval: '请输入有效的分钟数（至少 1 分钟）',
       saveFailed: '保存失败',
       notCloned: '尚未克隆，点击下载',
+      generateSummary: '生成摘要',
+      repoIntro: '仓库介绍',
+      repoAuthors: '作者信息',
+      noSummary: '暂无介绍，点击生成',
+      generatedAt: '生成时间',
+      purpose: '目的',
+      features: '核心功能',
+      value: '价值',
+      targetUsers: '目标用户',
+      techStack: '技术栈',
+      viewReadme: '查看 README',
+      regenerate: '重新生成',
+      copyPrompt: '复制 Prompt',
+      promptCopied: '已复制到剪贴板',
+      submitInstructions: '在 agent 中执行后，运行：',
+      generating: '生成中...',
       diagnose: '诊断',
       diagnosisTitle: '诊断结果',
       runningDiagnosis: '正在运行诊断...',
@@ -430,6 +469,22 @@
       invalidInterval: 'Please enter a valid number (at least 1 minute)',
       saveFailed: 'Save failed',
       notCloned: 'Not cloned, click to download',
+      generateSummary: 'Generate Summary',
+      repoIntro: 'Repository Introduction',
+      repoAuthors: 'Authors',
+      noSummary: 'No summary yet. Click to generate.',
+      generatedAt: 'Generated at',
+      purpose: 'Purpose',
+      features: 'Features',
+      value: 'Value',
+      targetUsers: 'Target Users',
+      techStack: 'Tech Stack',
+      viewReadme: 'View README',
+      regenerate: 'Regenerate',
+      copyPrompt: 'Copy Prompt',
+      promptCopied: 'Copied to clipboard',
+      submitInstructions: 'After running in agent, execute:',
+      generating: 'Generating...',
       diagnose: 'Diagnose',
       diagnosisTitle: 'Diagnosis Results',
       runningDiagnosis: 'Running diagnostics...',
@@ -1177,15 +1232,27 @@
     const escapedRepo = selectedRepo.replace(/'/g, "\\'");
     const dotClick = hasUpdate ? `onclick="event.stopPropagation(); syncOneRepo('${escapedRepo}')" class="cursor-pointer"` : '';
 
-    let html = `<div>
+    let html = '';
+    
+    // --- Authors Card (hidden by default) ---
+    html += `<div id="repo-authors-card" class="hidden bg-white rounded-lg border border-gray-200 p-4 mb-3">
+      <h3 class="text-base font-semibold text-gray-800 mb-3">${t('repoAuthors')}</h3>
+      <div id="authors-content" class="flex gap-4 flex-wrap"></div>
+    </div>`;
+    
+    html += `<div>
       <div class="flex items-center gap-2 px-3 py-2 bg-gray-200 rounded-md text-sm font-semibold mb-2">
         <span class="w-2.5 h-2.5 rounded-full ${dotCls}" title="${dotTitle}" ${dotClick}></span>
-        <span class="truncate">${escHtml(selectedRepo)}</span>
+        <span class="truncate cursor-pointer hover:text-blue-600" onclick="toggleRepoIntro()">${escHtml(selectedRepo)}</span>
         <span class="ml-auto flex gap-2">
           <button onclick="installAllSkills('${escapedRepo}')" class="text-xs text-green-700 hover:underline cursor-pointer bg-transparent border border-green-600 rounded px-2 py-0.5">${t('installAll')}</button>
           <button onclick="uninstallAllSkills('${escapedRepo}')" class="text-xs text-red-600 hover:underline cursor-pointer bg-transparent border border-red-500 rounded px-2 py-0.5">${t('uninstallAll')}</button>
+          <button onclick="generateIntro('${escapedRepo}')" class="text-xs text-blue-600 hover:underline cursor-pointer bg-transparent border border-blue-500 rounded px-2 py-0.5">${t('generateSummary')}</button>
           <button onclick="removeRepo('${escapedRepo}')" class="text-xs text-red-600 hover:underline cursor-pointer bg-transparent border-0 p-0.5">${t('deleteRepo')}</button>
         </span>
+      </div>
+      <div id="repo-intro-panel" class="hidden bg-white border border-gray-200 rounded-lg p-4 mb-3">
+        <div id="intro-content" class="text-sm text-gray-600"></div>
       </div>`;
 
     if (items.length === 0) {
@@ -1248,6 +1315,10 @@
 
     html += '</div>';
     container.innerHTML = html;
+    
+    // Load intro and authors asynchronously
+    loadRepoIntro(selectedRepo);
+    loadRepoAuthors(selectedRepo);
   }
 
   async function installSkill(name) {
@@ -1524,6 +1595,160 @@
         !installDirsPanel.contains(e.target) &&
         !installDirsBtn.contains(e.target)) {
       installDirsPanel.classList.add('hidden');
+    }
+  });
+
+  // --- Repo Intro & Authors Functions ---
+
+  async function loadRepoIntro(repoName) {
+    try {
+      const resp = await fetch(`/api/repos/${encodeURIComponent(repoName)}/intro`);
+      const data = await resp.json();
+      const contentEl = document.getElementById('intro-content');
+
+      if (!resp.ok || !data.cached) {
+        contentEl.innerHTML = `<div class="flex items-center justify-center py-6">
+          <span class="text-gray-400">${t('noSummary')}</span>
+        </div>`;
+        return;
+      }
+
+      const s = data.summary;
+      // Build markdown text from structured summary
+      let md = '';
+      if (s.purpose) md += `## ${t('purpose') || 'Purpose'}\n\n${s.purpose}\n\n`;
+      if (s.features && s.features.length) {
+        md += `## ${t('features') || 'Features'}\n\n${s.features.map(f => `- ${f}`).join('\n')}\n\n`;
+      }
+      if (s.value) md += `## ${t('value') || 'Value'}\n\n${s.value}\n\n`;
+      if (s.target_users) md += `## ${t('targetUsers') || 'Target Users'}\n\n${s.target_users}\n\n`;
+      if (data.generatedAt) {
+        md += `---\n*${t('generatedAt') || 'Generated at'}: ${new Date(data.generatedAt).toLocaleString()}*`;
+      }
+
+      // Render markdown using marked.js (already loaded in page)
+      contentEl.innerHTML = `<div class="markdown-body">${marked.parse(md)}</div>`;
+    } catch (e) {
+      console.error('Failed to load intro:', e);
+    }
+  }
+
+  async function loadRepoAuthors(repoName) {
+    try {
+      const resp = await fetch(`/api/repos/${encodeURIComponent(repoName)}/authors`);
+      const data = await resp.json();
+      const cardEl = document.getElementById('repo-authors-card');
+      const contentEl = document.getElementById('authors-content');
+
+      if (!resp.ok || !data.authors || !data.authors.length) {
+        // Hide authors card when no data
+        if (cardEl) cardEl.classList.add('hidden');
+        return;
+      }
+
+      // Show card and render authors
+      if (cardEl) cardEl.classList.remove('hidden');
+
+      const html = data.authors.map(a => `
+        <div class="bg-gray-50 rounded-lg p-3 min-w-[200px]">
+          <div>
+            <div class="text-sm font-medium text-gray-800">${escHtml(a.name)}</div>
+            <div class="text-xs text-gray-500">@${escHtml(a.username)} · ${escHtml(a.role)}${a.contributions ? ' · ' + a.contributions + ' commits' : ''}</div>
+            ${a.bio ? `<div class="text-xs text-gray-400 mt-0.5">${escHtml(a.bio)}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      contentEl.innerHTML = html;
+    } catch (e) {
+      console.error('Failed to load authors:', e);
+      const cardEl = document.getElementById('repo-authors-card');
+      if (cardEl) cardEl.classList.add('hidden');
+    }
+  }
+
+  function toggleRepoIntro() {
+    const panel = document.getElementById('repo-intro-panel');
+    if (!panel) return;
+
+    if (panel.classList.contains('hidden')) {
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+  }
+
+  async function generateIntro(repoName) {
+    // Confirm with user before executing agent
+    const agentName = 'local agent';
+    const confirmed = await showConfirm(
+      `This will call the ${agentName} to analyze the README and generate a summary. Continue?`,
+      'Confirm Generate Summary'
+    );
+    if (!confirmed) return;
+
+    const contentEl = document.getElementById('intro-content');
+
+    // Show loading state
+    contentEl.innerHTML = '<div class="flex items-center justify-center py-6"><span class="text-gray-400">Generating summary via local agent...</span></div>';
+
+    try {
+      const resp = await fetch(`/api/repos/${encodeURIComponent(repoName)}/intro/generate`, { method: 'POST' });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        showToast(data.error || 'Failed to generate summary', 'error');
+        contentEl.innerHTML = `<div class="flex items-center justify-center py-6"><span class="text-red-400">${escHtml(data.error || 'Failed')}</span></div>`;
+        return;
+      }
+
+      // Refresh the intro display
+      loadRepoIntro(repoName);
+      showToast('Summary generated successfully');
+    } catch (e) {
+      showToast('Failed to generate summary: ' + e.message, 'error');
+      contentEl.innerHTML = `<div class="flex items-center justify-center py-6"><span class="text-red-400">Error: ${escHtml(e.message)}</span></div>`;
+    }
+  }
+
+  function closePromptModal() {
+    const modal = document.getElementById('prompt-modal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.classList.add('hidden'), 200);
+  }
+
+  async function copyPromptToClipboard() {
+    const text = document.getElementById('prompt-content').textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(t('promptCopied'));
+    } catch (e) {
+      // Fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      showToast(t('promptCopied'));
+    }
+  }
+
+  // Close prompt modal on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const promptModal = document.getElementById('prompt-modal');
+      if (!promptModal.classList.contains('hidden')) {
+        closePromptModal();
+      }
+    }
+  });
+
+  // Close prompt modal when clicking outside
+  document.addEventListener('click', (e) => {
+    const promptModal = document.getElementById('prompt-modal');
+    if (!promptModal.classList.contains('hidden') && e.target === promptModal) {
+      closePromptModal();
     }
   });
 

@@ -86,3 +86,84 @@ def self_update() -> None:
         console.print("[red]✗ Update failed.[/red]")
         console.print("Try manually: pip install --upgrade skill-hub")
         raise click.Abort()
+
+
+@cli.command(name="summarize")
+@click.argument("repo_name")
+def summarize_repo(repo_name: str) -> None:
+    """Generate a prompt to summarize a repo's README.
+
+    Copy the output to your agent (Claude Code, OpenCode, etc.) to generate
+    a structured summary. Then submit it with: skill-hub set-summary <repo> <json>
+
+    Example:
+        skill-hub summarize anthropics/skills
+    """
+    from skill_hub.web.repos import load_repos_config, repo_dir
+    from skill_hub.web.intro import generate_prompt, read_repo_readme
+
+    repos = load_repos_config()
+    repo = next((r for r in repos if r.name == repo_name), None)
+    if not repo:
+        console.print(f"[red]Repo '{repo_name}' not found.[/red]")
+        console.print("Run 'skill-hub web' to add repos.")
+        raise click.Abort()
+
+    target = repo_dir(repo)
+    readme = read_repo_readme(target)
+    if not readme:
+        console.print(f"[red]README.md not found in {target}[/red]")
+        raise click.Abort()
+
+    prompt = generate_prompt(repo_name, readme)
+    console.print("[green]Copy the following prompt to your agent:[/green]")
+    console.print()
+    console.print(prompt)
+    console.print()
+    console.print("[dim]After running, submit the result with:[/dim]")
+    console.print(f"[blue]skill-hub set-summary {repo_name} '<json_result>'[/blue]")
+
+
+@cli.command(name="set-summary")
+@click.argument("repo_name")
+@click.argument("summary_json")
+def set_summary(repo_name: str, summary_json: str) -> None:
+    """Submit a generated summary for a repo.
+
+    The summary_json should be a JSON string with keys:
+    purpose, features, value, target_users, tech_stack.
+
+    Example:
+        skill-hub set-summary anthropics/skills '{"purpose":"...",...}'
+    """
+    import json
+    from skill_hub.web.repos import load_repos_config, repo_dir
+    from skill_hub.web.intro import load_intro, save_intro
+    from datetime import datetime
+    from skill_hub.web.intro import _md5_of_file
+
+    try:
+        summary = json.loads(summary_json)
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Invalid JSON: {e}[/red]")
+        raise click.Abort()
+
+    repos = load_repos_config()
+    repo = next((r for r in repos if r.name == repo_name), None)
+    if not repo:
+        console.print(f"[red]Repo '{repo_name}' not found.[/red]")
+        raise click.Abort()
+
+    target = repo_dir(repo)
+    readme_path = target / "README.md"
+    if not readme_path.exists():
+        readme_path = target / "Readme.md"
+
+    intro = load_intro(repo_name, readme_path)
+    intro.summary = summary
+    intro.generated_at = datetime.utcnow()
+    intro.cached = True
+    intro.readme_md5 = _md5_of_file(readme_path)
+
+    save_intro(intro)
+    console.print(f"[green]Summary saved for {repo_name}[/green]")

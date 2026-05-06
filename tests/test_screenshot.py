@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Import the screenshot module from skill scripts directory
 SCRIPT_PATH = Path(".agents/skills/project-version-update/scripts/screenshot.py")
 spec = importlib.util.spec_from_file_location("screenshot_script", SCRIPT_PATH)
@@ -202,13 +204,16 @@ class TestUpdateScreenshotWorkflow:
         with patch.object(
             screenshot_module, "capture_homepage_screenshot", return_value=new_screenshot
         ):
-            with patch("urllib.request.urlopen") as mock_urlopen:
-                mock_urlopen.return_value = MagicMock()
-                result = screenshot_module.update_screenshot(
-                    imgs_dir=str(imgs_dir),
-                    readme_en=str(readme_en),
-                    readme_zh=str(readme_zh),
-                )
+            with patch.object(
+                screenshot_module, "verify_version_matches", return_value=True
+            ):
+                with patch("urllib.request.urlopen") as mock_urlopen:
+                    mock_urlopen.return_value = MagicMock()
+                    result = screenshot_module.update_screenshot(
+                        imgs_dir=str(imgs_dir),
+                        readme_en=str(readme_en),
+                        readme_zh=str(readme_zh),
+                    )
 
         assert result is not None
         assert Path(result).exists()
@@ -216,3 +221,81 @@ class TestUpdateScreenshotWorkflow:
         assert old_screenshot.exists() is False or "old.png" not in readme_en.read_text()
         assert "old.png" not in readme_en.read_text()
         assert "old.png" not in readme_zh.read_text()
+
+    def test_version_mismatch_raises_error(self, tmp_path):
+        """RED: Should raise error when version mismatch and user declines."""
+        imgs_dir = tmp_path / "imgs"
+        imgs_dir.mkdir()
+        readme_en = tmp_path / "README.md"
+        readme_zh = tmp_path / "README.zh-CN.md"
+
+        with patch.object(
+            screenshot_module, "verify_version_matches", return_value=False
+        ):
+            with patch("builtins.input", return_value="n"):
+                with pytest.raises(RuntimeError, match="Version mismatch"):
+                    screenshot_module.update_screenshot(
+                        imgs_dir=str(imgs_dir),
+                        readme_en=str(readme_en),
+                        readme_zh=str(readme_zh),
+                    )
+
+    def test_version_mismatch_with_override(self, tmp_path):
+        """RED: Should continue when version mismatch but user overrides."""
+        imgs_dir = tmp_path / "imgs"
+        imgs_dir.mkdir()
+        readme_en = tmp_path / "README.md"
+        readme_zh = tmp_path / "README.zh-CN.md"
+        readme_en.write_text("![](imgs/old.png)\n")
+        readme_zh.write_text("![](imgs/old.png)\n")
+
+        new_screenshot = imgs_dir / "2026-05-04-12-00-00.png"
+        new_screenshot.write_text("new")
+
+        with patch.object(
+            screenshot_module, "capture_homepage_screenshot", return_value=new_screenshot
+        ):
+            with patch.object(
+                screenshot_module, "verify_version_matches", return_value=False
+            ):
+                with patch("builtins.input", return_value="y"):
+                    with patch("urllib.request.urlopen") as mock_urlopen:
+                        mock_urlopen.return_value = MagicMock()
+                        result = screenshot_module.update_screenshot(
+                            imgs_dir=str(imgs_dir),
+                            readme_en=str(readme_en),
+                            readme_zh=str(readme_zh),
+                        )
+
+        assert result is not None
+
+    def test_skip_version_verification(self, tmp_path):
+        """RED: Should skip version check when verify_version=False."""
+        imgs_dir = tmp_path / "imgs"
+        imgs_dir.mkdir()
+        readme_en = tmp_path / "README.md"
+        readme_zh = tmp_path / "README.zh-CN.md"
+        readme_en.write_text("![](imgs/old.png)\n")
+        readme_zh.write_text("![](imgs/old.png)\n")
+
+        new_screenshot = imgs_dir / "2026-05-04-12-00-00.png"
+        new_screenshot.write_text("new")
+
+        with patch.object(
+            screenshot_module, "capture_homepage_screenshot", return_value=new_screenshot
+        ):
+            # verify_version_matches should not be called
+            with patch.object(
+                screenshot_module, "verify_version_matches"
+            ) as mock_verify:
+                with patch("urllib.request.urlopen") as mock_urlopen:
+                    mock_urlopen.return_value = MagicMock()
+                    result = screenshot_module.update_screenshot(
+                        imgs_dir=str(imgs_dir),
+                        readme_en=str(readme_en),
+                        readme_zh=str(readme_zh),
+                        verify_version=False,
+                    )
+
+        mock_verify.assert_not_called()
+        assert result is not None

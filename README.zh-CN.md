@@ -16,7 +16,7 @@
 - **版本感知** — 黄色徽章提示技能已过期，防止过时指令在后台静默消耗 Token
 - **按需安装，避免全局膨胀** — 保持全局技能空间精简。项目专属技能安装到 `.agents/skills/`（私有），仅通用技能放入 `~/.agents/skills/`（全局）。作用域内无关技能越少，误匹配消耗的 Token 就越少
 
-![](imgs/2026-05-05-01-18-48.png)
+![](imgs/2026-05-06-19-27-20.png)
 
 ## 工作原理
 
@@ -101,6 +101,8 @@ skill-hub version --check
 | `skill-hub version` | 显示当前版本 |
 | `skill-hub version --check` | 检查是否有新版本可用 |
 | `skill-hub self-update` | 通过 pip 升级 skill-hub |
+| `skill-hub summarize <repo>` | 生成仓库 README 的结构化摘要 |
+| `skill-hub set-summary <repo> <json>` | 保存生成的摘要 |
 
 ## 功能
 
@@ -116,6 +118,9 @@ skill-hub version --check
 - **仓库诊断** — 🔍 按钮运行全面健康检查（git、网络、SKILL.md 文件、映射）
 - **全量安装/卸载** — 每个仓库提供「全部安装」/「全部卸载」按钮，一键管理所有技能
 - **安装目录面板** — 独立面板管理目标安装目录（`~/.claude/skills/`、`~/.agents/skills/` 及自定义路径）
+- **仓库介绍** — AI 自动生成 README 结构化摘要（目的、功能、价值、目标用户），支持 Markdown 渲染；点击仓库名展开/收起
+- **作者信息** — 从 GitHub API 显示仓库所有者和主要贡献者（无数据时自动隐藏）
+- **Agent 回调** — 直接在 Web UI 中调用本地 AI agent（如 `opencode`、`claude`）生成摘要
 
 ## SKILL.md 格式
 

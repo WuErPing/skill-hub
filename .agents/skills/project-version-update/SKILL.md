@@ -78,16 +78,27 @@ Ensure `README.md` accurately reflects the current feature set:
 
 Capture an up-to-date screenshot of the skill-hub homepage and update both README files:
 
+**Before screenshotting, verify the web UI shows the new version:**
+
 ```bash
+skill-hub version
 python .agents/skills/project-version-update/scripts/screenshot.py
 ```
 
 This will:
-1. Start the skill-hub web server (if not already running)
-2. Capture a full-page screenshot of `http://127.0.0.1:7860`
-3. Save it to `imgs/YYYY-MM-DD-HH-MM-SS.png`
-4. Update `README.md` and `README.zh-CN.md` to reference the new screenshot
-5. Remove old screenshot files to avoid clutter
+1. Check if `skill-hub version` matches the code (`src/skill_hub/__init__.py`)
+2. Start the skill-hub web server (if not already running)
+3. **Verify the web UI shows the correct version number** (e.g., v0.7.0)
+4. If version mismatch detected, warn and prompt for confirmation
+5. Capture a full-page screenshot of `http://127.0.0.1:7860`
+6. Save it to `imgs/YYYY-MM-DD-HH-MM-SS.png`
+7. Update `README.md` and `README.zh-CN.md` to reference the new screenshot
+8. Remove old screenshot files to avoid clutter
+
+**If you see a version mismatch warning:**
+- The web server may be running an older installation
+- Fix: `pip install -e .` then restart the server
+- Or run `skill-hub web` manually before screenshotting
 
 Requirements:
 - Playwright must be installed (`pip install -e ".[dev]"`)

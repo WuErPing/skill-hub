@@ -16,7 +16,7 @@ Managing agent skills shouldn't waste tokens. skill-hub centralizes skill discov
 - **Version awareness** — yellow badges tell you when a skill is outdated, preventing stale instructions from silently consuming tokens
 - **Install only what you need** — keep your global skill space lean. Install project-specific skills to `.agents/skills/` (private) and only widely-used skills to `~/.agents/skills/` (global). The fewer irrelevant skills in scope, the less token waste on false-positive matches
 
-![](imgs/2026-05-05-01-18-48.png)
+![](imgs/2026-05-06-19-27-20.png)
 
 ## How It Works
 
@@ -101,6 +101,8 @@ skill-hub version --check
 | `skill-hub version` | Show current version |
 | `skill-hub version --check` | Check if a newer version is available |
 | `skill-hub self-update` | Upgrade skill-hub via pip |
+| `skill-hub summarize <repo>` | Generate a structured summary of a repo's README |
+| `skill-hub set-summary <repo> <json>` | Save a generated summary for a repo |
 
 ## Features
 
@@ -116,6 +118,9 @@ skill-hub version --check
 - **Repository diagnostics** — 🔍 button runs comprehensive health checks (git, network, SKILL.md files, mappings)
 - **Bulk install/uninstall** — "Install All" / "Uninstall All" buttons per repo to manage all skills at once
 - **Install Directories panel** — standalone panel for managing target install directories (`~/.claude/skills/`, `~/.agents/skills/`, and custom paths)
+- **Repo Introduction** — AI-generated structured summary from README (purpose, features, value, target users) with Markdown rendering; click repo name to expand/collapse
+- **Author Information** — display repo owner and top contributors from GitHub API (auto-hide when unavailable)
+- **Agent Callback** — generate summaries by calling your local AI agent (e.g., `opencode`, `claude`) directly from the web UI
 
 ## SKILL.md Format
 
