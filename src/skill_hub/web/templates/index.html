@@ -241,7 +241,7 @@
         <button id="confirm-modal-cancel" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
           <span id="confirm-modal-cancel-text"></span>
         </button>
-        <button id="confirm-modal-ok" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 cursor-pointer transition-colors">
+        <button id="confirm-modal-ok" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
           <span id="confirm-modal-ok-text"></span>
         </button>
       </div>
@@ -267,7 +267,7 @@
         </div>
       </div>
       <div class="flex justify-end gap-2.5 mt-6">
-        <button id="alert-modal-ok" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 cursor-pointer transition-colors">
+        <button id="alert-modal-ok" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
           <span id="alert-modal-ok-text"></span>
         </button>
       </div>
@@ -1234,12 +1234,6 @@
 
     let html = '';
     
-    // --- Authors Card (hidden by default) ---
-    html += `<div id="repo-authors-card" class="hidden bg-white rounded-lg border border-gray-200 p-4 mb-3">
-      <h3 class="text-base font-semibold text-gray-800 mb-3">${t('repoAuthors')}</h3>
-      <div id="authors-content" class="flex gap-4 flex-wrap"></div>
-    </div>`;
-    
     html += `<div>
       <div class="flex items-center gap-2 px-3 py-2 bg-gray-200 rounded-md text-sm font-semibold mb-2">
         <span class="w-2.5 h-2.5 rounded-full ${dotCls}" title="${dotTitle}" ${dotClick}></span>
@@ -1252,6 +1246,7 @@
         </span>
       </div>
       <div id="repo-intro-panel" class="hidden bg-white border border-gray-200 rounded-lg p-4 mb-3">
+        <div id="intro-authors-content" class="hidden mb-4"></div>
         <div id="intro-content" class="text-sm text-gray-600"></div>
       </div>`;
 
@@ -1637,17 +1632,14 @@
     try {
       const resp = await fetch(`/api/repos/${encodeURIComponent(repoName)}/authors`);
       const data = await resp.json();
-      const cardEl = document.getElementById('repo-authors-card');
-      const contentEl = document.getElementById('authors-content');
+      const containerEl = document.getElementById('intro-authors-content');
 
       if (!resp.ok || !data.authors || !data.authors.length) {
-        // Hide authors card when no data
-        if (cardEl) cardEl.classList.add('hidden');
+        if (containerEl) containerEl.classList.add('hidden');
         return;
       }
 
-      // Show card and render authors
-      if (cardEl) cardEl.classList.remove('hidden');
+      if (containerEl) containerEl.classList.remove('hidden');
 
       const html = data.authors.map(a => `
         <div class="bg-gray-50 rounded-lg p-3 min-w-[200px]">
@@ -1659,11 +1651,11 @@
         </div>
       `).join('');
 
-      contentEl.innerHTML = html;
+      containerEl.innerHTML = `<h3 class="text-base font-semibold text-gray-800 mb-3">${t('repoAuthors')}</h3><div class="flex gap-4 flex-wrap">${html}</div>`;
     } catch (e) {
       console.error('Failed to load authors:', e);
-      const cardEl = document.getElementById('repo-authors-card');
-      if (cardEl) cardEl.classList.add('hidden');
+      const containerEl = document.getElementById('intro-authors-content');
+      if (containerEl) containerEl.classList.add('hidden');
     }
   }
 

@@ -31,7 +31,7 @@ def get_intro_cache_path(repo_name: str) -> Path:
 
 def _md5_of_file(path: Path) -> str:
     """Return MD5 hash of file contents."""
-    if not path.exists():
+    if not path.is_file():
         return ""
     return hashlib.md5(path.read_bytes()).hexdigest()
 
@@ -118,16 +118,24 @@ def generate_prompt(repo_name: str, readme_content: str) -> str:
     return json.dumps(prompt_data, ensure_ascii=False, indent=2)
 
 
-def read_repo_readme(repo_dir: Path) -> Optional[str]:
-    """Read README.md content from a repo directory."""
+def find_repo_readme(repo_dir: Path) -> Optional[Path]:
+    """Find README file path in a repo directory."""
     for name in ["README.md", "Readme.md", "readme.md"]:
         path = repo_dir / name
-        if path.exists():
-            try:
-                return path.read_text(encoding="utf-8")
-            except Exception:
-                return None
+        if path.is_file():
+            return path
     return None
+
+
+def read_repo_readme(repo_dir: Path) -> Optional[str]:
+    """Read README.md content from a repo directory."""
+    path = find_repo_readme(repo_dir)
+    if path is None:
+        return None
+    try:
+        return path.read_text(encoding="utf-8")
+    except Exception:
+        return None
 
 
 def generate_summary_via_local_agent(repo_name: str, readme_content: str) -> Optional[dict]:

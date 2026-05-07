@@ -32,6 +32,7 @@ from skill_hub.web.state import (
     uninstall_skill,
 )
 from skill_hub.web.intro import (
+    find_repo_readme,
     load_intro,
     read_repo_readme,
     save_intro,
@@ -520,8 +521,9 @@ def get_repo_intro(name: str):
     
     target = repo_dir(repo)
     readme = read_repo_readme(target)
+    readme_path = find_repo_readme(target)
     
-    intro = load_intro(name, target / "README.md" if readme else target)
+    intro = load_intro(name, readme_path if readme_path else target)
     
     # If no cache, check if README exists
     if not intro.cached:
@@ -564,9 +566,9 @@ def generate_intro_directly(name: str):
         }), 503
 
     # Save to cache
-    readme_path = target / "README.md"
-    if not readme_path.exists():
-        readme_path = target / "Readme.md"
+    readme_path = find_repo_readme(target)
+    if not readme_path:
+        return jsonify({"error": "README.md not found"}), 404
 
     intro = load_intro(name, readme_path)
     intro.summary = summary

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-05-07
+
+### Fixed
+- **Intro crash**: Fixed `IsADirectoryError` when repo has no README or uses alternate casing (`Readme.md`, `readme.md`)
+- **Confirm dialog styling**: OK button now uses the same outline style as Cancel for visual consistency
+
+### Changed
+- **Authors display**: Merged author information into the repo introduction panel instead of showing as a separate card above it
+
 ## [0.19.0] - 2026-05-06
 
 ### Added
