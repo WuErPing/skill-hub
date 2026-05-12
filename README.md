@@ -38,11 +38,10 @@ Take [anthropics/skills](https://github.com/anthropics/skills) as an example —
 │       ├── excel-sheets/
 │       │   └── SKILL.md
 │       └── ...
-└── mappings/
-    └── anthropics__skills.yaml # skill → installed path mapping
-
-~/.claude/skills/               # installed skills (target A)
-~/.agents/skills/               # installed skills (target B)
+├── mappings/
+│   └── anthropics__skills.yaml # skill → installed path mapping
+└── intros/
+    └── anthropics__skills.json # cached repo intro (README summary)
 ```
 
 skill-hub scans `SKILL.md` files in each repo, builds a mapping, and installs (symlink or copy) to both target directories.
@@ -118,7 +117,7 @@ skill-hub version --check
 - **Repository diagnostics** — 🔍 button runs comprehensive health checks (git, network, SKILL.md files, mappings)
 - **Bulk install/uninstall** — "Install All" / "Uninstall All" buttons per repo to manage all skills at once
 - **Install Directories panel** — standalone panel for managing target install directories (`~/.claude/skills/`, `~/.agents/skills/`, and custom paths)
-- **Repo Introduction** — AI-generated structured summary from README (purpose, features, value, target users) with Markdown rendering; click repo name to expand/collapse
+- **Repo Introduction** — AI-generated structured summary from README (purpose, features, value, target users) with Markdown rendering; click repo name to expand/collapse. Cached in `~/.skills_repo/intros/`
 - **Author Information** — display repo owner and top contributors from GitHub API (auto-hide when unavailable)
 - **Agent Callback** — generate summaries by calling your local AI agent (e.g., `opencode`, `claude`) directly from the web UI
 

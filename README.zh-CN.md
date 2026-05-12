@@ -38,11 +38,10 @@
 │       ├── excel-sheets/
 │       │   └── SKILL.md
 │       └── ...
-└── mappings/
-    └── anthropics__skills.yaml # 技能 → 已安装路径映射
-
-~/.claude/skills/               # 已安装技能（目标 A）
-~/.agents/skills/               # 已安装技能（目标 B）
+├── mappings/
+│   └── anthropics__skills.yaml # 技能 → 已安装路径映射
+└── intros/
+    └── anthropics__skills.json # 缓存的仓库介绍（README 摘要）
 ```
 
 skill-hub 扫描每个仓库中的 `SKILL.md` 文件，构建映射，然后安装（软链接或复制）到两个目标目录。
@@ -118,7 +117,7 @@ skill-hub version --check
 - **仓库诊断** — 🔍 按钮运行全面健康检查（git、网络、SKILL.md 文件、映射）
 - **全量安装/卸载** — 每个仓库提供「全部安装」/「全部卸载」按钮，一键管理所有技能
 - **安装目录面板** — 独立面板管理目标安装目录（`~/.claude/skills/`、`~/.agents/skills/` 及自定义路径）
-- **仓库介绍** — AI 自动生成 README 结构化摘要（目的、功能、价值、目标用户），支持 Markdown 渲染；点击仓库名展开/收起
+- **仓库介绍** — AI 自动生成 README 结构化摘要（目的、功能、价值、目标用户），支持 Markdown 渲染；点击仓库名展开/收起。缓存在 `~/.skills_repo/intros/`
 - **作者信息** — 从 GitHub API 显示仓库所有者和主要贡献者（无数据时自动隐藏）
 - **Agent 回调** — 直接在 Web UI 中调用本地 AI agent（如 `opencode`、`claude`）生成摘要
 

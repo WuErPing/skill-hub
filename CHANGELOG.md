@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-05-12
+
+### Changed
+- **Skill status visualization**: Replaced text status badges (`Installed`, `Partially installed`, `Not installed`) with colored left border bars (green/yellow/gray) and hover tooltips for a cleaner, more scannable skill list
+
+### Fixed
+- **README directory diagrams**: Updated ASCII tree to include the `intros/` cache directory and remove redundant target directories in both README and README.zh-CN
+
 ## [0.19.1] - 2026-05-07
 
 ### Fixed

@@ -1205,6 +1205,15 @@
     renderSkills();
   }
 
+  function statusBorderColor(status) {
+    const map = {
+      'installed': 'border-l-4 border-l-green-500',
+      'not_installed': 'border-l-4 border-l-gray-300',
+      'outdated': 'border-l-4 border-l-yellow-500',
+    };
+    return map[status] || 'border-l-4 border-l-gray-300';
+  }
+
   function statusBadge(status) {
     const map = {
       'installed': 'bg-green-100 text-green-800',
@@ -1294,10 +1303,9 @@
 
         const statusLabel = s.status === 'outdated' ? t('partial') : t(s.status);
 
-        html += `<li class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 mb-1">
+        html += `<li class="flex items-center gap-3 px-3 py-2 rounded-r-md hover:bg-gray-100 mb-1 ${statusBorderColor(s.status)}" title="${escAttr(statusLabel)}">
           <span class="flex-1 font-medium cursor-pointer hover:underline hover:text-blue-600" onclick="toggleMeta('${escapedName}', this)">${escHtml(s.name)}</span>
           <span class="flex items-center">${dirDots}</span>
-          <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(s.status)}">${statusLabel}</span>
           ${isInstalled
             ? `<button onclick="uninstallSkill('${escapedName}')" class="px-3 py-1 rounded border border-red-500 text-red-600 text-xs hover:bg-red-50 cursor-pointer">${t('uninstall')}</button>`
             : `<button onclick="installSkill('${escapedName}')" class="px-3 py-1 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer">${t('install')}</button>`
