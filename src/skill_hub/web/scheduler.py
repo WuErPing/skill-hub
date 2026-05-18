@@ -83,6 +83,10 @@ class RepoScheduler:
         with self._cache_lock:
             return dict(self._status_cache)
 
+    def set_status(self, repo_name: str, status: RepoStatus) -> None:
+        with self._cache_lock:
+            self._status_cache[repo_name] = status
+
     def check_now(self) -> None:
         """Run a single check cycle immediately. Clone uncloned repos first."""
         repos = load_repos_config()

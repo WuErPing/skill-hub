@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import threading
+import time
 import uuid
 import yaml
 from dataclasses import dataclass, field
@@ -246,6 +247,12 @@ def pull_latest(repo: Repo) -> tuple[bool, str]:
     msg = f"Pulled {repo.url} — {count} skill(s) in mapping"
     if conflicts:
         msg += f" (warning: {len(conflicts)} name conflict(s) skipped)"
+    # Update scheduler cache so the UI reflects the repo is up to date
+    try:
+        from skill_hub.web.scheduler import RepoStatus, scheduler
+        scheduler.set_status(repo.name, RepoStatus(has_updates=False, last_checked=time.time()))
+    except Exception:
+        pass
     return True, msg
 
 

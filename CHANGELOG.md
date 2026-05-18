@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-05-18
+
+### Fixed
+- **Sync status indicator**: Yellow "remote update available" dot now correctly turns green after a successful sync completes
+
 ## [0.20.0] - 2026-05-12
 
 ### Changed
