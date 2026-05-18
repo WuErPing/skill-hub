@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.2] - 2026-05-18
+
+### Fixed
+- **`self-update` command**: Now detects editable installations and prompts manual `git pull` instead of failing. For standard installs, upgrades from GitHub source instead of the unpublished PyPI package.
+
 ## [0.20.1] - 2026-05-18
 
 ### Fixed

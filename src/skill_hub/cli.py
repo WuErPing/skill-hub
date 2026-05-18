@@ -75,16 +75,67 @@ def show_version(check: bool) -> None:
 def self_update() -> None:
     """Update skill-hub to the latest version.
 
-    This command will upgrade skill-hub to the latest version from PyPI.
+    This command will upgrade skill-hub from GitHub, or prompt for manual
+    update if it was installed in editable mode.
     """
-    console.print("Updating skill-hub...")
+    import sys
+
+    console.print("Checking installation type...")
+
+    # Detect installation source
     try:
-        subprocess.check_call(["pip", "install", "--upgrade", "skill-hub"])
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "show", "skill-hub"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        pip_show = result.stdout
+    except subprocess.CalledProcessError:
+        console.print("[red]✗ Could not detect installation type.[/red]")
+        console.print(
+            "Try manually: pip install --upgrade "
+            "git+https://github.com/wuerping/skill-hub.git"
+        )
+        raise click.Abort()
+
+    # Editable install: prompt manual git update
+    if "Editable project location" in pip_show:
+        for line in pip_show.strip().split("\n"):
+            if line.startswith("Editable project location:"):
+                location = line.split(":", 1)[1].strip()
+                console.print(
+                    f"[yellow]Detected editable install at: {location}[/yellow]"
+                )
+                console.print("[yellow]Please update manually with:[/yellow]")
+                console.print(f"  cd {location} && git pull")
+                console.print("  pip install -e .")
+                raise click.Abort()
+
+    # Standard install: upgrade from GitHub
+    console.print("Updating skill-hub from GitHub...")
+    try:
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "git+https://github.com/wuerping/skill-hub.git",
+            ]
+        )
         console.print("[green]✓ Updated successfully![/green]")
-        console.print("Restart your terminal or run 'skill-hub --version' to see the new version.")
+        console.print(
+            "Restart your terminal or run 'skill-hub --version' "
+            "to see the new version."
+        )
     except subprocess.CalledProcessError:
         console.print("[red]✗ Update failed.[/red]")
-        console.print("Try manually: pip install --upgrade skill-hub")
+        console.print(
+            "Try manually: pip install --upgrade "
+            "git+https://github.com/wuerping/skill-hub.git"
+        )
         raise click.Abort()
 
 

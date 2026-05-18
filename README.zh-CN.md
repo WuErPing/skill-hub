@@ -99,7 +99,7 @@ skill-hub version --check
 | `skill-hub web` | 启动 Web UI |
 | `skill-hub version` | 显示当前版本 |
 | `skill-hub version --check` | 检查是否有新版本可用 |
-| `skill-hub self-update` | 通过 pip 升级 skill-hub |
+| `skill-hub self-update` | 从 GitHub 升级 skill-hub（可编辑安装则提示手动更新） |
 | `skill-hub summarize <repo>` | 生成仓库 README 的结构化摘要 |
 | `skill-hub set-summary <repo> <json>` | 保存生成的摘要 |
 

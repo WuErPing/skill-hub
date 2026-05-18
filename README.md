@@ -99,7 +99,7 @@ skill-hub version --check
 | `skill-hub web` | Start the web UI |
 | `skill-hub version` | Show current version |
 | `skill-hub version --check` | Check if a newer version is available |
-| `skill-hub self-update` | Upgrade skill-hub via pip |
+| `skill-hub self-update` | Upgrade skill-hub from GitHub (or prompt for editable installs) |
 | `skill-hub summarize <repo>` | Generate a structured summary of a repo's README |
 | `skill-hub set-summary <repo> <json>` | Save a generated summary for a repo |
 
