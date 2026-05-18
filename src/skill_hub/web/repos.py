@@ -598,3 +598,45 @@ def start_repo_task(url: str, branch: str = "main") -> RepoTask:
     thread = threading.Thread(target=_run_task, args=(task,), daemon=True)
     thread.start()
     return task
+
+
+# ---------------------------------------------------------------------------
+# Async task tracking for bulk sync-all with progress
+# ---------------------------------------------------------------------------
+
+def _run_sync_all_task(task: RepoTask):
+    """Background thread: pull latest for all repos, update task progress."""
+    try:
+        repos = load_repos_config()
+        total = len(repos)
+        if total == 0:
+            task.progress = 100
+            task.step = "No repositories configured"
+            task.status = "success"
+            return
+
+        success_count = 0
+        for i, repo in enumerate(repos):
+            task.progress = int((i / total) * 90)
+            task.step = f"Syncing {repo.name} ({i + 1}/{total})..."
+            ok, _msg = pull_latest(repo)
+            if ok:
+                success_count += 1
+
+        task.progress = 100
+        task.step = f"Synced {success_count}/{total} repositories"
+        task.status = "success"
+    except Exception as e:
+        task.status = "error"
+        task.error = str(e)
+
+
+def start_sync_all_task() -> RepoTask:
+    """Start an async sync-all task. Returns the task immediately."""
+    task_id = uuid.uuid4().hex[:12]
+    task = RepoTask(task_id=task_id, url="sync-all", branch="all", step="Initializing...")
+    with _tasks_lock:
+        _tasks[task_id] = task
+    thread = threading.Thread(target=_run_sync_all_task, args=(task,), daemon=True)
+    thread.start()
+    return task

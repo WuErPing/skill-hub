@@ -19,6 +19,7 @@ from skill_hub.web.repos import (
     repo_dir,
     save_repos_config,
     start_repo_task,
+    start_sync_all_task,
     sync_mapping,
 )
 from skill_hub.web.scheduler import scheduler
@@ -63,7 +64,7 @@ def get_skills():
     """List all skills with their installation status across all directories."""
     skills = list_skills()
     install_dirs = _get_install_dirs()
-    
+
     return jsonify([
         {
             "name": s.name,
@@ -158,10 +159,10 @@ def api_install_to(name: str):
     body = request.get_json(silent=True) or {}
     target_label = body.get("target", "").strip()
     method = body.get("method", "copy")
-    
+
     if method not in ("copy", "symlink"):
         return jsonify({"error": "method must be 'copy' or 'symlink'"}), 400
-    
+
     # Validate target label exists
     install_dirs = _get_install_dirs()
     valid_labels = {d.label for d in install_dirs}
@@ -351,6 +352,13 @@ def sync_repos():
     return jsonify({"ok": True, "results": results})
 
 
+@api_bp.route("/repos/sync/async", methods=["POST"])
+def sync_repos_async():
+    """Start an async task to pull latest for all repos. Returns task_id for polling."""
+    task = start_sync_all_task()
+    return jsonify(task.to_dict()), 202
+
+
 @api_bp.route("/update-status", methods=["GET"])
 def update_status():
     """Check if any repos have remote updates available."""
@@ -472,13 +480,13 @@ def get_install_dirs_api():
 def add_install_dir_api():
     """Add a new install directory."""
     from skill_hub.web.config import add_install_dir as _add_install_dir
-    
+
     body = request.get_json(silent=True) or {}
     path = body.get("path", "").strip()
-    
+
     if not path:
         return jsonify({"error": "path is required"}), 400
-    
+
     try:
         new_dir = _add_install_dir(path)
         return jsonify({
@@ -497,7 +505,7 @@ def add_install_dir_api():
 def remove_install_dir_api(label: str):
     """Remove an install directory by label."""
     from skill_hub.web.config import remove_install_dir as _remove_install_dir
-    
+
     try:
         _remove_install_dir(label)
         return jsonify({"ok": True, "message": f"Removed directory '{label}'"})
@@ -513,18 +521,18 @@ def remove_install_dir_api(label: str):
 def get_repo_intro(name: str):
     """Get repo introduction. Returns cached summary or indicates need to generate."""
     from skill_hub.web.repos import load_repos_config, repo_dir
-    
+
     repos = load_repos_config()
     repo = next((r for r in repos if r.name == name), None)
     if not repo:
         return jsonify({"error": f"Repo '{name}' not found"}), 404
-    
+
     target = repo_dir(repo)
     readme = read_repo_readme(target)
     readme_path = find_repo_readme(target)
-    
+
     intro = load_intro(name, readme_path if readme_path else target)
-    
+
     # If no cache, check if README exists
     if not intro.cached:
         if not readme:
@@ -533,7 +541,7 @@ def get_repo_intro(name: str):
             "cached": False,
             "message": "No summary cached. Use POST /intro/prompt to generate."
         })
-    
+
     return jsonify({
         "ok": True,
         "cached": True,
@@ -589,31 +597,31 @@ def generate_intro_directly(name: str):
 def set_repo_intro(name: str):
     """Submit a generated summary for a repo."""
     from skill_hub.web.repos import load_repos_config, repo_dir
-    
+
     repos = load_repos_config()
     repo = next((r for r in repos if r.name == name), None)
     if not repo:
         return jsonify({"error": f"Repo '{name}' not found"}), 404
-    
+
     body = request.get_json(silent=True) or {}
     summary = body.get("summary")
     if not summary or not isinstance(summary, dict):
         return jsonify({"error": "summary object is required"}), 400
-    
+
     target = repo_dir(repo)
     readme_path = target / "README.md"
     if not readme_path.exists():
         readme_path = target / "Readme.md"
-    
+
     intro = load_intro(name, readme_path)
     intro.summary = summary
     intro.generated_at = datetime.utcnow()
     intro.cached = True
-    
+
     # Recompute readme_md5
     from skill_hub.web.intro import _md5_of_file
     intro.readme_md5 = _md5_of_file(readme_path)
-    
+
     save_intro(intro)
     return jsonify({"ok": True, "message": "Summary saved"})
 
@@ -622,12 +630,12 @@ def set_repo_intro(name: str):
 def get_repo_authors(name: str):
     """Get author information for a repo (owner + top contributors)."""
     from skill_hub.web.repos import load_repos_config
-    
+
     repos = load_repos_config()
     repo = next((r for r in repos if r.name == name), None)
     if not repo:
         return jsonify({"error": f"Repo '{name}' not found"}), 404
-    
+
     authors = fetch_repo_authors(repo.url)
     return jsonify({
         "ok": True,

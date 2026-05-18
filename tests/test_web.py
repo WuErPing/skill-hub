@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 from unittest.mock import patch
+import time
 
 import pytest
 
@@ -44,13 +45,13 @@ def temp_home(tmp_path):
     import skill_hub.web.repos
     import skill_hub.web.state
     import skill_hub.web.config as config_module
-    
+
     skill_hub.web.repos.SKILLS_REPO_ROOT = tmp_path / "skills_repo"
     skill_hub.web.repos.REPOS_YAML = repos_yaml
     skill_hub.web.repos.REPOS_DIR = tmp_path / "skills_repo" / "repos"
     skill_hub.web.repos.MAPPINGS_DIR = tmp_path / "skills_repo" / "mappings"
     config_module.CONFIG_FILE = config_file
-    
+
     import skill_hub.web.state as state_module
     state_module.REPOS_DIR = tmp_path / "skills_repo" / "repos"
     skill_hub.web.state.CLAUDE_SKILLS = claude
@@ -188,6 +189,41 @@ def test_sync_repos_returns_results(client, temp_home):
     data = resp.get_json()
     assert data["ok"] is True
     assert "results" in data
+
+
+class TestSyncReposAsync:
+    """Tests for async sync-all with progress bar."""
+
+    def test_sync_repos_async_starts_task(self, client, temp_home):
+        resp = client.post("/api/repos/sync/async")
+        assert resp.status_code == 202
+        data = resp.get_json()
+        assert "taskId" in data
+        assert data["url"] == "sync-all"
+        assert data["status"] == "running"
+        assert data["progress"] == 0
+
+    def test_sync_all_task_completes(self, client, temp_home):
+        with patch("skill_hub.web.repos.pull_latest", return_value=(True, "pulled")):
+            resp = client.post("/api/repos/sync/async")
+            task_id = resp.get_json()["taskId"]
+            time.sleep(0.3)
+            resp = client.get(f"/api/repos/task/{task_id}")
+            data = resp.get_json()
+            assert data["status"] == "success"
+            assert data["progress"] == 100
+            assert "1/1" in data["step"]
+
+    def test_sync_all_task_with_failed_repo_completes(self, client, temp_home):
+        with patch("skill_hub.web.repos.pull_latest", return_value=(False, "Pull failed")):
+            resp = client.post("/api/repos/sync/async")
+            task_id = resp.get_json()["taskId"]
+            time.sleep(0.3)
+            resp = client.get(f"/api/repos/task/{task_id}")
+            data = resp.get_json()
+            assert data["status"] == "success"
+            assert data["progress"] == 100
+            assert "0/1" in data["step"]
 
 
 def test_add_local_repo_path(client, temp_home):
