@@ -841,6 +841,13 @@
                 confirmUninstallAll: (name) => `卸载仓库 ${name} 中的全部 skills？`,
                 installAllFailed: '全量安装失败',
                 uninstallAllFailed: '全量卸载失败',
+                allSkills: '全部 Skills',
+                filterAll: '全部',
+                filterInstalled: '已安装',
+                filterNotInstalled: '未安装',
+                filterOutdated: '需更新',
+                searchPlaceholder: '搜索 skill...',
+                skillCount: (n) => `共 ${n} 个`,
               },
               en: {
                 refresh: 'Refresh',
@@ -943,6 +950,13 @@
                 confirmUninstallAll: (name) => `Uninstall all skills from repo ${name}?`,
                 installAllFailed: 'Bulk install failed',
                 uninstallAllFailed: 'Bulk uninstall failed',
+                allSkills: 'All Skills',
+                filterAll: 'All',
+                filterInstalled: 'Installed',
+                filterNotInstalled: 'Not Installed',
+                filterOutdated: 'Outdated',
+                searchPlaceholder: 'Search skills...',
+                skillCount: (n) => `${n} total`,
               }
             };
 
@@ -1061,6 +1075,8 @@
             let _taskUrl = '';
             let _taskBranch = 'main';
             let _pollTimer = null;
+            let allSkillsFilter = 'all';
+            let allSkillsSearch = '';
 
             function showToast(msg, type = 'success') {
               const toastEl = document.getElementById('toast');
@@ -1568,7 +1584,7 @@
 
               const repoNames = [...new Set(allSkills.map(s => s.repoName))];
               const allRepoNames = [...new Set([...repoNames, ...Object.keys(repoMeta)])];
-              if (selectedRepo && !allRepoNames.includes(selectedRepo)) {
+              if (selectedRepo && selectedRepo !== '__all__' && !allRepoNames.includes(selectedRepo)) {
                 selectedRepo = null;
               }
               if (!selectedRepo && allRepoNames.length > 0) {
@@ -1576,7 +1592,11 @@
               }
 
               renderSidebar();
-              renderSkills();
+              if (selectedRepo === '__all__') {
+                renderAllSkills();
+              } else {
+                renderSkills();
+              }
             }
 
             function renderSidebar() {
@@ -1603,6 +1623,18 @@
               }
 
               let html = '';
+
+              // All Skills entry
+              const allActive = selectedRepo === '__all__';
+              const allItemCls = allActive
+                ? 'bg-blue-50 border-l-[3px] border-blue-500 font-semibold'
+                : 'border-l-[3px] border-transparent hover:bg-gray-100';
+              html += `<div class="flex items-center gap-2 px-4 py-[7px] cursor-pointer text-sm ${allItemCls}" onclick="selectAllSkills()">
+                <svg class="w-3.5 h-3.5 shrink-0 text-gray-500" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                <span>${t('allSkills')}</span>
+                <span class="ml-auto text-[10px] text-gray-400">${allSkills.length}</span>
+              </div>`;
+              html += '<div class="border-b border-gray-200 mx-3 my-1"></div>';
 
               if (remoteRepos.length > 0) {
                 html += `<div class="text-[11px] font-bold uppercase text-gray-500 px-4 pt-2 pb-1 tracking-wide">${t('remoteRepos')}</div>`;
@@ -1660,6 +1692,12 @@
               selectedRepo = name;
               renderSidebar();
               renderSkills();
+            }
+
+            function selectAllSkills() {
+              selectedRepo = '__all__';
+              renderSidebar();
+              renderAllSkills();
             }
 
             function statusBorderColor(status) {
@@ -1779,6 +1817,136 @@
               // Load intro and authors asynchronously
               loadRepoIntro(selectedRepo);
               loadRepoAuthors(selectedRepo);
+            }
+
+            function renderAllSkills() {
+              const container = document.getElementById('skills-container');
+              const useSymlink = document.getElementById('use-symlink').checked;
+
+              // Filter skills
+              let filtered = allSkills;
+              if (allSkillsFilter === 'installed') {
+                filtered = filtered.filter(s => s.status === 'installed');
+              } else if (allSkillsFilter === 'not_installed') {
+                filtered = filtered.filter(s => s.status === 'not_installed');
+              } else if (allSkillsFilter === 'outdated') {
+                filtered = filtered.filter(s => s.status === 'outdated');
+              }
+              if (allSkillsSearch) {
+                const q = allSkillsSearch.toLowerCase();
+                filtered = filtered.filter(s => s.name.toLowerCase().includes(q) || s.repoName.toLowerCase().includes(q));
+              }
+
+              // Count by status
+              const countAll = allSkills.length;
+              const countInstalled = allSkills.filter(s => s.status === 'installed').length;
+              const countNotInstalled = allSkills.filter(s => s.status === 'not_installed').length;
+              const countOutdated = allSkills.filter(s => s.status === 'outdated').length;
+
+              const filters = [
+                { key: 'all', label: t('filterAll'), count: countAll },
+                { key: 'installed', label: t('filterInstalled'), count: countInstalled },
+                { key: 'not_installed', label: t('filterNotInstalled'), count: countNotInstalled },
+                { key: 'outdated', label: t('filterOutdated'), count: countOutdated },
+              ];
+
+              let html = '<div>';
+
+              // Filter buttons + search
+              html += '<div class="flex items-center gap-1 px-3 mb-2">';
+              for (const f of filters) {
+                const active = allSkillsFilter === f.key;
+                const cls = active
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50';
+                html += `<button data-filter="${f.key}" class="px-1.5 py-0.5 rounded border text-[11px] cursor-pointer ${cls}">${f.label} ${f.count}</button>`;
+              }
+              html += `<input type="text" id="all-skills-search" value="${escAttr(allSkillsSearch)}" placeholder="${t('searchPlaceholder')}" oninput="setAllSkillsSearch(this.value)" class="ml-auto px-1.5 py-0.5 border border-gray-300 rounded text-[11px] w-32 focus:outline-none focus:ring-1 focus:ring-blue-400" />`;
+              html += '</div>';
+
+              // Group by repo
+              const grouped = {};
+              for (const s of filtered) {
+                if (!grouped[s.repoName]) grouped[s.repoName] = [];
+                grouped[s.repoName].push(s);
+              }
+
+              if (filtered.length === 0) {
+                html += `<p class="text-gray-500 text-sm px-3 py-4 text-center">${t('noSkills')}</p>`;
+              } else {
+                for (const repoName of Object.keys(grouped)) {
+                  const items = grouped[repoName];
+                  const meta = repoMeta[repoName] || {};
+                  const hasUpdate = meta.hasRemoteUpdates;
+                  const isLocal = meta.isLocal;
+                  const dotCls = repoName === '(local)' ? 'bg-gray-400' : (hasUpdate ? 'bg-yellow-400' : 'bg-green-600');
+                  const escapedRepo = repoName.replace(/'/g, "\\'");
+
+                  html += `<div class="mb-3">
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-md text-xs font-semibold text-gray-600">
+                      <span class="w-2 h-2 rounded-full ${dotCls} shrink-0"></span>
+                      <span class="truncate">${escHtml(repoName)}</span>
+                      <span class="ml-auto text-gray-400 font-normal">${items.length}</span>
+                    </div>
+                    <ul class="list-none pl-0 mt-1">`;
+
+                  for (const s of items) {
+                    const isInstalled = s.status === 'installed' || s.status === 'outdated';
+                    const escapedName = s.name.replace(/'/g, "\\'");
+
+                    let dirDots = '';
+                    const dirStatus = s.dirStatus || {};
+                    for (const dir of installDirs) {
+                      const ds = dirStatus[dir.label] || { installed: false, matchesSource: false, isSymlink: false };
+                      let dotColor, dotTitle, dotAction;
+                      let textColor;
+                      if (ds.installed) {
+                        if (ds.matchesSource) {
+                          dotColor = 'bg-green-600';
+                          textColor = 'text-green-700';
+                          dotTitle = `${dir.path}: ${t('installedLatest')}${ds.isSymlink ? ' (symlink)' : ''}`;
+                          dotAction = `onclick="uninstallFromDir('${escapedName}', '${escAttr(dir.label)}')"`;
+                        } else {
+                          dotColor = 'bg-yellow-500';
+                          textColor = 'text-yellow-600';
+                          dotTitle = `${dir.path}: ${t('clickToUpdate')}`;
+                          dotAction = `onclick="installToDir('${escapedName}', '${escAttr(dir.label)}')"`;
+                        }
+                      } else {
+                        dotColor = 'bg-gray-400';
+                        textColor = 'text-gray-500';
+                        dotTitle = `${dir.path}: ${t('notInstalledTitle')} — ${t('clickToInstall')}`;
+                        dotAction = `onclick="installToDir('${escapedName}', '${escAttr(dir.label)}')"`;
+                      }
+                      const installIcon = ds.isSymlink
+                        ? '<span class="absolute -bottom-0.5 -right-0.5 text-[6px]" style="font-size:6px; line-height:1;">🔗</span>'
+                        : (ds.installed ? '<span class="absolute -bottom-0.5 -right-0.5 text-[6px]" style="font-size:6px; line-height:1;">📄</span>' : '');
+                      dirDots += `<span class="relative inline-flex items-center gap-1 h-5 px-1.5 rounded border border-gray-300 bg-white ${textColor} text-[10px] font-bold shrink-0 mr-1 cursor-pointer" title="${escAttr(dotTitle)}" ${dotAction || ''}><span class="w-2 h-2 rounded-full ${dotColor}"></span>${escHtml(dir.abbreviation)}${installIcon}</span>`;
+                    }
+
+                    const statusLabel = s.status === 'outdated' ? t('partial') : t(s.status);
+
+                    html += `<li class="flex items-center gap-3 px-3 py-2 rounded-r-md hover:bg-gray-100 mb-1 ${statusBorderColor(s.status)}" title="${escAttr(statusLabel)}">
+                      <span class="flex-1 min-w-0 font-medium cursor-pointer hover:underline hover:text-blue-600" onclick="toggleMeta('${escapedName}', this)">${escHtml(s.name)}</span>
+                      <span class="flex items-center shrink-0">${dirDots}</span>
+                      ${isInstalled
+                        ? `<button onclick="uninstallSkill('${escapedName}')" class="px-3 py-1 rounded border border-red-500 text-red-600 text-xs hover:bg-red-50 cursor-pointer shrink-0">${t('uninstall')}</button>`
+                        : `<button onclick="installSkill('${escapedName}')" class="px-3 py-1 rounded border border-green-600 text-green-700 text-xs hover:bg-green-50 cursor-pointer shrink-0">${t('install')}</button>`
+                      }
+                    </li>
+                    <div id="meta-${escapedName}" class="hidden bg-white border border-gray-300 rounded-lg p-4 mx-3 mb-2 text-sm leading-relaxed"></div>`;
+                  }
+                  html += '</ul></div>';
+                }
+              }
+
+              html += '</div>';
+              container.innerHTML = html;
+            }
+
+            function setAllSkillsSearch(value) {
+              allSkillsSearch = value;
+              renderAllSkills();
             }
 
             async function installSkill(name) {
@@ -2206,6 +2374,15 @@
               const promptModal = document.getElementById('prompt-modal');
               if (!promptModal.classList.contains('hidden') && e.target === promptModal) {
                 closePromptModal();
+              }
+            });
+
+            // Event delegation for All Skills filter buttons
+            document.getElementById('skills-container').addEventListener('click', (e) => {
+              const btn = e.target.closest('[data-filter]');
+              if (btn) {
+                allSkillsFilter = btn.dataset.filter;
+                renderAllSkills();
               }
             });
 

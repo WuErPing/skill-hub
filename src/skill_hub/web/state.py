@@ -239,9 +239,11 @@ def list_skills() -> list[SkillEntry]:
         }
 
     skills: list[SkillEntry] = []
+    known_names: set[str] = set()
     for repo, skill_name, skill_path in entries:
+        known_names.add(skill_name)
         source_md5 = md5_futures[(repo.name, skill_name)].result()
-        
+
         # Build dir_status for all install directories
         dir_status: dict[str, DirStatus] = {}
         for install_dir in install_dirs:
@@ -260,6 +262,42 @@ def list_skills() -> list[SkillEntry]:
             path=skill_path,
             dir_status=dir_status,
             conflict=name_counts[skill_name] > 1,
+            source_md5=source_md5,
+        ))
+
+    # Detect orphaned skills: installed but not in any repo mapping
+    orphan_names: set[str] = set()
+    for scan in dir_scans.values():
+        for skill_name in scan:
+            if skill_name not in known_names:
+                orphan_names.add(skill_name)
+
+    for skill_name in sorted(orphan_names):
+        dir_status: dict[str, DirStatus] = {}
+        first_path: Path | None = None
+        for install_dir in install_dirs:
+            scan = dir_scans.get(install_dir.label, {})
+            md5, is_symlink = scan.get(skill_name, ("", False))
+            installed = skill_name in scan
+            dir_status[install_dir.label] = DirStatus(
+                installed=installed,
+                md5=md5,
+                is_symlink=is_symlink,
+            )
+            if installed and first_path is None:
+                first_path = install_dir.resolved_path / skill_name
+
+        source_md5 = ""
+        if first_path:
+            source_md5 = _md5_of_dir(first_path)
+
+        skills.append(SkillEntry(
+            name=skill_name,
+            repo_name="(local)",
+            repo_url="",
+            path=first_path or Path(skill_name),
+            dir_status=dir_status,
+            conflict=False,
             source_md5=source_md5,
         ))
 

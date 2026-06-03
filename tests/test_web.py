@@ -637,3 +637,77 @@ class TestRepoInstallAll:
         assert resp.status_code == 200
         assert not (claude / "test-skill").exists()
         assert not (agents / "test-skill").exists()
+
+
+class TestOrphanedSkills:
+    """Skills installed in install dirs but not backed by any repo should still appear in the listing."""
+
+    def test_orphaned_skill_in_install_dir_appears_in_list(self, client, temp_home):
+        """A skill that exists in an install dir but has no repo mapping should be listed as an orphan."""
+        tmp_path, claude, agents = temp_home
+
+        # Create an orphaned skill directly in the install dir (no repo backing)
+        orphan_dir = agents / "orphan-skill"
+        orphan_dir.mkdir()
+        (orphan_dir / "SKILL.md").write_text("---\nname: orphan-skill\ndescription: An orphaned skill\n---\n\nBody")
+
+        resp = client.get("/api/skills")
+        assert resp.status_code == 200
+        data = resp.get_json()
+
+        orphan_skills = [s for s in data if s["name"] == "orphan-skill"]
+        assert len(orphan_skills) == 1
+        orphan = orphan_skills[0]
+        assert orphan["repoName"] == "(local)"
+        # Only in agents dir, not in claude dir → partial install
+        assert orphan["status"] == "outdated"
+        assert orphan["dirStatus"]["agents"]["installed"] is True
+        assert orphan["dirStatus"]["claude"]["installed"] is False
+
+    def test_orphaned_skill_not_in_any_repo_mapping(self, client, temp_home):
+        """Orphaned skills should not conflict with repo-backed skills of a different name."""
+        tmp_path, claude, agents = temp_home
+
+        orphan_dir = claude / "standalone-tool"
+        orphan_dir.mkdir()
+        (orphan_dir / "SKILL.md").write_text("---\nname: standalone-tool\ndescription: Standalone\n---\n")
+
+        resp = client.get("/api/skills")
+        assert resp.status_code == 200
+        data = resp.get_json()
+
+        names = [s["name"] for s in data]
+        assert "test-skill" in names       # repo-backed
+        assert "standalone-tool" in names  # orphan
+
+    def test_orphaned_skill_in_both_dirs_shows_installed(self, client, temp_home):
+        """An orphaned skill present in all install dirs should have status=installed."""
+        tmp_path, claude, agents = temp_home
+
+        for d in (claude, agents):
+            skill_dir = d / "shared-orphan"
+            skill_dir.mkdir()
+            (skill_dir / "SKILL.md").write_text("---\nname: shared-orphan\ndescription: Shared\n---\n")
+
+        resp = client.get("/api/skills")
+        assert resp.status_code == 200
+        data = resp.get_json()
+
+        orphan = [s for s in data if s["name"] == "shared-orphan"][0]
+        assert orphan["status"] == "installed"
+        assert orphan["dirStatus"]["claude"]["installed"] is True
+        assert orphan["dirStatus"]["agents"]["installed"] is True
+
+    def test_orphaned_skill_partial_install_shows_not_installed(self, client, temp_home):
+        """An orphaned skill in only one dir should show not_installed for the other."""
+        tmp_path, claude, agents = temp_home
+
+        (agents / "partial-orphan").mkdir()
+        ((agents / "partial-orphan") / "SKILL.md").write_text("---\nname: partial-orphan\n---\n")
+
+        resp = client.get("/api/skills")
+        data = resp.get_json()
+
+        orphan = [s for s in data if s["name"] == "partial-orphan"][0]
+        assert orphan["dirStatus"]["agents"]["installed"] is True
+        assert orphan["dirStatus"]["claude"]["installed"] is False
