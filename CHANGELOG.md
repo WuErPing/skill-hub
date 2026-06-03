@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-06-03
+
+### Added
+- **All Skills management page**: New sidebar entry that shows all skills across repos, grouped by source repo, with status filter buttons (All/Installed/Not Installed/Outdated) and search
+- **Orphaned skill detection**: Skills installed in install directories but not backed by any repo are now listed with `repo_name="(local)"` instead of being invisible
+
+### Fixed
+- **Filter button click handling**: Replaced inline onclick with event delegation for All Skills filter buttons
+
 ## [0.20.2] - 2026-05-18
 
 ### Fixed
