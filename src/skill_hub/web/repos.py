@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 import yaml
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -135,44 +135,59 @@ def _find_skills_in_repo(repo_dir: Path) -> tuple[dict[str, str], list[str]]:
 
 def sync_mapping(repo: Repo) -> tuple[bool, str]:
     """Clone or update a repo and rebuild its skill mapping. Returns (success, message)."""
-    target = repo_dir(repo)
+    # Fast path: if an async clone/pull is already running for this remote repo,
+    # don't interfere — it will build and save the mapping when it finishes.
+    if not repo.is_local:
+        inflight = get_inflight_task(repo.url, repo.branch)
+        if inflight is not None and inflight.status == "running":
+            return True, f"Clone/pull in progress for {repo.url}"
 
-    if repo.is_local:
-        if not target.exists():
-            return False, f"Local path not found: {target}"
-        action = "Scanned"
-    else:
-        if not target.exists():
-            # Check git first
-            git_ok, git_msg = check_git_installed()
-            if not git_ok:
-                return False, f"Git not installed: {git_msg}"
+    lock = _get_repo_lock(repo)
+    with lock:
+        # Re-check after acquiring the lock in case a task started while we waited.
+        if not repo.is_local:
+            inflight = get_inflight_task(repo.url, repo.branch)
+            if inflight is not None and inflight.status == "running":
+                return True, f"Clone/pull in progress for {repo.url}"
 
-            # Check network for remote repos
-            net_ok, net_msg = check_network_connectivity()
-            if not net_ok:
-                return False, f"Network error: {net_msg}"
+        target = repo_dir(repo)
 
-            try:
-                subprocess.run(
-                    ["git", "clone", "--branch", repo.branch, repo.url, str(target)],
-                    check=True, capture_output=True, text=True, timeout=120,
-                )
-            except subprocess.CalledProcessError as e:
-                return False, f"Clone failed: {e.stderr}"
-            except subprocess.TimeoutExpired:
-                return False, "Clone timed out"
-            action = "Cloned"
+        if repo.is_local:
+            if not target.exists():
+                return False, f"Local path not found: {target}"
+            action = "Scanned"
         else:
-            action = "Synced"
+            if not target.exists():
+                # Check git first
+                git_ok, git_msg = check_git_installed()
+                if not git_ok:
+                    return False, f"Git not installed: {git_msg}"
 
-    mapping, conflicts = _find_skills_in_repo(target)
-    save_skill_mapping(repo, mapping)
-    count = len(mapping)
-    msg = f"{action} {repo.url} — found {count} skill(s)"
-    if conflicts:
-        msg += f" (warning: {len(conflicts)} name conflict(s) skipped)"
-    return True, msg
+                # Check network for remote repos
+                net_ok, net_msg = check_network_connectivity()
+                if not net_ok:
+                    return False, f"Network error: {net_msg}"
+
+                try:
+                    subprocess.run(
+                        ["git", "clone", "--branch", repo.branch, repo.url, str(target)],
+                        check=True, capture_output=True, text=True, timeout=120,
+                    )
+                except subprocess.CalledProcessError as e:
+                    return False, f"Clone failed: {e.stderr}"
+                except subprocess.TimeoutExpired:
+                    return False, "Clone timed out"
+                action = "Cloned"
+            else:
+                action = "Synced"
+
+        mapping, conflicts = _find_skills_in_repo(target)
+        save_skill_mapping(repo, mapping)
+        count = len(mapping)
+        msg = f"{action} {repo.url} — found {count} skill(s)"
+        if conflicts:
+            msg += f" (warning: {len(conflicts)} name conflict(s) skipped)"
+        return True, msg
 
 
 def clone_or_pull(repo: Repo) -> tuple[bool, str]:
@@ -215,45 +230,52 @@ def clone_or_pull(repo: Repo) -> tuple[bool, str]:
 
 def pull_latest(repo: Repo) -> tuple[bool, str]:
     """Git pull the repo and rebuild skill mapping. Returns (success, message)."""
-    target = repo_dir(repo)
-    if not target.exists():
+    if not repo.is_local:
+        inflight = get_inflight_task(repo.url, repo.branch)
+        if inflight is not None and inflight.status == "running":
+            return True, f"Clone/pull in progress for {repo.url}"
+
+    lock = _get_repo_lock(repo)
+    with lock:
+        target = repo_dir(repo)
+        if not target.exists():
+            if repo.is_local:
+                return False, f"Local path not found: {target}"
+            return sync_mapping(repo)
         if repo.is_local:
-            return False, f"Local path not found: {target}"
-        return sync_mapping(repo)
-    if repo.is_local:
-        if (target / ".git").exists():
+            if (target / ".git").exists():
+                try:
+                    subprocess.run(
+                        ["git", "pull"],
+                        cwd=target, check=True, capture_output=True, text=True, timeout=30,
+                    )
+                except subprocess.CalledProcessError:
+                    # For local repos, a git pull failure should not block mapping
+                    # rebuild — filesystem changes (new skills) should still be
+                    # discovered.
+                    pass
+        else:
             try:
                 subprocess.run(
-                    ["git", "pull"],
+                    ["git", "pull", "origin", repo.branch],
                     cwd=target, check=True, capture_output=True, text=True, timeout=30,
                 )
-            except subprocess.CalledProcessError:
-                # For local repos, a git pull failure should not block mapping
-                # rebuild — filesystem changes (new skills) should still be
-                # discovered.
-                pass
-    else:
+            except subprocess.CalledProcessError as e:
+                return False, f"Pull failed: {e.stderr}"
+        # Rebuild mapping after pull to catch added/removed skills
+        mapping, conflicts = _find_skills_in_repo(target)
+        save_skill_mapping(repo, mapping)
+        count = len(mapping)
+        msg = f"Pulled {repo.url} — {count} skill(s) in mapping"
+        if conflicts:
+            msg += f" (warning: {len(conflicts)} name conflict(s) skipped)"
+        # Update scheduler cache so the UI reflects the repo is up to date
         try:
-            subprocess.run(
-                ["git", "pull", "origin", repo.branch],
-                cwd=target, check=True, capture_output=True, text=True, timeout=30,
-            )
-        except subprocess.CalledProcessError as e:
-            return False, f"Pull failed: {e.stderr}"
-    # Rebuild mapping after pull to catch added/removed skills
-    mapping, conflicts = _find_skills_in_repo(target)
-    save_skill_mapping(repo, mapping)
-    count = len(mapping)
-    msg = f"Pulled {repo.url} — {count} skill(s) in mapping"
-    if conflicts:
-        msg += f" (warning: {len(conflicts)} name conflict(s) skipped)"
-    # Update scheduler cache so the UI reflects the repo is up to date
-    try:
-        from skill_hub.web.scheduler import RepoStatus, scheduler
-        scheduler.set_status(repo.name, RepoStatus(has_updates=False, last_checked=time.time()))
-    except Exception:
-        pass
-    return True, msg
+            from skill_hub.web.scheduler import RepoStatus, scheduler
+            scheduler.set_status(repo.name, RepoStatus(has_updates=False, last_checked=time.time()))
+        except Exception:
+            pass
+        return True, msg
 
 
 def delete_repo(repo: Repo) -> tuple[bool, str]:
@@ -479,6 +501,31 @@ class RepoTask:
 _tasks: dict[str, RepoTask] = {}
 _tasks_lock = threading.Lock()
 
+# Per-repo locks to serialize clone/pull/sync operations against the same directory
+_repo_locks: dict[str, threading.RLock] = {}
+_repo_locks_lock = threading.Lock()
+
+# In-flight async clone/pull tasks keyed by repo URL + branch
+_inflight_tasks: dict[str, RepoTask] = {}
+_inflight_lock = threading.Lock()
+
+
+def _repo_task_key(url: str, branch: str) -> str:
+    return f"{url}#{branch}"
+
+
+def _get_repo_lock(repo: Repo) -> threading.RLock:
+    key = repo.name or repo.url
+    with _repo_locks_lock:
+        if key not in _repo_locks:
+            _repo_locks[key] = threading.RLock()
+        return _repo_locks[key]
+
+
+def get_inflight_task(url: str, branch: str = "main") -> Optional[RepoTask]:
+    with _inflight_lock:
+        return _inflight_tasks.get(_repo_task_key(url, branch))
+
 
 def get_task(task_id: str) -> Optional[RepoTask]:
     with _tasks_lock:
@@ -506,102 +553,128 @@ def _parse_clone_progress(line: str) -> Optional[tuple[int, str]]:
 
 def _run_task(task: RepoTask):
     """Background thread: clone or pull a repo, update task progress."""
+    repo = Repo(url=task.url, branch=task.branch)
+    lock = _get_repo_lock(repo)
     try:
-        target = repo_dir(Repo(url=task.url, branch=task.branch))
-        is_new = not target.exists()
+        with lock:
+            target = repo_dir(repo)
+            is_new = not target.exists()
 
-        if is_new:
-            # --- Clone ---
-            task.step = "Checking git..."
-            task.progress = 1
-            git_ok, git_msg = check_git_installed()
-            if not git_ok:
-                task.status = "error"
-                task.error = f"Git not installed: {git_msg}"
-                return
-
-            task.step = "Checking network..."
-            task.progress = 3
-            net_ok, net_msg = check_network_connectivity()
-            if not net_ok:
-                task.status = "error"
-                task.error = f"Network error: {net_msg}"
-                return
-
-            task.step = "Cloning..."
-            task.progress = 5
-
-            proc = subprocess.Popen(
-                ["git", "clone", "--branch", task.branch, "--progress", task.url, str(target)],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-            )
-            # Read stderr line by line for progress
-            assert proc.stderr is not None
-            for line in proc.stderr:
-                line = line.strip()
-                if not line:
-                    continue
-                parsed = _parse_clone_progress(line)
-                if parsed:
-                    task.progress, task.step = parsed
-                elif "fatal:" in line or "error:" in line:
+            if is_new:
+                # --- Clone ---
+                task.step = "Checking git..."
+                task.progress = 1
+                git_ok, git_msg = check_git_installed()
+                if not git_ok:
                     task.status = "error"
-                    task.error = line
-                    proc.wait()
+                    task.error = f"Git not installed: {git_msg}"
                     return
 
-            ret = proc.wait()
-            if ret != 0:
-                task.status = "error"
-                task.error = f"git clone exited with code {ret}"
-                return
+                task.step = "Checking network..."
+                task.progress = 3
+                net_ok, net_msg = check_network_connectivity()
+                if not net_ok:
+                    task.status = "error"
+                    task.error = f"Network error: {net_msg}"
+                    return
 
-            task.progress = 95
-            task.step = "Scanning skills..."
-        else:
-            # --- Pull ---
-            task.step = "Pulling updates..."
-            task.progress = 50
-            try:
-                subprocess.run(
-                    ["git", "pull", "origin", task.branch],
-                    cwd=target, check=True, capture_output=True, text=True, timeout=120,
+                task.step = "Cloning..."
+                task.progress = 5
+
+                proc = subprocess.Popen(
+                    ["git", "clone", "--branch", task.branch, "--progress", task.url, str(target)],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
                 )
-            except subprocess.CalledProcessError as e:
-                task.status = "error"
-                task.error = f"Pull failed: {e.stderr}"
-                return
-            except subprocess.TimeoutExpired:
-                task.status = "error"
-                task.error = "Pull timed out"
-                return
-            task.progress = 95
-            task.step = "Scanning skills..."
+                # Read stderr line by line for progress
+                assert proc.stderr is not None
+                for line in proc.stderr:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    parsed = _parse_clone_progress(line)
+                    if parsed:
+                        task.progress, task.step = parsed
+                    elif "fatal:" in line or "error:" in line:
+                        task.status = "error"
+                        task.error = line
+                        proc.wait()
+                        return
 
-        # Build mapping
-        repo = Repo(url=task.url, branch=task.branch)
-        mapping, conflicts = _find_skills_in_repo(target)
-        save_skill_mapping(repo, mapping)
-        count = len(mapping)
-        task.repo_name = repo.name or ""
-        task.progress = 100
-        msg = f"{'Cloned' if is_new else 'Pulled'} {task.url} — {count} skill(s)"
-        if conflicts:
-            msg += f" ({len(conflicts)} conflict(s) skipped)"
-        task.step = msg
-        task.status = "success"
+                ret = proc.wait()
+                if ret != 0:
+                    task.status = "error"
+                    task.error = f"git clone exited with code {ret}"
+                    return
+
+                task.progress = 95
+                task.step = "Scanning skills..."
+            else:
+                # --- Pull ---
+                task.step = "Pulling updates..."
+                task.progress = 50
+                try:
+                    subprocess.run(
+                        ["git", "pull", "origin", task.branch],
+                        cwd=target, check=True, capture_output=True, text=True, timeout=120,
+                    )
+                except subprocess.CalledProcessError as e:
+                    task.status = "error"
+                    task.error = f"Pull failed: {e.stderr}"
+                    return
+                except subprocess.TimeoutExpired:
+                    task.status = "error"
+                    task.error = "Pull timed out"
+                    return
+                task.progress = 95
+                task.step = "Scanning skills..."
+
+            # Build mapping
+            mapping, conflicts = _find_skills_in_repo(target)
+            save_skill_mapping(repo, mapping)
+            count = len(mapping)
+            task.repo_name = repo.name or ""
+            task.progress = 100
+            msg = f"{'Cloned' if is_new else 'Pulled'} {task.url} — {count} skill(s)"
+            if conflicts:
+                msg += f" ({len(conflicts)} conflict(s) skipped)"
+            task.step = msg
+            task.status = "success"
 
     except Exception as e:
         task.status = "error"
         task.error = str(e)
+    finally:
+        with _inflight_lock:
+            key = _repo_task_key(task.url, task.branch)
+            if _inflight_tasks.get(key) is task:
+                del _inflight_tasks[key]
 
 
 def start_repo_task(url: str, branch: str = "main") -> RepoTask:
-    """Start an async clone/pull task. Returns the task immediately."""
+    """Start an async clone/pull task. Returns the task immediately.
+
+    If a task for the same repo is already running, the existing task is
+    returned so callers can poll the same progress.
+    """
+    key = _repo_task_key(url, branch)
+    with _inflight_lock:
+        existing = _inflight_tasks.get(key)
+        if existing is not None and existing.status == "running":
+            return existing
+
     task_id = uuid.uuid4().hex[:12]
     task = RepoTask(task_id=task_id, url=url, branch=branch)
     with _tasks_lock:
         _tasks[task_id] = task
+    with _inflight_lock:
+        # Double-check in case another thread started one while we waited
+        existing = _inflight_tasks.get(key)
+        if existing is not None and existing.status == "running":
+            # Remove the unused task entry we just created
+            with _tasks_lock:
+                _tasks.pop(task_id, None)
+            return existing
+        _inflight_tasks[key] = task
     thread = threading.Thread(target=_run_task, args=(task,), daemon=True)
     thread.start()
     return task

@@ -8,7 +8,7 @@ from werkzeug.serving import WSGIRequestHandler
 from skill_hub import __version__
 from skill_hub.web.api import api_bp
 from skill_hub.web.config import get_install_dirs
-from skill_hub.web.repos import has_remote_updates, load_repos_config, repo_dir
+from skill_hub.web.repos import load_repos_config, repo_dir
 from skill_hub.web.scheduler import scheduler
 from skill_hub.web.state import list_skills
 

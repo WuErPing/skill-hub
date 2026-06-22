@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from skill_hub.web.repos import (
-    REPOS_DIR,
+    Repo,
     _find_skills_in_repo,
     load_repos_config,
     load_skill_mapping,
@@ -18,7 +18,7 @@ from skill_hub.web.repos import (
     save_skill_mapping,
     sync_mapping,
 )
-from skill_hub.web.config import get_install_dirs, InstallDir
+from skill_hub.web.config import get_install_dirs
 
 MD5_CACHE_FILE = Path.home() / ".skills_repo" / "md5_cache.json"
 _md5_cache: dict[str, tuple[float, str]] = {}

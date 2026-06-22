@@ -37,7 +37,7 @@ def web_command(port: int, host: str, no_open: bool) -> None:
         threading.Thread(target=open_browser, daemon=True).start()
 
     console.print(f"[green]Starting skill-hub web UI at http://{host}:{port}[/green]")
-    console.print(f"[dim]Press Ctrl+C to stop[/dim]")
+    console.print("[dim]Press Ctrl+C to stop[/dim]")
     app.run(host=host, port=port, debug=False, threaded=True)
 
 

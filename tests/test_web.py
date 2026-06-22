@@ -1,6 +1,5 @@
 """Integration tests for skill-hub web module."""
 
-import os
 from pathlib import Path
 from unittest.mock import patch
 import time
@@ -514,7 +513,6 @@ class TestNameConflictProtection:
         second_mapping.write_text("test-skill: test-skill\n")
 
         # Update repos config to include second repo
-        import skill_hub.web.repos as repos_module
         repos_yaml = tmp_path / "skills_repo" / "repos.yaml"
         repos_yaml.write_text(
             "repos:\n"
@@ -711,3 +709,69 @@ class TestOrphanedSkills:
         orphan = [s for s in data if s["name"] == "partial-orphan"][0]
         assert orphan["dirStatus"]["agents"]["installed"] is True
         assert orphan["dirStatus"]["claude"]["installed"] is False
+
+
+class TestAsyncCloneRaceProtection:
+    """Regression tests for concurrent async clone / sync_mapping races."""
+
+    def _patch_slow_clone(self, monkeypatch, tmp_path, repos_module, clone_calls=None):
+        """Patch git subprocesses so async clone is slow and observable."""
+        target = tmp_path / "repos" / "example__repo"
+        monkeypatch.setattr(repos_module, "repo_dir", lambda _repo: target)
+        monkeypatch.setattr(repos_module, "check_git_installed", lambda: (True, "git"))
+        monkeypatch.setattr(repos_module, "check_network_connectivity", lambda: (True, "ok"))
+
+        class SlowPopen:
+            def __init__(self, *args, **kwargs):
+                if clone_calls is not None:
+                    clone_calls.append(args)
+                self.stderr = iter(["Cloning into 'example__repo'...\n"])
+
+            def wait(self):
+                # Long enough to keep the task "running" during assertions
+                time.sleep(0.5)
+                return 0
+
+        monkeypatch.setattr("subprocess.Popen", lambda *a, **k: SlowPopen(*a, **k))
+
+    def test_start_repo_task_dedupes_running_task(self, tmp_path, monkeypatch):
+        """Calling start_repo_task twice for the same repo returns the same task."""
+        import skill_hub.web.repos as repos_module
+        from skill_hub.web.repos import Repo, start_repo_task, get_inflight_task
+
+        repo = Repo(url="https://github.com/example/repo", branch="main")
+        self._patch_slow_clone(monkeypatch, tmp_path, repos_module)
+
+        task1 = start_repo_task(repo.url, repo.branch)
+        assert task1.status == "running"
+        assert get_inflight_task(repo.url, repo.branch) is task1
+
+        task2 = start_repo_task(repo.url, repo.branch)
+        assert task2 is task1
+
+        # Wait for task to finish so it cleans up its in-flight entry
+        time.sleep(1.0)
+
+    def test_sync_mapping_skips_while_async_clone_running(self, tmp_path, monkeypatch):
+        """sync_mapping must not start a second clone while async clone is running."""
+        import skill_hub.web.repos as repos_module
+        from skill_hub.web.repos import Repo, start_repo_task, sync_mapping
+
+        repo = Repo(url="https://github.com/example/repo", branch="main")
+        clone_calls: list[tuple] = []
+        self._patch_slow_clone(monkeypatch, tmp_path, repos_module, clone_calls=clone_calls)
+
+        task = start_repo_task(repo.url, repo.branch)
+        assert task.status == "running"
+
+        ok, msg = sync_mapping(repo)
+        assert ok is True
+        assert "in progress" in msg
+
+        # Wait for the async task to actually invoke git clone, then finish
+        time.sleep(0.7)
+        # Only the async task should have invoked git clone
+        assert len(clone_calls) == 1
+
+        # Wait for task to finish and clean up its in-flight entry
+        time.sleep(0.5)

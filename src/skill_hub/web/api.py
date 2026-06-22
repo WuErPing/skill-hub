@@ -2,13 +2,21 @@
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
+from skill_hub.web.config import get_install_dirs as _get_install_dirs
+from skill_hub.web.github_api import fetch_repo_authors
+from skill_hub.web.intro import (
+    find_repo_readme,
+    load_intro,
+    read_repo_readme,
+    save_intro,
+)
 from skill_hub.web.repos import (
     Repo,
-    clone_or_pull,
     delete_repo,
     diagnose_all_repos,
     diagnose_repo,
@@ -32,14 +40,6 @@ from skill_hub.web.state import (
     uninstall_repo_skills,
     uninstall_skill,
 )
-from skill_hub.web.intro import (
-    find_repo_readme,
-    load_intro,
-    read_repo_readme,
-    save_intro,
-)
-from skill_hub.web.github_api import fetch_repo_authors
-from datetime import datetime
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -56,14 +56,10 @@ def _api_after_request(response):
     return response
 
 
-from skill_hub.web.config import get_install_dirs as _get_install_dirs
-
-
 @api_bp.route("/skills", methods=["GET"])
 def get_skills():
     """List all skills with their installation status across all directories."""
     skills = list_skills()
-    install_dirs = _get_install_dirs()
 
     return jsonify([
         {

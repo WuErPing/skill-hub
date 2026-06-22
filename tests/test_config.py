@@ -1,16 +1,13 @@
 """Tests for install directory configuration management."""
 
 import json
-from pathlib import Path
 
 import pytest
 
 from skill_hub.web.config import (
-    InstallDir,
     get_install_dirs,
     add_install_dir,
     remove_install_dir,
-    CONFIG_FILE,
 )
 
 

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-06-22
+
+### Fixed
+- **Race condition during async repo clone**: Prevent concurrent `sync_mapping()` / `pull_latest()` calls from interfering with an in-progress async clone. A per-repo lock and in-flight task tracking now serialize operations on the same repository, fixing cases where skill files could disappear or an empty mapping was saved after a successful clone.
+
 ## [0.21.0] - 2026-06-03
 
 ### Added
@@ -359,7 +364,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health checks for adapters
 - Auto-open browser on `skill-hub web` command
 
-[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/wuerping/skill-hub/compare/v0.21.1...HEAD
+[0.21.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.21.1
+[0.21.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.21.0
+[0.20.2]: https://github.com/wuerping/skill-hub/releases/tag/v0.20.2
+[0.20.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.20.1
+[0.20.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.20.0
+[0.19.1]: https://github.com/wuerping/skill-hub/releases/tag/v0.19.1
+[0.19.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.19.0
 [0.18.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.18.0
 [0.17.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.17.0
 [0.16.0]: https://github.com/wuerping/skill-hub/releases/tag/v0.16.0

@@ -3,11 +3,11 @@
 import json
 import threading
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from skill_hub.web.repos import load_repos_config, has_remote_updates, sync_mapping, repo_dir, Repo
+from skill_hub.web.repos import load_repos_config, has_remote_updates, sync_mapping, repo_dir
 
 SETTINGS_FILE = Path.home() / ".skills_repo" / "settings.json"
 DEFAULT_SCAN_INTERVAL_MINUTES = 30

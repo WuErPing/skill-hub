@@ -1,9 +1,8 @@
 """Install directory configuration management."""
 
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from skill_hub.utils.path_utils import expand_home
 
